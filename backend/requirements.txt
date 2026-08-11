@@ -1,0 +1,37 @@
+# API
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+python-multipart
+
+# Analisador estático (tolerante a erros — parseia código que não compila)
+tree-sitter
+tree-sitter-c
+
+# Extração de documentos
+pymupdf
+python-docx
+
+# IA / LLM
+google-genai
+
+# Persistência
+sqlalchemy
+psycopg2-binary
+
+# ML
+scikit-learn
+umap-learn
+hdbscan
+pandas
+numpy
+matplotlib
+
+# Testes
+pytest
+pytest-mock
+httpx
+bcrypt==4.0.1
+passlib==1.7.4
+python-jose==3.5.0
