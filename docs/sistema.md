@@ -1,9 +1,12 @@
 # Sistema de Learning Analytics para CS1 — Documentação Técnica
 
-**Autor:** Otávio Rodrigues de Oliveira  
-**Instituição:** UNIFEI — Universidade Federal de Itajubá  
-**Curso:** Sistemas de Informação  
-**Data de última atualização:** 2026-05-05
+**Autor:** Otávio Rodrigues de Oliveira
+**Instituição:** UNIFEI — Universidade Federal de Itajubá
+**Curso:** Sistemas de Informação
+**Origem:** TCC concluído · **Fase atual:** disciplina de Produtos Digitais (foco no aluno)
+**Data de última atualização:** 2026-08-11
+
+> **Leia antes:** o documento de passagem de bastão **[`../HANDOFF.md`](../HANDOFF.md)** dá a visão completa e atual (o que é, o que foi feito, o que ficou como ideia, para onde vai). Este arquivo detalha a parte técnica do sistema. Para a arquitetura em uma página, ver **[`ARQUITETURA.md`](ARQUITETURA.md)**.
 
 ---
 
@@ -15,30 +18,33 @@
 4. [Stack Tecnológico](#4-stack-tecnológico)
 5. [Módulos do Backend](#5-módulos-do-backend)
 6. [Pipeline de Avaliação de Código](#6-pipeline-de-avaliação-de-código)
-7. [Pipeline de ML — Clustering](#7-pipeline-de-ml--clustering)
-8. [LLM — Geração de Feedback por Cluster](#8-llm--geração-de-feedback-por-cluster)
+7. [Agrupamento por Assinatura de Falha](#7-agrupamento-por-assinatura-de-falha)
+8. [LLM — Extração e Insights](#8-llm--extração-e-insights)
 9. [Banco de Dados](#9-banco-de-dados)
 10. [API — Endpoints](#10-api--endpoints)
-11. [Decisões de Design](#11-decisões-de-design)
-12. [Sistema de Testes](#12-sistema-de-testes)
-13. [Como Executar](#13-como-executar)
-14. [Pendências e Trabalho Futuro](#14-pendências-e-trabalho-futuro)
+11. [Frontend](#11-frontend)
+12. [Decisões de Design](#12-decisões-de-design)
+13. [Sistema de Testes](#13-sistema-de-testes)
+14. [Como Executar](#14-como-executar)
+15. [Pendências e Trabalho Futuro](#15-pendências-e-trabalho-futuro)
 
 ---
 
 ## 1. Visão Geral
 
-O sistema é uma plataforma de **Learning Analytics** voltada para disciplinas introdutórias de programação (CS1) em C. Ele recebe o arquivo de uma prova (PDF ou DOCX), extrai automaticamente as questões via LLM, permite que alunos submetam código C, compila e executa esse código em ambiente isolado, classifica pedagogicamente o erro e, ao final de uma turma, agrupa submissões similares via Machine Learning para apoiar a tomada de decisão do professor.
+O sistema é uma plataforma de **Learning Analytics** voltada para disciplinas introdutórias de programação (CS1) em C. Ele recebe o arquivo de uma prova (PDF ou DOCX), extrai automaticamente as questões via LLM, recebe submissões de código C, compila e executa esse código em ambiente isolado, classifica pedagogicamente o erro e **agrupa as submissões por assinatura de falha** para apoiar a decisão do professor — que intervém uma vez por grupo, e não por aluno.
+
+O veredito do sistema foi validado contra o avaliador consolidado do Moodle (módulo CodeRunner) sobre **539 submissões reais de 4 turmas**, com concordância de **98,9%** (re-validação posterior: 537/539 = **99,6%**), usando apenas os casos de teste do enunciado.
 
 ---
 
 ## 2. Objetivos
 
-- Automatizar a correção de questões de código C com feedback imediato para o aluno.
-- Classificar erros de forma pedagogicamente significativa (não apenas "errado/certo").
-- Identificar padrões de dificuldade recorrentes entre alunos via clustering não supervisionado.
-- Gerar insights pedagógicos por grupo de alunos com apoio de LLM.
-- Oferecer rastreabilidade completa por questão, submissão e turma.
+- Automatizar a correção de questões de código C com feedback pedagógico imediato.
+- Classificar erros de forma pedagogicamente significativa (não apenas "certo/errado").
+- Reunir alunos com o mesmo defeito via agrupamento **interpretável** por assinatura de falha.
+- Gerar uma síntese pedagógica por grupo com apoio de LLM, sob revisão do professor.
+- Oferecer rastreabilidade completa por turma, prova, questão, submissão e aluno.
 
 ---
 
@@ -46,116 +52,129 @@ O sistema é uma plataforma de **Learning Analytics** voltada para disciplinas i
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                        Frontend (React/Vite)                     │
-│                        [em desenvolvimento]                      │
+│                 Frontend (React 19 + Vite + Tailwind v4)          │
+│        painel do professor  +  submissão pública do aluno        │
 └───────────────────────────────┬──────────────────────────────────┘
-                                │ HTTP (REST)
+                                │ HTTP (REST, token JWT)
 ┌───────────────────────────────▼──────────────────────────────────┐
 │                    Backend (FastAPI + Python)                     │
 │                                                                  │
-│  ┌─────────────────┐   ┌──────────────────┐   ┌───────────────┐ │
-│  │   API (routes)  │   │  Engine (análise) │   │  ML / LLM     │ │
-│  │  exam.py        │──▶│  dynamic_analyzer │   │  cluster.py   │ │
-│  │  submission.py  │   │  static_analyzer  │   │  feedback_    │ │
-│  └─────────────────┘   │  heuristics       │   │  generator.py │ │
-│                        │  semantic_extractor│   └───────────────┘ │
-│                        └──────────┬────────┘                     │
-│                                   │                              │
-│  ┌────────────────────────────────▼─────────────────────────┐   │
-│  │             Services (orquestração de lógica)            │   │
-│  │  exam_service.py        submission_service.py            │   │
-│  └────────────────────────────────┬─────────────────────────┘   │
-│                                   │                              │
-│  ┌────────────────────────────────▼─────────────────────────┐   │
-│  │              Models (ORM + schemas Pydantic)             │   │
-│  │  orm.py          schemas.py          database.py         │   │
-│  └────────────────────────────────┬─────────────────────────┘   │
-└───────────────────────────────────┼──────────────────────────────┘
-                                    │ SQLAlchemy
-                    ┌───────────────▼────────────────┐
-                    │        PostgreSQL               │
-                    │  (gerenciado via Alembic)       │
-                    └────────────────────────────────┘
-                                    │
-                    ┌───────────────▼────────────────┐
-                    │  Docker — gcc:latest           │
-                    │  (compilação/execução isolada) │
-                    └────────────────────────────────┘
-                                    │
-                    ┌───────────────▼────────────────┐
-                    │  Google Gemini 2.5 Flash (API) │
-                    │  (extração de prova + insights) │
-                    └────────────────────────────────┘
+│  ┌─────────────────┐  ┌──────────────────┐  ┌────────────────┐  │
+│  │  API (routes)   │  │  Engine (análise) │  │  ML / LLM      │  │
+│  │  auth exam      │─▶│  dynamic_analyzer │  │  cluster.py    │  │
+│  │  submission     │  │  static_analyzer  │  │  feedback_     │  │
+│  │  turma jobs     │  │  heuristics       │  │  generator.py  │  │
+│  └─────────────────┘  │  semantic_extractor│  └────────────────┘  │
+│                       └──────────┬────────┘                      │
+│  ┌───────────────────────────────▼──────────────────────────┐   │
+│  │        Services (orquestração: exam, submission,          │   │
+│  │        bulk_submission, turma, job)                       │   │
+│  └───────────────────────────────┬──────────────────────────┘   │
+│  ┌───────────────────────────────▼──────────────────────────┐   │
+│  │        Models (ORM SQLAlchemy + schemas Pydantic)         │   │
+│  └───────────────────────────────┬──────────────────────────┘   │
+└──────────────────────────────────┼───────────────────────────────┘
+                                   │ SQLAlchemy / Alembic
+                    ┌──────────────▼─────────────┐
+                    │   PostgreSQL (9 tabelas)   │
+                    └──────────────┬─────────────┘
+        ┌──────────────────────────┼──────────────────────────┐
+        ▼                                                     ▼
+┌──────────────────────────┐              ┌───────────────────────────┐
+│ Docker — gcc:latest      │              │ Google Gemini 2.5 Flash   │
+│ compilação/execução      │              │ extração de prova +       │
+│ isolada (--network none) │              │ insights por grupo        │
+└──────────────────────────┘              └───────────────────────────┘
 ```
 
 ### Princípio de organização
 
-O backend segue uma separação em camadas:
+O backend segue separação em camadas:
 
 | Camada | Responsabilidade |
 |---|---|
-| `api/routes/` | Recebe requisições HTTP, valida parâmetros, delega a serviços |
-| `services/` | Orquestra a lógica de negócio combinando múltiplos módulos |
-| `engine/` | Processamento técnico: compilação, AST, heurísticas, extração semântica |
-| `ml/` | Machine Learning: clustering, redução de dimensionalidade |
-| `llm/` | Integração com LLM para geração de feedback |
-| `models/` | ORM (SQLAlchemy), schemas de validação (Pydantic) e sessão de banco |
+| `api/routes/` | Recebe HTTP, valida parâmetros, delega a serviços |
+| `auth/` | Autenticação JWT do professor e posse de recursos |
+| `services/` | Orquestra a lógica de negócio combinando módulos |
+| `engine/` | Processamento técnico: compilação, AST, heurísticas, extração |
+| `ml/` | Agrupamento e redução de dimensionalidade |
+| `llm/` | Integração com LLM para insights |
+| `models/` | ORM (SQLAlchemy), schemas (Pydantic) e sessão de banco |
 
 ---
 
 ## 4. Stack Tecnológico
 
-### Backend
+A lista canônica e versionada vive em `backend/requirements.txt` (backend) e `frontend/package.json` (frontend). Abaixo, o papel de cada peça.
 
-| Biblioteca | Versão | Papel |
-|---|---|---|
-| **FastAPI** | 0.135.3 | Framework web assíncrono; roteamento, validação automática via Pydantic, documentação OpenAPI |
-| **SQLAlchemy** | 2.0.49 | ORM para PostgreSQL; define modelos relacionais como classes Python |
-| **Alembic** | 1.18.4 | Migrações incrementais do schema do banco; permite evoluir o banco sem perder dados |
-| **psycopg2-binary** | 2.9.11 | Driver PostgreSQL para Python |
-| **Pydantic** | (via FastAPI) | Validação de tipos nos schemas de entrada e saída da API |
-| **python-dotenv** | — | Leitura de variáveis de ambiente do arquivo `.env` |
-| **python-multipart** | — | Suporte ao upload de arquivos via `multipart/form-data` |
-
-### Análise de Código C
-
-| Biblioteca | Versão | Papel |
-|---|---|---|
-| **pycparser** | 3.0 | Parseia código C em uma AST (Abstract Syntax Tree) em Python; permite inspecionar estruturas de controle sem executar o código |
-| **Docker CLI** | sistema | Compila e executa código C do aluno em contêiner isolado (`gcc:latest`, `--network none`, timeout de 5 s) |
-
-### Machine Learning
-
-| Biblioteca | Versão | Papel |
-|---|---|---|
-| **scikit-learn** | 1.8.0 | TF-IDF (`TfidfVectorizer`), binarização de AST (`MultiLabelBinarizer`), one-hot encoding (`OneHotEncoder`), Silhouette Score |
-| **umap-learn** | 0.5.12 | UMAP: redução de dimensionalidade; 5 componentes para clustering, 2 para visualização |
-| **hdbscan** | 0.8.42 | HDBSCAN: algoritmo de clustering baseado em densidade; detecta clusters de forma e tamanho variados, marca outliers como −1 |
-| **numpy** | 2.4.4 | Operações vetoriais e matriciais; manipulação de embeddings |
-| **pandas** | 3.0.2 | Manipulação tabular de dados (uso auxiliar) |
-| **scipy** | (via sklearn) | `hstack` para concatenação de matrizes esparsas |
-| **matplotlib** | 3.10.9 | Geração de gráficos scatter comparativos das estratégias |
-
-### LLM / IA
-
-| Biblioteca | Versão | Papel |
-|---|---|---|
-| **google-genai** | 1.73.1 | SDK oficial do Google Gemini; utiliza o modelo `gemini-2.5-flash` para extração estruturada de questões e geração de insights pedagógicos |
-
-### Extração de Documentos
+### Backend / API
 
 | Biblioteca | Papel |
 |---|---|
-| **pymupdf** | Leitura de arquivos PDF |
-| **python-docx** | Leitura de arquivos DOCX |
+| **FastAPI** | Framework web assíncrono: roteamento, validação via Pydantic, OpenAPI |
+| **Uvicorn** | Servidor ASGI |
+| **SQLAlchemy 2.x** | ORM para PostgreSQL |
+| **Alembic** | Migrações incrementais do schema (revisões 0001..0009) |
+| **psycopg2-binary** | Driver PostgreSQL |
+| **Pydantic** | Validação de entrada/saída da API |
+| **python-dotenv** | Variáveis de ambiente do `.env` |
+| **python-multipart** | Upload de arquivos (`multipart/form-data`) |
+
+### Análise de código C
+
+| Biblioteca | Papel |
+|---|---|
+| **tree-sitter** + **tree-sitter-c** | Parser **incremental e tolerante a erros**: produz AST parcial mesmo em código que não compila (o caso comum em CS1) |
+| **Docker CLI** | Compila e executa o C em contêiner isolado (`gcc:latest`, `--network none`, timeout) |
+
+### Autenticação
+
+| Biblioteca | Papel |
+|---|---|
+| **passlib** + **bcrypt** | Hash de senha do professor |
+| **python-jose** | Emissão e validação de JWT (HS256, expiração de 8 h) |
+
+### Machine Learning (baseline e visualização)
+
+| Biblioteca | Papel |
+|---|---|
+| **scikit-learn** | TF-IDF, one-hot, binarização de AST, Silhouette Score |
+| **umap-learn** | UMAP: redução de dimensionalidade (5D para clustering baseline, 2D para o scatter) |
+| **hdbscan** | HDBSCAN: agrupamento por densidade (baseline de comparação) |
+| **numpy / pandas / scipy** | Operações vetoriais/matriciais e tabulares |
+| **matplotlib** | Gráficos comparativos das estratégias de feature |
+
+> Em produção o agrupamento é **determinístico por assinatura de falha** — UMAP/HDBSCAN são baseline de comparação e a projeção 2D é recurso de visualização (ver seção 7).
+
+### LLM / IA
+
+| Biblioteca | Papel |
+|---|---|
+| **google-genai** | SDK oficial do Google Gemini. Modelo `gemini-2.5-flash` para extração estruturada de provas e síntese pedagógica por grupo |
+
+### Extração de documentos
+
+| Biblioteca | Papel |
+|---|---|
+| **pymupdf** | Leitura de PDF |
+| **python-docx** | Leitura de DOCX |
+
+### Frontend
+
+| Biblioteca | Papel |
+|---|---|
+| **React 19 + Vite** | SPA com HMR e build de produção |
+| **Tailwind v4** | Estilo utilitário |
+| **React Router 7** | Roteamento (páginas em lazy-load) |
+| **Recharts 3** | Gráficos do painel |
+| **axios** | Cliente HTTP com token |
 
 ### Testes
 
 | Biblioteca | Papel |
 |---|---|
-| **pytest** | Runner de testes; fixtures, markers, parametrização |
-| **pytest-mock** | Mocking simplificado com `mocker.patch` |
-| **httpx** | Cliente HTTP usado pelo `TestClient` do FastAPI nos testes de integração |
+| **pytest** + **pytest-mock** | Runner, fixtures, mocking |
+| **httpx** | Cliente usado pelo `TestClient` do FastAPI |
 
 ---
 
@@ -163,542 +182,370 @@ O backend segue uma separação em camadas:
 
 ### `app/engine/dynamic_analyzer.py`
 
-Compila e executa código C do aluno usando Docker.
+Compila e executa o código do aluno usando Docker.
 
-**Funcionamento:**
-1. Salva o código em um diretório temporário (`tempfile.TemporaryDirectory`)
-2. Executa `docker run gcc:latest gcc -Wall student_code.c -o exe.out` com `--network none` e timeout de 30 s
-3. Se compilou, executa `./exe.out` para cada caso de teste com timeout de 5 s por caso
-4. Retorna um dict com `success`, `compile_error`, `warnings`, `test_results`, `all_tests_passed`
+1. Salva o código em diretório temporário.
+2. Compila com `docker run gcc:latest gcc -Wall ...` com `--network none` e timeout.
+3. Se compilou, executa contra cada caso de teste com timeout por caso (inclusive dentro do contêiner, para não deixar processos zumbis em loop infinito).
+4. Retorna `success`, `compile_error`, `warnings`, `test_results`, `all_tests_passed`.
 
-**Decisão:** usar Docker garante isolamento total — código malicioso do aluno não acessa a rede nem o sistema de arquivos do host. O flag `--network none` é essencial.
-
----
+Trata `TimeoutExpired` sem abortar o lote inteiro. É a fonte de verdade sobre **comportamento** (compila?, passa?, timeout?, segfault?).
 
 ### `app/engine/static_analyzer.py`
 
-Analisa a AST do código C sem executá-lo.
+Analisa a AST do C **sem executá-lo**, com **tree-sitter** (parser tolerante a erros).
 
-**Funcionamento:**
-1. Remove diretivas `#include` via regex (pycparser não resolve headers da stdlib)
-2. Parseia o C limpo com `pycparser.c_parser.CParser`
-3. Percorre a AST com `ControlFlowVisitor` (visitor pattern) coletando: `If`, `For`, `While`, `DoWhile`, `Switch`
-4. Retorna lista de estruturas encontradas
-
-**Decisão:** remover `#include` antes do parsing é necessário porque pycparser é um parser puro de C — ele não tem acesso aos arquivos de cabeçalho da biblioteca padrão. Isso é suficiente para análise estrutural.
-
----
+Extrai `structures` (If/For/While/DoWhile/Switch), `functions` (nome, tipo de retorno, nº de parâmetros, recursão, parâmetro por ponteiro, retorna valor) e `risky_loops` (off-by-one). Retorna `parse_ok=False` quando há nós de erro, **mas ainda assim popula o que conseguir** — inclusive em código que não compila, que é o caso mais comum em provas de CS1.
 
 ### `app/engine/heuristics.py`
 
-Cruza os resultados dinâmico + estático para produzir diagnóstico pedagógico.
+Cruza os resultados dinâmico + estático + a especificação da questão e produz **um** diagnóstico pedagógico `{error_category, pedagogical_diagnosis, actionable_feedback}`. Aplica regras em **ordem de prioridade**: se não compila, classifica pela mensagem do GCC. Se compila: avisos → violação de estrutura → violação de função → off-by-one → testes → estrutura. É o núcleo pedagógico. Ver seção 6 para as 27 categorias.
 
-**Categorias de erro produzidas:**
+### `app/engine/error_locator.py`
 
-| Categoria | Condição de disparo |
-|---|---|
-| Correto | Todos os testes passaram e estruturas estão conformes |
-| Saída Incorreta | Compilou, mas ≥1 teste falhou por saída errada |
-| Sintaxe — Ponto e Vírgula Ausente | Compilação falhou com `expected ';'` |
-| Sintaxe — Variável Não Declarada | Compilação com `undeclared` ou `was not declared` |
-| Sintaxe — Cabeçalho Faltando | `implicit declaration of function` |
-| Linker — Função Indefinida | `undefined reference` |
-| Semântica — Tipo Incompatível | `incompatible type` ou `invalid conversion` |
-| Semântica — Retorno Ausente | `control reaches end of non-void function` |
-| Loop Infinito — Controle de Fluxo | Timeout com laço detectado na AST |
-| Timeout Anômalo | Timeout sem laço (recursão infinita ou scanf preso) |
-| Acesso Indevido à Memória | Segmentation fault |
-| Erro Aritmético — Divisão por Zero | Floating point exception |
-| Violação de Estrutura | Estrutura obrigatória ausente ou proibida presente |
-| Aviso — Variável Não Inicializada | Warning `uninitialized` |
-| Aviso — Variável Não Utilizada | Warning `unused variable` |
-| Estrutura Suspeita — Excesso de Condicionais | ≥4 `if` sem nenhum laço |
-
----
+Faz o parse da saída do GCC para descobrir as **linhas culpadas** por um erro de compilação (usadas no destaque do código representativo).
 
 ### `app/engine/semantic_extractor.py`
 
-Usa Gemini para extrair estruturadamente as questões de um texto de prova.
+Usa Gemini para transformar o texto bruto da prova em questões estruturadas (enunciado, `required_structures`, `forbidden_structures`, `required_functions`, `requires_loop`) e casos de teste de exemplo. Usar LLM evita regex frágil sobre PDFs de layout variável.
 
-**Decisão:** usar LLM para isso evita regex frágil. O modelo recebe o texto bruto da prova e retorna JSON com questões, enunciados, estruturas obrigatórias/proibidas e tipo de questão.
+### `app/engine/document_parser.py`
 
----
+Extrai texto de PDF (pymupdf) e DOCX (python-docx).
+
+### `app/engine/evaluators/`
+
+Orquestra a avaliação por tipo de questão: `code_evaluator.py` (junta dinâmico + estático + heurísticas em um resultado), `dissertative_evaluator.py`, `multiple_choice_evaluator.py`.
 
 ### `app/ml/cluster.py`
 
-Agrupa submissões de uma questão usando UMAP + HDBSCAN.
-
-Veja detalhes completos na seção [7. Pipeline de ML](#7-pipeline-de-ml--clustering).
-
----
+Agrupamento e o estudo de estratégias de feature (baseline UMAP + HDBSCAN). Ver seção 7.
 
 ### `app/llm/feedback_generator.py`
 
-Gera insights pedagógicos por cluster usando Gemini 2.5 Flash.
+Gera a síntese pedagógica por grupo via Gemini (uma chamada por questão, com batching e cache em `QuestionCluster.insight`). Também atribui as linhas do erro de lógica para o destaque.
 
-Veja detalhes na seção [8. LLM — Geração de Feedback por Cluster](#8-llm--geração-de-feedback-por-cluster).
+### `app/auth/`
 
----
+`routes.py` (register/login), `service.py` (hash bcrypt, JWT), `dependencies.py` (injeta o professor logado), `ownership.py` (garante que o professor só acessa recursos das próprias turmas).
 
-### `app/services/exam_service.py`
+### `app/services/`
 
-Orquestra o fluxo de upload e processamento de uma prova:
-1. Extrai texto do PDF/DOCX via `document_parser`
-2. Chama `semantic_extractor` para obter a estrutura de questões via Gemini
-3. Persiste `Exam` e `Question` no banco
-
----
-
-### `app/services/submission_service.py`
-
-Orquestra a avaliação de uma submissão:
-1. Busca questão e casos de teste no banco
-2. Chama `dynamic_analyzer` (compilação + execução Docker)
-3. Chama `static_analyzer` (AST pycparser)
-4. Chama `heuristics.classify_error` para diagnóstico
-5. Persiste `Submission` e `SubmissionTestResult` no banco
+- `exam_service.py` — upload da prova, chamada ao Gemini, persistência de questões, agregação de resultados.
+- `bulk_submission_service.py` — avaliação de um ZIP inteiro, com progresso via `ProcessingJob`.
+- `submission_service.py` — avalia e persiste uma submissão individual.
+- `turma_service.py` — CRUD de turma e analytics.
+- `job_service.py` — cria e atualiza `ProcessingJob`.
 
 ---
 
 ## 6. Pipeline de Avaliação de Código
 
 ```
-Aluno envia código C
+Código do aluno
         │
+        ▼  POST /submission/evaluate   (ou lote via /exam/{id}/submissions/bulk)
+   code_evaluator.evaluate_code()
+        ├──▶ dynamic_analyzer.compile_and_run()   docker gcc isolado, sem rede, timeout
+        ├──▶ static_analyzer.extract_control_flow() tree-sitter: estruturas, funções, off-by-one
+        ├──▶ heuristics.classify_error()           categoria + diagnóstico + feedback
+        └──▶ structure_check / function_check      conformidade com a spec da questão
         ▼
-POST /submission/evaluate
-        │
-        ▼
-submission_service.evaluate_submission()
-        │
-        ├──▶ dynamic_analyzer.compile_and_run()
-        │         └── docker run gcc:latest (isolado, sem rede, timeout 5s/TC)
-        │             retorna: compile_error, warnings, test_results[]
-        │
-        ├──▶ static_analyzer.extract_control_flow()
-        │         └── pycparser AST
-        │             retorna: structures["If", "For", "While", ...]
-        │
-        ├──▶ heuristics.classify_error()
-        │         └── cruza dinâmico + estático + regras pedagógicas
-        │             retorna: error_category, diagnosis, feedback
-        │
-        └──▶ Persiste Submission + SubmissionTestResult no PostgreSQL
+   persiste Submission + SubmissionTestResult
 ```
 
-**Saída para o aluno:**
-- Resultado de cada caso de teste (entrada, saída esperada, saída obtida, passou?)
-- Diagnóstico pedagógico da categoria de erro
-- Feedback acionável (o que fazer para corrigir)
-- Check de conformidade estrutural (estruturas obrigatórias/proibidas)
+**Saída para o aluno:** resultado por caso de teste (entrada, saída esperada, saída obtida, passou?), a categoria pedagógica do erro, o feedback acionável e a checagem de conformidade estrutural/de funções.
+
+**Normalização de saída:** a comparação tolera diferenças de whitespace e alinhamento (`%Nd`), para não reprovar um aluno por espaço a mais.
+
+### As 27 categorias de erro
+
+São a "verdade-base pedagógica" (usada também como pseudo ground-truth no agrupamento):
+
+- **Sintaxe/Compilação:** Ponto e Vírgula Ausente, Variável ou Função Não Declarada, Cabeçalho Faltando, Tipo Incompatível, Retorno Ausente, Erro de Compilação, Linker — Função Indefinida.
+- **Runtime:** Acesso Indevido à Memória, Acesso Fora dos Limites — Off-by-One, Erro Aritmético — Divisão por Zero, Loop Infinito — Controle de Fluxo, Timeout Anômalo.
+- **Avisos:** Variável Não Inicializada, Variável Declarada e Não Utilizada, Declaração Implícita de Função.
+- **Estrutura:** Violação de Estrutura, Solução Sequencial — Sem Controle de Fluxo, Estrutura Suspeita — Excesso de Condicionais, Lógica Estrutural Válida.
+- **Funções:** Função Ausente, Tudo no Main, Assinatura Incorreta, Recursão Faltando, Por-Valor vs Por-Referência.
+- **Saída/outros:** Saída Incorreta, Correto, Erro Desconhecido.
+
+A fundamentação combina metodologia dedutivo-indutiva com âncoras da literatura (McCall & Kölling para severidade, Altadmri & Brown para erros de novatos, Becker, Keuning, Hattie & Timperley para feedback).
 
 ---
 
-## 7. Pipeline de ML — Clustering
+## 7. Agrupamento por Assinatura de Falha
 
-### Objetivo
+Após a prova, o professor dispara o agrupamento de uma questão para reunir alunos com o mesmo defeito — sem ler cada submissão.
 
-Após a prova, o professor dispara o clustering de uma questão para identificar grupos de alunos com padrões de erro similares — sem precisar ler cada submissão individualmente.
+### Em produção (determinístico, dois níveis)
 
-### Fluxo
+1. **Nível 1 — categoria de erro** das heurísticas (ex.: todos os "Saída Incorreta").
+2. **Nível 2 — assinatura de falha:** dentro da categoria, agrupa por **qual conjunto de casos de teste** cada submissão reprova. Alunos que erram exatamente os mesmos casos caem no mesmo grupo.
 
-```
-POST /exam/{id}/questions/{n}/cluster?strategy=tfidf_behavioral
-        │
-        ▼
-cluster_question(question_id, db, strategy)
-        │
-        ├──▶ Busca todas as Submission da questão (com test_results via joinedload)
-        │
-        ├──▶ _build_features(codes, ast_lists, submissions, strategy)
-        │         └── constrói matriz de features conforme estratégia
-        │
-        ├──▶ UMAP (clustering): n_components=min(5, n-1), min_dist=0.0
-        │         └── reduz para espaço de baixa dimensão otimizado para densidade
-        │
-        ├──▶ UMAP (visualização): n_components=2
-        │         └── reduz para 2D para scatter plot
-        │
-        ├──▶ HDBSCAN(min_cluster_size=2).fit_predict()
-        │         └── retorna labels; −1 = outlier
-        │
-        ├──▶ Silhouette Score (sobre embedding de clustering)
-        │         └── calculado apenas se ≥2 clusters reais encontrados
-        │
-        └──▶ Persiste cluster_id, umap_x, umap_y em cada Submission
-             Cria registros QuestionCluster (cluster_label, size, dominant_error,
-             representative_submission_id)
-```
+Cada grupo recebe um representante (código exibido ao professor), um rótulo de sintoma (quais casos falham), as linhas do erro destacadas e, opcionalmente, a síntese pedagógica do Gemini que o professor pode propagar à turma (*human-in-the-loop*).
 
-### Estratégias de Features
+### Baseline geométrico (UMAP + HDBSCAN) — comparação e visualização
 
-Quatro estratégias incrementais foram implementadas para comparação:
+Pipeline do estudo: features → UMAP (parâmetros adaptativos ao tamanho da turma) → HDBSCAN (densidade, marca outliers como −1) → Silhouette → persistência de `cluster_id` e coordenadas 2D para o scatter.
 
-#### `tfidf` — Baseline
+**Cinco estratégias de feature** comparadas:
 
-```
-Features = TF-IDF(código) ⊕ OneHot(estruturas AST)
-```
+| Estratégia | Features |
+|---|---|
+| `tfidf` | TF-IDF(código) ⊕ one-hot(estruturas AST) |
+| `tfidf_ngram` | idem com bigrams (contexto local) |
+| `tfidf_category` | ⊕ one-hot(categoria de erro) |
+| `tfidf_behavioral` | ⊕ [compilou 0/1, fração de testes passados] |
+| `tfidf_functional` | behavioral ⊕ features de função (nº, recursão, ponteiro, nº máx. de parâmetros) |
 
-- TF-IDF sobre tokens do código C (`[a-zA-Z_][a-zA-Z0-9_]*`)
-- Binarização das estruturas de controle presentes na AST
+**Achado empírico:** `tfidf_behavioral` foi a melhor (score ~0,864). `tfidf_functional` (~0,854) não superou — as features de função mostraram-se **redundantes** com os sinais léxico+estrutural para o agrupamento. O valor pedagógico das funções vive no **diagnóstico por questão** (heurísticas "Tudo no Main", "Recursão Faltando"), não no clustering.
 
-**Limitação:** em turmas de CS1, os programas são curtos e compartilham vocabulário comum (main, int, printf, scanf, return). Diferenças semânticas ficam invisíveis ao bag-of-words.
+### Parâmetros adaptativos (baseline)
 
-#### `tfidf_ngram` — Bigrams
-
-```
-Features = TF-IDF-bigram(código) ⊕ OneHot(AST)
-```
-
-- Igual ao baseline, mas com `ngram_range=(1, 2)`: capta pares de tokens adjacentes (ex: `int main`, `return 0`), preservando algum contexto local de sequência.
-
-#### `tfidf_category` — Com Categoria de Erro
-
-```
-Features = TF-IDF(código) ⊕ OneHot(AST) ⊕ OneHot(error_category)
-```
-
-- Adiciona a categoria de erro classificada pelas heurísticas como feature categórica.
-- **Motivação:** alunos com o mesmo tipo de erro tendem a ter padrões semelhantes de código; a categoria atua como sinal discriminativo forte.
-
-#### `tfidf_behavioral` — Comportamental (mais rico)
-
-```
-Features = TF-IDF-bigram(código) ⊕ OneHot(AST) ⊕ OneHot(error_category)
-           ⊕ [compilou(0/1), fração_testes_passados(0–1)]
-```
-
-- Combina todas as anteriores com features comportamentais contínuas:
-  - `compilou`: 1.0 se não houve erro de compilação, 0.0 caso contrário
-  - `fração_TC`: proporção de casos de teste que passaram
-
-### Parâmetros Adaptativos
-
-Para funcionar com qualquer tamanho de turma (mínimo 3 submissões):
+Para funcionar com qualquer tamanho de turma (mínimo ~3 submissões):
 
 ```python
-n_components_cluster = min(5, n - 1)   # UMAP não pode ter n_components >= n_samples
-n_neighbors          = min(15, n - 1)  # UMAP precisa de n_neighbors < n_samples
-umap_init            = "random" if n < 10 else "spectral"  # spectral falha com datasets muito pequenos
+n_components_cluster = min(5, n - 1)   # UMAP exige n_components < n_samples
+n_neighbors          = min(15, n - 1)
+umap_init            = "random" if n < 10 else "spectral"  # spectral falha em datasets pequenos
 ```
+
+`min_cluster_size` do HDBSCAN é adaptado ao tamanho da turma.
 
 ### Silhouette Score
 
-Métrica de qualidade de clustering calculada sobre o espaço UMAP de clustering (5D):
+Métrica **geométrica** de qualidade, calculada no espaço UMAP de clustering:
 
 ```
 s(i) = (b − a) / max(a, b)
 ```
 
-- `a`: distância média do ponto i aos demais pontos do **mesmo cluster** (coesão)
-- `b`: distância média do ponto i ao **cluster vizinho mais próximo** (separação)
-- Score final: média de s(i) para todos os pontos não-outlier
-- Escala: −1 (pior) a +1 (melhor); valores acima de 0.5 indicam clusters razoavelmente compactos e separados
+- `a`: distância média do ponto ao próprio cluster (coesão).
+- `b`: distância média ao cluster vizinho mais próximo (separação).
+- Escala −1 (pior) a +1 (melhor). Acima de 0,5 indica clusters razoavelmente compactos e separados.
 
-**Observação importante:** Silhouette é uma métrica geométrica, não semântica. Um score alto com menos clusters pode indicar oversimplificação (fusão de grupos pedagogicamente distintos). O número de clusters encontrado deve ser comparado com os grupos esperados.
+**Cuidado:** silhouette é geométrica, não semântica. Score alto com poucos clusters pode indicar fusão de grupos pedagogicamente distintos. Foi um dos motivos do pivô para o agrupamento por assinatura de falha (mais interpretável). Ver a discussão em `ARQUITETURA.md` e no `HANDOFF.md`.
 
-### Script de Comparação Visual
+### Scripts de visualização
 
 ```bash
-python scripts/demo_visualization.py --out comparacao.png
-# dados sintéticos, sem banco necessário
-
-python scripts/compare_strategies.py --question_id 1 --out comparacao.png
-# dados reais do banco
+python backend/scripts/demo_visualization.py --out comparacao.png     # dados sintéticos, sem banco
+python backend/scripts/compare_strategies.py --question_id 1 --out comparacao.png  # dados reais
+python backend/evaluate_clustering.py                                 # harness de avaliação (experimentos)
 ```
-
-Gera um PNG 2×2 com scatter UMAP por estratégia, exibindo Silhouette Score, número de clusters e outliers em cada painel. Cor da borda = grupo verdadeiro (no script de demo); cor de preenchimento = cluster atribuído pelo HDBSCAN.
 
 ---
 
-## 8. LLM — Geração de Feedback por Cluster
+## 8. LLM — Extração e Insights
 
-Após o clustering, o professor pode solicitar insights pedagógicos por grupo:
+O LLM tem papel **restrito** — nunca decide a correção. Faz apenas duas coisas.
+
+### Extração da prova (`semantic_extractor.py`)
+
+Recebe o texto (ou o PDF nativo, multimodal) e devolve as questões de código estruturadas + casos de teste de exemplo. Modelo `gemini-2.5-flash` pela boa qualidade de raciocínio, PT-BR nativo e custo baixo.
+
+### Síntese pedagógica por grupo (`feedback_generator.py`)
 
 ```
 POST /exam/{id}/questions/{n}/insights
         │
-        ▼
-Para cada QuestionCluster da questão:
+        ▼  Para a questão inteira, em uma única chamada (batching):
     Prompt → Gemini 2.5 Flash
-    Contexto: enunciado + código representativo + erro dominante + tamanho do grupo
-    Resposta: insight pedagógico (máx. 4 frases)
+    Contexto: enunciado + código representativo + erro dominante + tamanho de cada grupo
+    Resposta: insight pedagógico curto (~4 frases) por grupo
         │
-        ▼
-Retorna lista de ClusterInsight {cluster_id, size, dominant_error, insight}
+        ▼  grava em QuestionCluster.insight (cache persistente)
 ```
 
-**Decisão de modelo:** `gemini-2.5-flash` foi escolhido por oferecer boa qualidade de raciocínio pedagógico com latência aceitável e custo reduzido em relação ao modelo Pro. A API é usada via SDK oficial `google-genai`.
-
-**Representante de cluster:** a submissão enviada ao Gemini é a mais próxima ao centróide geométrico do cluster no espaço UMAP 2D — ou seja, a mais "típica" do grupo.
+**Engenharia de custo:**
+- **Cache** — o insight fica gravado, não se regenera à toa.
+- **Batching** — K grupos de uma questão viram **1 chamada**, não K.
 
 ---
 
 ## 9. Banco de Dados
 
-### Schema (PostgreSQL)
+### Schema (PostgreSQL) — 9 tabelas
 
 ```
-exams
-  id            PK
-  filename      VARCHAR
-  raw_text      TEXT
-  created_at    DATETIME
-
-questions
-  id            PK
-  exam_id       FK → exams.id
-  number        VARCHAR          -- ex: "1", "2a"
-  statement     TEXT
-  required_structures   JSON     -- ex: ["For", "If"]
-  forbidden_structures  JSON
-  requires_loop         BOOLEAN
-
-test_cases
-  id            PK
-  question_id   FK → questions.id
-  input         TEXT
-  expected_output TEXT
-
-submissions
-  id            PK
-  question_id   FK → questions.id
-  code          TEXT
-  compile_error TEXT
-  warnings      TEXT
-  all_tests_passed  BOOLEAN (nullable)
-  error_category    VARCHAR
-  pedagogical_diagnosis TEXT
-  actionable_feedback   TEXT
-  ast_structures    JSON         -- estruturas encontradas pelo static_analyzer
-  cluster_id        INTEGER (nullable)  -- label HDBSCAN (−1 = outlier)
-  umap_x            VARCHAR (nullable)  -- coordenada X no espaço UMAP 2D
-  umap_y            VARCHAR (nullable)
-  submitted_at      DATETIME
-
-submission_test_results
-  id            PK
-  submission_id FK → submissions.id
-  input         TEXT
-  expected_output TEXT
-  actual_output TEXT
-  passed        BOOLEAN
-
-question_clusters
-  id            PK
-  question_id   FK → questions.id
-  cluster_label INTEGER          -- label do HDBSCAN
-  size          INTEGER          -- quantidade de submissões no cluster
-  dominant_error VARCHAR         -- categoria de erro mais frequente no cluster
-  representative_submission_id FK → submissions.id (nullable)
+professors  ─< turmas ─< exams ─< questions ─< test_cases
+                                      │
+                                      ├─< submissions ─< submission_test_results
+                                      └─< question_clusters
+processing_jobs   (tarefas em segundo plano)
 ```
+
+Campos que importam (definição em `backend/app/models/orm.py`):
+
+- **professors** — `email`, `nome`, `senha_hash`.
+- **turmas** — `nome`, `codigo`, `professor_id`.
+- **exams** — `filename`, `raw_text`, `turma_id`.
+- **questions** — `number`, `statement`, `points`, `required_structures`, `forbidden_structures`, `required_functions`, `requires_loop`.
+- **test_cases** — `input`, `expected_output`.
+- **submissions** — `code`, `compile_error`, `warnings`, `all_tests_passed`, `error_category`, `pedagogical_diagnosis`, `actionable_feedback`, `ast_structures`, `ast_functions`, `cluster_id`, `umap_x`, `umap_y`, `matricula`.
+- **submission_test_results** — `input`, `expected_output`, `actual_output`, `passed`.
+- **question_clusters** — `cluster_label`, `size`, `dominant_error`, `insight`, `highlight_lines`, `representative_submission_id`.
+- **processing_jobs** — `kind` (`exam_upload` | `bulk_submit`), `status`, `stage`, `total`, `processed`, `message`, `result`.
+
+> **Sobre o aluno:** hoje o aluno existe apenas como a string `matricula` em cada submissão. Não há tabela `students` nem conta de aluno — é o principal buraco a preencher na fase de produto (ver `HANDOFF.md`, seção 15).
 
 ### Migrações Alembic
 
-| Revisão | Arquivo | Conteúdo |
-|---|---|---|
-| `0001` | `0001_initial_schema.py` | Cria tabelas base: exams, questions, test_cases, submissions, submission_test_results |
-| `0002` | `0002_ml_clustering.py` | Adiciona ast_structures, cluster_id, umap_x, umap_y à submissions; cria question_clusters |
-
-**Decisão:** Alembic foi adotado para garantir que alterações de schema sejam rastreadas em código e versionadas junto ao repositório. O `create_all` automático do SQLAlchemy foi removido para evitar divergências entre ambientes.
+| Revisão | Conteúdo |
+|---|---|
+| 0001 | Esquema base: exams, questions, test_cases, submissions, submission_test_results |
+| 0002 | ML/clustering: `ast_structures`, `cluster_id`, `umap_x/y`, tabela `question_clusters` |
+| 0003 | Turmas |
+| 0004 | Renomeia `student_name` → `matricula` |
+| 0005 | Auth de professor |
+| 0006 | Suporte a funções (`required_functions`, `ast_functions`) |
+| 0007 | `processing_jobs` |
+| 0008 | `highlight_lines` no cluster |
+| 0009 | `points` por questão |
 
 Comandos:
 ```bash
-alembic upgrade head       # aplica todas as migrações pendentes
-alembic downgrade -1       # reverte a última migração
-alembic revision --autogenerate -m "descricao"  # gera nova migração
+alembic upgrade head       # aplica migrações pendentes
+alembic downgrade -1       # reverte a última
+alembic revision --autogenerate -m "descricao"
 ```
 
 ---
 
 ## 10. API — Endpoints
 
-Base URL: `http://localhost:8000`
+Base: `http://localhost:8000` · Swagger em `/docs`. Autenticação por token Bearer (JWT), exceto cadastro, login e a submissão pública do aluno. Routers montados: `auth`, `exam`, `submission`, `turma`, `jobs`.
 
-| Método | Endpoint | Descrição |
+| Método | Rota | Descrição |
 |---|---|---|
 | GET | `/` | Health check |
-| POST | `/exam/upload` | Upload de prova (PDF/DOCX); extrai questões via Gemini |
-| GET | `/exam/{exam_id}` | Retorna estrutura da prova |
-| POST | `/exam/{exam_id}/questions/{number}/testcases` | Adiciona casos de teste a uma questão |
-| GET | `/exam/{exam_id}/results` | Resultados agregados de todas as questões |
-| POST | `/exam/{exam_id}/questions/{number}/cluster` | Executa clustering das submissões |
-| POST | `/exam/{exam_id}/questions/{number}/insights` | Gera insights pedagógicos por cluster via LLM |
-| POST | `/submission/evaluate` | Aluno submete código; retorna diagnóstico e resultados |
-
-### Query parameters de `/cluster`
-
-| Parâmetro | Tipo | Default | Valores |
-|---|---|---|---|
-| `strategy` | string | `tfidf` | `tfidf`, `tfidf_ngram`, `tfidf_category`, `tfidf_behavioral` |
-
-### Resposta de `/cluster`
-
-```json
-{
-  "question_number": "1",
-  "total_submissions": 25,
-  "strategy": "tfidf_behavioral",
-  "silhouette_score": 0.712,
-  "clusters": [
-    {
-      "cluster_id": 0,
-      "size": 8,
-      "dominant_error": "Saída Incorreta",
-      "representative_submission_id": 42,
-      "representative_code": null
-    }
-  ],
-  "scatter": [
-    {"submission_id": 10, "x": 3.14, "y": -1.27, "cluster_id": 0}
-  ]
-}
-```
+| POST | `/auth/register` · `/auth/login` | Cadastro e sessão do professor |
+| POST | `/exam/upload` | Upload da prova (PDF/DOCX) → questões via Gemini |
+| GET · DELETE | `/exam/{id}` | Consulta e exclusão (cascata) |
+| POST · PUT · DELETE | `/exam/{id}/questions[/{num}]` | CRUD de questões |
+| GET · POST · PUT · DELETE | `/exam/{id}/questions/{num}/testcases[/{tc}]` | CRUD de casos de teste |
+| POST | `/exam/{id}/submissions/bulk` | Envio em lote (ZIP), avaliação assíncrona |
+| GET | `/exam/{id}/results` | Resultados agregados por questão |
+| GET | `/exam/{id}/questions/{num}/groups` | Grupos por sintoma (com linhas destacadas) |
+| POST | `/exam/{id}/questions/{num}/cluster` | (Re)agrupar a questão |
+| POST | `/exam/{id}/questions/{num}/insights` | Gerar síntese pedagógica (Gemini) |
+| GET | `/exam/{id}/students[/detail]` | Desempenho por aluno |
+| POST · DELETE | `/submission/evaluate` · `/submission/{id}` | Avaliar / reavaliar / excluir submissão |
+| GET | `/turmas[...]` | CRUD de turmas e `/turmas/{id}/analytics` |
+| GET | `/jobs/{id}` · `/jobs/active` | Progresso das tarefas em segundo plano |
 
 ---
 
-## 11. Decisões de Design
+## 11. Frontend
+
+Painel do professor + submissão pública do aluno. React 19 + Vite + Tailwind v4 + React Router 7 + Recharts + axios. Páginas em lazy-load (bundle inicial leve). Rotas em `frontend/src/App.jsx`.
+
+**Fluxo do professor (protegido):** `TurmaListPage` → `TurmaDetailPage` → upload da prova (`ExamUploadPage`) → `ExamDashboard` → por questão: `QuestionPage` (grupos, insights, destaque do erro), `TestCasesPage`, `SubmissionsPage`, envio em lote (`BulkSubmitPage`), `ResultsPage`, `StudentsPage` / `StudentDetailPage`.
+
+**Fluxo do aluno (público):** rota `/submit/:examId` → `StudentSubmitPage`. Submete código e recebe o diagnóstico imediato. É a base do produto voltado ao aluno.
+
+**Componentes reutilizáveis:** `Modal`, `ConfirmDialog`, `QuestionForm`, `JobDock` (progresso das tarefas), `BarList`, `Badge`, `CodeBlock`, `FunctionCheckCard`, `ListControls`, `WhoList`, `Logo`. Auth em `context/AuthContext.jsx`, cliente HTTP em `api/client.js`.
+
+CORS liberado para `http://localhost:5173` (Vite dev) e `http://localhost:4173` (Vite preview).
+
+---
+
+## 12. Decisões de Design
 
 ### Docker para compilação
 
-**Alternativas consideradas:** subprocess direto com GCC instalado no host.  
-**Decisão:** Docker com `gcc:latest`, `--network none`, timeout de 5 s por caso de teste.  
-**Motivo:** isolamento completo evita que código malicioso do aluno comprometa o servidor. A flag `--network none` é especialmente importante.
+**Decisão:** `gcc:latest` com `--network none` e timeout por caso de teste.
+**Motivo:** isolamento total — código malicioso do aluno não acessa rede nem o sistema de arquivos do host. A flag `--network none` é essencial.
 
-### pycparser para AST estática
+### tree-sitter para AST estática (trocado de pycparser)
 
-**Alternativas consideradas:** regex sobre o código-fonte; tree-sitter.  
-**Decisão:** pycparser produz uma AST completa e tipada do C padrão. Regex seria frágil para código C arbitrário. tree-sitter seria uma alternativa válida, mas pycparser é puro Python e não requer compilação de binários.  
-**Trade-off:** pycparser não resolve headers; a remoção das diretivas `#include` via regex é uma simplificação válida para análise estrutural.
+**Decisão de arquitetura:** substituiu-se **pycparser** por **tree-sitter**.
+**Motivo empírico:** em provas reais de CS1, a maioria das submissões com problema **não compila** (erros de sintaxe). O pycparser exige C válido e, para esses casos, retornava AST vazio — justamente para os alunos que mais precisam de diagnóstico. O tree-sitter produz uma árvore parcial mesmo com erros, mantendo `structures`/`functions`/`risky_loops` populados em código quebrado (e alimentando o agrupamento).
 
-### UMAP + HDBSCAN
+### Funil interpretável vs geometria densa
 
-**Alternativas consideradas:** PCA + K-Means; t-SNE + DBSCAN.  
-**Decisão:** UMAP preserva estrutura local e global melhor que t-SNE para dados de alta dimensão; HDBSCAN detecta clusters de densidade variável sem precisar definir número de clusters a priori.  
-**Trade-off:** UMAP tem inicialização não-determinística com `spectral` para datasets pequenos; resolvido com `init="random"` quando `n < 10`.
+**Decisão:** o agrupamento em produção é **determinístico por assinatura de falha**, não por embeddings + K-Means.
+**Motivo:** código de CS1 é curto e compartilha vocabulário, então TF-IDF puro gera vetores quase idênticos. A geometria mistura sintomas (poucos clusters "puros", silhouette baixa, K exigido a priori). O eixo do valor é **interpretabilidade** — o professor precisa entender por que aqueles alunos estão juntos. UMAP/HDBSCAN ficam como baseline e visualização.
 
-### Quatro estratégias de features
+### Verificadores orientados à especificação da questão
 
-**Motivação:** código C de CS1 é curto e compartilha vocabulário. TF-IDF puro produz vetores quase idênticos para programas semanticamente diferentes. As estratégias adicionam informação ortogonal progressivamente: bigrams → contexto local; error_category → semântica de resultado; features comportamentais → comportamento de execução.
+**Decisão:** sem "modos de prova". Cada questão declara o que exige e só os verificadores relevantes disparam. Isso torna o sistema adaptativo a provas com ou sem funções, vetores etc.
 
 ### Alembic para migrações
 
-**Alternativas consideradas:** `Base.metadata.create_all()` automático.  
-**Decisão:** Alembic foi adotado para ter rastreabilidade de mudanças de schema em código versionado, permitindo evoluir o banco em produção sem perder dados.
+**Decisão:** Alembic em vez de `create_all` automático, para rastrear mudanças de schema em código versionado e evoluir o banco sem perder dados.
 
 ### Gemini 2.5 Flash
 
-**Alternativas consideradas:** GPT-4o; modelos locais (Ollama).  
-**Decisão:** Gemini 2.5 Flash oferece boa qualidade de raciocínio pedagógico, resposta em PT-BR nativa, custo inferior ao Pro e integração simples via SDK oficial do Google.
+**Decisão:** boa qualidade de raciocínio pedagógico, PT-BR nativo, custo inferior ao Pro, SDK oficial. Papel restrito (extração + insights), nunca decide a correção.
 
 ---
 
-## 12. Sistema de Testes
+## 13. Sistema de Testes
 
-### Estrutura
+Estrutura em `backend/tests/`:
 
 ```
 tests/
-  conftest.py              -- fixtures compartilhadas: banco de teste, client, factories
-  test_exam.py             -- testes de upload e gerenciamento de provas (10 testes)
-  test_submission.py       -- testes de submissão e avaliação de código (5 testes)
-  test_clustering.py       -- testes de clustering via API (7 testes)
-  test_insights.py         -- testes de geração de insights via LLM (4 testes)
+  conftest.py                       fixtures: banco de teste, client, factories, limpeza
+  test_exam.py                      upload e gerenciamento de provas
+  test_submission.py                submissão e avaliação
+  test_clustering.py                clustering via API (UMAP/HDBSCAN mockados)
+  test_insights.py                  geração de insights via LLM (mockado)
   unit/
-    test_cluster_logic.py  -- testes unitários das funções de ML (12 testes)
+    test_static_analyzer.py         extração via tree-sitter
+    test_heuristics_functions.py    verificadores de função
+    test_heuristics_offbyone.py     detecção de off-by-one
+    test_heuristics_precision.py    precisão decimal na saída
+    test_output_normalization.py    tolerância de whitespace/alinhamento
+    test_cluster_logic.py           lógica de agrupamento
+    test_adaptive_mcs.py            min_cluster_size adaptativo
+    test_dynamic_timeout.py         timeout do analisador dinâmico
+    test_crud_cascade.py            exclusão em cascata
   integration/
-    test_full_flow.py      -- testes de integração com Docker e Gemini reais (6 testes)
+    test_full_flow.py               pipeline completo com Docker + Gemini reais
 ```
 
-**Total: 38 testes automatizados** (excluindo integração)
-
-### Banco de testes
-
-O conftest cria um banco PostgreSQL separado (`learning_analytics_test`) com o mesmo schema do banco de produção. Cada teste começa com as tabelas limpas via fixture `clean_tables` (autouse).
-
-### Fixtures principais
-
-| Fixture | Descrição |
-|---|---|
-| `db` | Sessão SQLAlchemy conectada ao banco de teste |
-| `client` | `TestClient` do FastAPI com `get_db` sobrescrito para usar o banco de teste |
-| `exam_factory` | Cria `Exam` + `Question`s no banco com parâmetros configuráveis |
-| `submission_factory` | Cria `Submission` com código, categoria de erro e AST configuráveis |
-| `clean_tables` | Limpa todas as tabelas após cada teste (autouse) |
-
-### Mocking do ML
-
-Os testes de clustering mockam UMAP e HDBSCAN para ter resultados determinísticos:
-
-```python
-umap_patch = patch("app.ml.cluster.UMAP", side_effect=[mock_umap(n), mock_umap(n)])
-hdbscan_patch = patch("app.ml.cluster.HDBSCAN", return_value=mock_hdbscan([0, 0, 1]))
-with umap_patch, hdbscan_patch:
-    resp = client.post(f"/exam/{exam.id}/questions/1/cluster")
-```
-
-### Testes de integração (marcados com `@pytest.mark.integration`)
-
-Requerem Docker rodando e `GEMINI_API_KEY` configurada. Executam o pipeline completo com código C real:
-- Grupos de código correto com `for` / `while` / recursão
-- Verificação de que HDBSCAN separa os grupos
-- Validação de que o Gemini retorna texto coerente
+Marcador `integration` (em `pytest.ini`) separa os testes lentos que exigem Docker e `GEMINI_API_KEY`. O `conftest` usa um banco PostgreSQL de teste separado, limpo entre os testes.
 
 ```bash
-pytest tests/integration/ -m integration -v
-```
-
-### Como rodar os testes
-
-```bash
-cd backend
-source venv/bin/activate
-
-# Testes rápidos (sem Docker nem Gemini)
-pytest tests/ --ignore=tests/integration
-
-# Testes de integração (requer Docker + GEMINI_API_KEY)
-pytest tests/integration/ -m integration -v
+pytest tests/ --ignore=tests/integration     # rápidos (sem Docker/Gemini)
+pytest tests/integration/ -m integration -v  # requer Docker + GEMINI_API_KEY
 ```
 
 ---
 
-## 13. Como Executar
+## 14. Como Executar
 
 ### Pré-requisitos
 
-- Python 3.12+
-- PostgreSQL rodando localmente
-- Docker com imagem `gcc:latest` (`docker pull gcc:latest`)
+- Python 3.10+
+- **Docker** rodando (`docker pull gcc:latest`)
+- **PostgreSQL 16+**
+- Node.js 18+ (frontend)
 - `GEMINI_API_KEY` válida
 
-### Configuração
+### Backend
 
 ```bash
-# 1. Clone o repositório
 cd backend
-
-# 2. Crie e ative o virtualenv
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
-
-# 3. Instale dependências
+source venv/bin/activate
 pip install -r requirements.txt
 
-# 4. Configure variáveis de ambiente
-cp .env.example .env
-# Edite .env com DATABASE_URL e GEMINI_API_KEY
-
-# 5. Crie o banco e aplique as migrações
-createdb learning_analytics
+# .env (ver ../.env.example): GEMINI_API_KEY, DATABASE_URL, SECRET_KEY
+createdb learning_analytics       # ou via CREATE DATABASE
 alembic upgrade head
 
-# 6. Inicie o servidor
-uvicorn app.main:app --reload
-# API disponível em http://localhost:8000
-# Documentação interativa em http://localhost:8000/docs
+uvicorn app.main:app --reload     # http://localhost:8000  |  /docs
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ### Banco de testes
@@ -708,26 +555,21 @@ createdb learning_analytics_test
 pytest tests/ --ignore=tests/integration
 ```
 
-### Gerar visualização comparativa de clustering
-
-```bash
-# Com dados sintéticos (não precisa de banco)
-python scripts/demo_visualization.py --out comparacao_demo.png
-
-# Com dados reais do banco
-python scripts/compare_strategies.py --question_id 1 --out comparacao.png
-```
-
 ---
 
-## 14. Pendências e Trabalho Futuro
+## 15. Pendências e Trabalho Futuro
 
-| Item | Status | Descrição |
+O backlog completo e priorizado (com o ângulo de **produto voltado ao aluno**) está em **[`../HANDOFF.md`](../HANDOFF.md), seção 15**. Em resumo:
+
+| Item | Status | Nota |
 |---|---|---|
-| Frontend React/Vite | Não iniciado | Interface visual para professor e aluno; boilerplate Vite criado |
-| Deploy | Não iniciado | Planejado: ngrok para testes, Oracle Cloud Free Tier para produção |
-| Autenticação | Não implementado | Sistema sem auth por enquanto; necessário para deploy |
-| Feedback LLM por submissão individual | Não implementado | Gemini poderia gerar feedback personalizado por aluno além do por cluster |
-| Comparação entre turmas/semestres | Não implementado | Análise longitudinal de evolução dos erros |
-| Exportação de relatórios | Não implementado | PDF ou CSV com resultados agregados por questão |
-| Suporte a outras linguagens | Fora de escopo | Sistema projetado para C; extensível com novos analisadores |
+| Conta e identidade do aluno | **A fazer (bloqueio nº 1)** | Hoje o aluno é só uma `matricula`. Precisa de tabela `students` + auth |
+| Histórico de tentativas (dados de processo) | A fazer | Guarda-se só a submissão final. Abre acompanhamento temporal |
+| Feedback personalizado por aluno via LLM | A fazer | Hoje o insight é por grupo. Estender ao indivíduo (com cache/batching) |
+| Painel/jornada do aluno + engajamento | A fazer | Progresso, erros recorrentes, gamificação leve |
+| Frontend do professor | **Feito** | Painel em 4 níveis, grupos, insights, destaque do erro |
+| Autenticação | **Feito** | JWT de professor (falta auth de aluno) |
+| Deploy | A fazer | Planejado: túnel para testes, nuvem para produção |
+| Refino das heurísticas em registro plugável | Parcial | Facilita novos verificadores (matriz, precisão etc.) |
+| Análise de fluxo de dados no off-by-one | A fazer | Ligar tamanho declarado do vetor ao limite do laço |
+| Suporte a outras linguagens | Fora de escopo | Projetado para C, extensível com novos analisadores |
