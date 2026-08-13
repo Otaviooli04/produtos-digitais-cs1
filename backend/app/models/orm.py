@@ -1,5 +1,7 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON, Float
+from sqlalchemy import (
+    Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON, Float, UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from app.models.database import Base
 
@@ -16,17 +18,54 @@ class Professor(Base):
     turmas = relationship("Turma", back_populates="professor")
 
 
+class Student(Base):
+    """Conta do aluno. Distinta de `matricula`, que continua sendo o identificador
+    institucional (e a ponte para as submissões anteriores à conta)."""
+    __tablename__ = "students"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    nome = Column(String, nullable=False)
+    matricula = Column(String, nullable=True, index=True)
+    senha_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    enrollments = relationship("Enrollment", back_populates="student", cascade="all, delete-orphan")
+    submissions = relationship("Submission", back_populates="student")
+
+
 class Turma(Base):
     __tablename__ = "turmas"
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, nullable=False)
     codigo = Column(String, nullable=False)
+    # Código de entrada do aluno na turma, gerado pelo sistema e único no banco.
+    # Não confundir com `codigo`, que é o identificador da disciplina no papel do
+    # professor e pode se repetir entre professores.
+    codigo_acesso = Column(String, unique=True, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     professor_id = Column(Integer, ForeignKey("professors.id"), nullable=True)
 
     professor = relationship("Professor", back_populates="turmas")
     exams = relationship("Exam", back_populates="turma")
+    enrollments = relationship("Enrollment", back_populates="turma", cascade="all, delete-orphan")
+
+
+class Enrollment(Base):
+    """Matrícula do aluno na turma (vínculo aluno↔turma)."""
+    __tablename__ = "enrollments"
+    __table_args__ = (
+        UniqueConstraint("student_id", "turma_id", name="uq_enrollment_student_turma"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True)
+    turma_id = Column(Integer, ForeignKey("turmas.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("Student", back_populates="enrollments")
+    turma = relationship("Turma", back_populates="enrollments")
 
 
 class Exam(Base):
@@ -89,9 +128,14 @@ class Submission(Base):
     umap_x = Column(String, nullable=True)
     umap_y = Column(String, nullable=True)
     matricula = Column(String, nullable=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=True, index=True)
+    # Ordem da tentativa do aluno nesta questão (1 = primeira). Toda submissão é
+    # persistida, então a série completa de tentativas é o dado de processo.
+    attempt_number = Column(Integer, default=1, server_default="1")
     submitted_at = Column(DateTime, default=datetime.utcnow)
 
     question = relationship("Question", back_populates="submissions")
+    student = relationship("Student", back_populates="submissions")
     test_results = relationship("SubmissionTestResult", back_populates="submission", cascade="all, delete-orphan")
 
 

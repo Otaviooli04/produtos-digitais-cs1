@@ -1,3 +1,5 @@
+import secrets
+import string
 from collections import Counter, defaultdict
 
 # UNIFEI: aprovado é quem obtém pelo menos 60% da prova (por NOTA).
@@ -6,9 +8,27 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.orm import Exam, Question, Submission, Turma
 
+# Alfabeto sem caracteres ambíguos (O/0, I/1), porque o código é ditado em sala.
+_ALFABETO_CODIGO = ''.join(c for c in string.ascii_uppercase + string.digits if c not in 'O0I1')
+_TAMANHO_CODIGO = 6
+
+
+def gerar_codigo_acesso(db: Session) -> str:
+    """Código de entrada do aluno na turma, único no banco."""
+    while True:
+        codigo = ''.join(secrets.choice(_ALFABETO_CODIGO) for _ in range(_TAMANHO_CODIGO))
+        if not db.query(Turma).filter(Turma.codigo_acesso == codigo).first():
+            return codigo
+
 
 def create_turma(nome: str, codigo: str, db: Session, professor_id: int | None = None) -> Turma:
-    turma = Turma(nome=nome, codigo=codigo, created_at=datetime.utcnow(), professor_id=professor_id)
+    turma = Turma(
+        nome=nome,
+        codigo=codigo,
+        codigo_acesso=gerar_codigo_acesso(db),
+        created_at=datetime.utcnow(),
+        professor_id=professor_id,
+    )
     db.add(turma)
     db.commit()
     db.refresh(turma)
@@ -42,8 +62,10 @@ def list_turmas(db: Session, professor_id: int | None = None) -> list:
             "id": t.id,
             "nome": t.nome,
             "codigo": t.codigo,
+            "codigo_acesso": t.codigo_acesso,
             "created_at": t.created_at.isoformat(),
             "exam_count": len(t.exams),
+            "aluno_count": len(t.enrollments),
         }
         for t in turmas
     ]
@@ -70,7 +92,9 @@ def get_turma_detail(turma_id: int, db: Session, professor_id: int | None = None
         "id": turma.id,
         "nome": turma.nome,
         "codigo": turma.codigo,
+        "codigo_acesso": turma.codigo_acesso,
         "created_at": turma.created_at.isoformat(),
+        "aluno_count": len(turma.enrollments),
         "exams": exams,
     }
 

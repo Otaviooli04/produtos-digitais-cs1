@@ -43,15 +43,19 @@ class TurmaResponse(BaseModel):
     id: int
     nome: str
     codigo: str
+    codigo_acesso: Optional[str] = None
     created_at: str
     exam_count: int
+    aluno_count: int = 0
 
 
 class TurmaDetailResponse(BaseModel):
     id: int
     nome: str
     codigo: str
+    codigo_acesso: Optional[str] = None
     created_at: str
+    aluno_count: int = 0
     exams: List[ExamSummary]
 
 
