@@ -21,6 +21,49 @@ class TokenResponse(BaseModel):
     professor: ProfessorResponse
 
 
+class StudentCreate(BaseModel):
+    email: str
+    nome: str = ""
+    matricula: str = ""
+    senha: str
+
+
+class StudentLogin(BaseModel):
+    email: str
+    senha: str
+
+
+class StudentResponse(BaseModel):
+    id: int
+    email: str
+    nome: str
+    matricula: Optional[str] = None
+    created_at: str
+
+
+class StudentTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    aluno: StudentResponse
+
+
+class StudentUpdate(BaseModel):
+    nome: str
+    matricula: str = ""
+
+
+class TurmaEntrarRequest(BaseModel):
+    codigo_acesso: str
+
+
+class TurmaDoAlunoResponse(BaseModel):
+    id: int
+    nome: str
+    codigo: str
+    professor_nome: Optional[str] = None
+    exam_count: int
+
+
 class TurmaCreate(BaseModel):
     nome: str
     codigo: str
