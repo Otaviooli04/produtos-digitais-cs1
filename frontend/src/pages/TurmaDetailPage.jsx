@@ -50,6 +50,18 @@ export default function TurmaDetailPage() {
   const [deletingExam, setDeletingExam] = useState(false)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('recent')
+  const [copiado, setCopiado] = useState(false)
+
+  const copiarCodigo = async () => {
+    if (!turma?.codigo_acesso) return
+    try {
+      await navigator.clipboard.writeText(turma.codigo_acesso)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    } catch {
+      setError('Não foi possível copiar o código.')
+    }
+  }
 
   const confirmDeleteExam = async () => {
     setDeletingExam(true)
@@ -136,6 +148,35 @@ export default function TurmaDetailPage() {
             </svg>
             Upload de prova
           </button>
+        </div>
+      </div>
+
+      {/* Entrada dos alunos na turma */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Código de acesso da turma</p>
+          <p className="mt-1 text-2xl font-bold font-mono tracking-[0.25em] text-gray-900">
+            {turma.codigo_acesso || '—'}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Passe este código aos alunos. {turma.aluno_count ?? 0} já {(turma.aluno_count ?? 0) === 1 ? 'entrou' : 'entraram'} com conta.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={copiarCodigo}
+            disabled={!turma.codigo_acesso}
+            className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          >
+            {copiado ? 'Copiado' : 'Copiar código'}
+          </button>
+          <Link
+            to="/aluno/login"
+            target="_blank"
+            className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            Ver área do aluno
+          </Link>
         </div>
       </div>
 
