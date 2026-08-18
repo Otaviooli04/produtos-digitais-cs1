@@ -69,13 +69,23 @@ class Enrollment(Base):
 
 
 class Exam(Base):
+    """Atividade da turma. `modo` diz o que ela é para o aluno: 'treino' libera
+    tentativas ilimitadas a qualquer momento, 'prova' respeita a janela e o teto
+    de tentativas definidos pelo professor."""
     __tablename__ = "exams"
+
+    MODO_TREINO = "treino"
+    MODO_PROVA = "prova"
 
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String)
     raw_text = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     turma_id = Column(Integer, ForeignKey("turmas.id"), nullable=True)
+    modo = Column(String, default=MODO_PROVA, server_default=MODO_PROVA)
+    abre_em = Column(DateTime, nullable=True)
+    fecha_em = Column(DateTime, nullable=True)
+    max_tentativas = Column(Integer, nullable=True)  # None = ilimitado
 
     questions = relationship("Question", back_populates="exam", cascade="all, delete-orphan")
     turma = relationship("Turma", back_populates="exams")

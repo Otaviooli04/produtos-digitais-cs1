@@ -144,7 +144,16 @@ def patch_exam(
         ).first()
         if not turma:
             raise HTTPException(status_code=404, detail="Turma não encontrada.")
-    update_exam(exam, db, filename=body.filename, turma_id=body.turma_id)
+    update_exam(
+        exam, db,
+        filename=body.filename,
+        turma_id=body.turma_id,
+        modo=body.modo,
+        abre_em=body.abre_em,
+        fecha_em=body.fecha_em,
+        max_tentativas=body.max_tentativas,
+        limpar=body.limpar,
+    )
     return _exam_to_response(exam)
 
 
@@ -557,5 +566,9 @@ def _exam_to_response(exam: Exam) -> ExamResponse:
         turma_id=exam.turma_id,
         turma_nome=exam.turma.nome if exam.turma else None,
         total_points=sum((q.points if q.points is not None else 1.0) for q in exam.questions),
+        modo=exam.modo or "prova",
+        abre_em=exam.abre_em.isoformat() if exam.abre_em else None,
+        fecha_em=exam.fecha_em.isoformat() if exam.fecha_em else None,
+        max_tentativas=exam.max_tentativas,
         questions=[_question_to_response(q) for q in sorted(exam.questions, key=_question_sort_key)],
     )

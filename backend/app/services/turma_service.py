@@ -87,6 +87,7 @@ def get_turma_detail(turma_id: int, db: Session, professor_id: int | None = None
             "created_at": exam.created_at.isoformat(),
             "question_count": len(exam.questions),
             "submission_count": submission_count,
+            "modo": exam.modo or "prova",
         })
     return {
         "id": turma.id,
