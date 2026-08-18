@@ -238,6 +238,7 @@ def tentativa_to_dict(sub: Submission) -> dict:
         "submitted_at": _iso(sub.submitted_at) or "",
         "tests_passed": passados,
         "tests_total": total,
+        "explicacao": sub.llm_explanation or None,
         "test_results": [
             {
                 "input": tr.input or "",
@@ -267,6 +268,52 @@ def historico_questao(student: Student, exam_id: int, question_number: str,
         # Mais recente primeiro: é o que o aluno quer ver ao abrir a tela.
         "tentativas": [tentativa_to_dict(s) for s in reversed(tentativas)],
     }
+
+
+# ── explicação individual ────────────────────────────────────────────────────
+
+def explicar_tentativa(student: Student, submission_id: int, db: Session) -> dict:
+    """Explicação em linguagem natural da tentativa do aluno, gerada sob demanda.
+
+    O diagnóstico das heurísticas continua sendo a fonte da verdade — a LLM só
+    traduz o erro para quem o cometeu. Uma geração por tentativa, cacheada, e
+    nunca para tentativa correta (não há erro a explicar e a chamada seria custo
+    puro)."""
+    sub = (
+        db.query(Submission)
+        .filter(Submission.id == submission_id, Submission.student_id == student.id)
+        .first()
+    )
+    if not sub:
+        raise ValueError("Tentativa não encontrada.")
+    if sub.error_category == CATEGORIA_CORRETA:
+        raise AtividadeIndisponivel("Esta tentativa está correta, não há erro a explicar.")
+    if sub.llm_explanation:
+        return {"explicacao": sub.llm_explanation, "gerada_agora": False}
+
+    from app.llm.student_explainer import generate_student_explanation
+
+    texto = generate_student_explanation(
+        statement=(sub.question.statement if sub.question else ""),
+        code=sub.code or "",
+        error_category=sub.error_category or "",
+        pedagogical_diagnosis=sub.pedagogical_diagnosis or "",
+        test_results=[
+            {
+                "input": tr.input,
+                "expected_output": tr.expected_output,
+                "actual_output": tr.actual_output,
+                "passed": tr.passed,
+            }
+            for tr in sub.test_results
+        ],
+    )
+    if not texto:
+        raise RuntimeError("Não foi possível gerar a explicação agora. Tente de novo.")
+
+    sub.llm_explanation = texto
+    db.commit()
+    return {"explicacao": texto, "gerada_agora": True}
 
 
 # ── progresso ────────────────────────────────────────────────────────────────

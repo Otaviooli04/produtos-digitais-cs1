@@ -13,6 +13,7 @@ from app.models.schemas import (
     ClusterInfo,
     ClusteringResponse,
     ClusterInsight,
+    EffortReportResponse,
     ExamResponse,
     ExamResultsResponse,
     ExamStudentsResponse,
@@ -30,6 +31,7 @@ from app.models.schemas import (
     TestCaseUpdateRequest,
 )
 from app.services.bulk_submission_service import start_bulk_processing
+from app.services.effort_report_service import build_effort_report
 from app.services.exam_service import (
     add_test_cases,
     create_question,
@@ -311,6 +313,17 @@ def get_student(
 ):
     exam = get_exam_or_404(exam_id, db, professor_id=professor.id)
     return get_student_detail(exam, matricula, db)
+
+
+@router.get("/{exam_id}/effort-report", response_model=EffortReportResponse)
+def get_effort_report(
+    exam_id: int,
+    db: Session = Depends(get_db),
+    professor: Professor = Depends(get_current_professor),
+):
+    """Quanto a correção encolheu: submissões recebidas versus itens a revisar."""
+    exam = get_exam_or_404(exam_id, db, professor_id=professor.id)
+    return build_effort_report(exam)
 
 
 @router.get("/{exam_id}/results", response_model=ExamResultsResponse)

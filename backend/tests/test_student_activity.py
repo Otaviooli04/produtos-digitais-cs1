@@ -2,12 +2,12 @@
 regras de disponibilidade (modo, janela e teto) e os painéis de progresso e de
 erros recorrentes."""
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.models.orm import Submission, Turma
-from tests.conftest import make_subprocess_result
+from tests.conftest import gemini_response, make_subprocess_result
 
 CADASTRO = {
     "email": "aluno@teste.com",
@@ -316,3 +316,51 @@ class TestErrosRecorrentes:
         assert erros["Laço Infinito"]["tendencia"] == "melhorando"
         assert erros["Laço Infinito"]["recentes"] == 0
         assert erros["Saída Incorreta"]["tendencia"] == "piorando"
+
+
+class TestExplicacaoIndividual:
+    """A LLM traduz o erro para quem o cometeu. Uma geração por tentativa."""
+
+    def _mock_gemini(self, texto="Você compara o resto da divisão errado."):
+        client = MagicMock()
+        client.models.generate_content.return_value = gemini_response(texto)
+        return client
+
+    def test_gera_uma_vez_e_reaproveita(self, client, token, prova):
+        sub_id = _submeter(client, token, prova.id, saida="errado").json()["tentativa"]["submission_id"]
+        mock = self._mock_gemini()
+
+        with patch("app.llm.student_explainer.genai.Client", return_value=mock):
+            primeira = client.post(f"/aluno/tentativas/{sub_id}/explicacao", headers=_auth(token))
+            segunda = client.post(f"/aluno/tentativas/{sub_id}/explicacao", headers=_auth(token))
+
+        assert primeira.status_code == 200
+        assert primeira.json()["gerada_agora"] is True
+        assert primeira.json()["explicacao"].startswith("Você compara")
+        assert segunda.json()["gerada_agora"] is False
+        # Segunda chamada sai do cache: o modelo é chamado uma única vez.
+        assert mock.models.generate_content.call_count == 1
+
+    def test_explicacao_acompanha_a_tentativa_no_historico(self, client, token, prova):
+        sub_id = _submeter(client, token, prova.id, saida="errado").json()["tentativa"]["submission_id"]
+        with patch("app.llm.student_explainer.genai.Client", return_value=self._mock_gemini()):
+            client.post(f"/aluno/tentativas/{sub_id}/explicacao", headers=_auth(token))
+
+        historico = client.get(
+            f"/aluno/atividades/{prova.id}/questoes/1/tentativas", headers=_auth(token)).json()
+        assert historico["tentativas"][0]["explicacao"].startswith("Você compara")
+
+    def test_tentativa_correta_nao_gasta_chamada(self, client, token, prova):
+        sub_id = _submeter(client, token, prova.id, saida="par").json()["tentativa"]["submission_id"]
+        resp = client.post(f"/aluno/tentativas/{sub_id}/explicacao", headers=_auth(token))
+        assert resp.status_code == 400
+
+    def test_tentativa_de_outro_aluno(self, client, db, token, prova, tentativa_factory):
+        from app.models.orm import Student
+
+        outro = Student(email="outro@teste.com", nome="Outro", senha_hash="x")
+        db.add(outro)
+        db.commit()
+        alheia = tentativa_factory(outro.id, "1", "Saída Incorreta")
+        resp = client.post(f"/aluno/tentativas/{alheia.id}/explicacao", headers=_auth(token))
+        assert resp.status_code == 404

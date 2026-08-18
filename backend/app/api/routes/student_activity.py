@@ -6,11 +6,11 @@ from app.models.database import get_db
 from app.models.orm import Student
 from app.models.schemas import (
     AlunoSubmissaoRequest, AlunoSubmissaoResponse, AtividadeDetalhe, AtividadeResumo,
-    ErrosRecorrentesResponse, HistoricoQuestaoResponse, ProgressoResponse,
+    ErrosRecorrentesResponse, ExplicacaoResponse, HistoricoQuestaoResponse, ProgressoResponse,
 )
 from app.services.student_activity_service import (
-    AtividadeIndisponivel, detalhe_atividade, erros_recorrentes, historico_questao,
-    listar_atividades, progresso, submeter,
+    AtividadeIndisponivel, detalhe_atividade, erros_recorrentes, explicar_tentativa,
+    historico_questao, listar_atividades, progresso, submeter,
 )
 
 router = APIRouter(prefix="/aluno", tags=["aluno — atividades"])
@@ -78,6 +78,22 @@ def get_tentativas(
         return historico_questao(current, exam_id, question_number, db)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/tentativas/{submission_id}/explicacao", response_model=ExplicacaoResponse)
+def post_explicacao(
+    submission_id: int,
+    db: Session = Depends(get_db),
+    current: Student = Depends(get_current_student),
+):
+    try:
+        return explicar_tentativa(current, submission_id, db)
+    except AtividadeIndisponivel as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 @router.get("/progresso", response_model=ProgressoResponse)

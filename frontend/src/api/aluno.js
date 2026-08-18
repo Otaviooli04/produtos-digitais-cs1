@@ -33,3 +33,6 @@ export const getTentativas = (examId, questionNumber) =>
 export const getProgresso = () => alunoApi.get('/aluno/progresso')
 
 export const getErrosRecorrentes = () => alunoApi.get('/aluno/erros-recorrentes')
+
+export const explicarTentativa = (submissionId) =>
+  alunoApi.post(`/aluno/tentativas/${submissionId}/explicacao`)

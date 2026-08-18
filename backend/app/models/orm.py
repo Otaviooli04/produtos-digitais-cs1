@@ -142,6 +142,8 @@ class Submission(Base):
     # Ordem da tentativa do aluno nesta questão (1 = primeira). Toda submissão é
     # persistida, então a série completa de tentativas é o dado de processo.
     attempt_number = Column(Integer, default=1, server_default="1")
+    # Explicação individual pedida pelo aluno, gerada uma única vez por tentativa.
+    llm_explanation = Column(Text, nullable=True)
     submitted_at = Column(DateTime, default=datetime.utcnow)
 
     question = relationship("Question", back_populates="submissions")

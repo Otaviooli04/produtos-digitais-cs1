@@ -528,7 +528,13 @@ class TentativaResponse(BaseModel):
     submitted_at: str
     tests_passed: int = 0
     tests_total: int = 0
+    explicacao: Optional[str] = None
     test_results: List[TestResult] = []
+
+
+class ExplicacaoResponse(BaseModel):
+    explicacao: str
+    gerada_agora: bool
 
 
 class AlunoSubmissaoResponse(BaseModel):
@@ -581,3 +587,21 @@ class ErrosRecorrentesResponse(BaseModel):
     total_submissoes: int
     total_com_erro: int
     erros: List[ErroRecorrente] = []
+
+
+class EffortReportQuestion(BaseModel):
+    question_number: str
+    submissoes: int
+    grupos: int
+    fator_reducao: Optional[float] = None
+
+
+class EffortReportResponse(BaseModel):
+    exam_id: int
+    filename: str
+    total_submissoes: int
+    itens_a_revisar: int
+    fator_reducao: Optional[float] = None
+    minutos_por_item: int
+    minutos_economizados: int
+    questoes: List[EffortReportQuestion] = []
