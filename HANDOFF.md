@@ -366,7 +366,7 @@ pytest tests/integration/ -m integration -v     # requer Docker + GEMINI_API_KEY
 
 ## 15. Transição para Produtos Digitais — foco no ALUNO
 
-A disciplina de Produtos Digitais reposiciona o sistema: de **ferramenta de correção do professor** para **produto voltado ao aluno como usuário** (feedback personalizado, acompanhamento, engajamento). O motor pedagógico já é forte — o que falta é a camada de produto para o aluno.
+A disciplina de Produtos Digitais reposiciona o sistema: de **ferramenta de correção do professor** para **turma virtual com os dois lados** (o aluno treina, faz prova, vê o que errou e acompanha a evolução; o professor mantém o painel). O motor pedagógico já era forte — o que foi construído aqui é a camada de produto para o aluno.
 
 ### O que já serve de base (não precisa reconstruir)
 - **Submissão pública do aluno** (`StudentSubmitPage`, rota `/submit/:examId`) com diagnóstico imediato.
@@ -374,17 +374,21 @@ A disciplina de Produtos Digitais reposiciona o sistema: de **ferramenta de corr
 - **Checagem estrutural e de funções** por questão.
 - **Motor de avaliação** determinístico, isolado (Docker) e robusto a código que não compila.
 
-### O que falta para o produto do aluno (candidatos a backlog)
-1. **Conta e identidade do aluno.** Hoje o aluno é só uma `matricula` numa submissão. Precisa de tabela `students`, auth do aluno e vínculo submissão→aluno. É o bloqueio nº 1.
-2. **Histórico de tentativas (dados de processo).** O sistema guarda só a submissão final. Guardar cada tentativa abre acompanhamento temporal, "como você evoluiu", detecção de quem está travado.
-3. **Feedback personalizado por aluno via LLM.** Hoje o Gemini gera síntese **por grupo**. Estender para feedback individual (com o mesmo cuidado de custo: cache + batching) é natural.
-4. **Painel/jornada do aluno.** Uma visão para o aluno: seus erros recorrentes, progresso, próximos passos, conquistas.
-5. **Engajamento.** Gamificação leve (streaks, metas), nudges de "tente de novo", comparação anônima com a turma.
-6. **Onboarding e distribuição.** Como o aluno chega ao produto (link da turma, código de convite), com que fricção.
+### O que já foi construído nesta fase (agosto/2026)
+1. **Conta e identidade do aluno.** Tabelas `students` e `enrollments`, JWT com papel próprio, entrada na turma por `codigo_acesso` de 6 caracteres e religação das submissões antigas pela matrícula (migração 0010).
+2. **Histórico de tentativas.** `Submission.attempt_number` e persistência de toda tentativa, não só a final. Histórico por questão com o diagnóstico de cada envio.
+3. **Modo treino e modo prova.** `Exam.modo`, janela (`abre_em`/`fecha_em`) e teto de tentativas (`max_tentativas`), aplicados na submissão do aluno (migração 0011).
+4. **Painel do aluno.** Lista de atividades, progresso (tentativas até acertar, acertos de primeira, sequência de dias, evolução semanal) e painel de erros recorrentes com tendência por categoria.
+5. **Feedback individual via LLM.** `llm/student_explainer.py`: o aluno pede a explicação da própria tentativa, gerada uma vez e cacheada em `submissions.llm_explanation` (migração 0012). O prompt proíbe entregar a solução.
+6. **Frontend do aluno.** App próprio em `/aluno` (contexto e token separados do professor), em `frontend/src/pages/aluno/`.
+7. **Lado do professor.** Código de acesso visível na turma e configuração de disponibilidade da atividade. Relatório de esforço economizado em `/exam/{id}/effort-report`.
+
+### O que ainda falta
+Trilha direcionada com geração de exercícios, antifraude do modo prova, relatório de fim de lista, instrumentação de uso (DAU/WAU) e acesso sem turma. O mapa completo, ligando cada funcionalidade dos documentos da disciplina ao código, está em `docs/produto/mapa-funcionalidades.md`.
 
 ### Perguntas de produto ainda em aberto (decisões a tomar com o novo Claude)
-- O produto é para o aluno usar **durante a prova** (alto risco, exige rigor anti-cola) ou como **treino/lista de exercícios** fora de prova (mais liberdade, melhor para engajamento)? A base atual foi pensada para **prova**, mas o ângulo de produto do aluno pede repensar isso.
-- O feedback ao aluno deve ser **imediato e completo** (bom para aprender) ou **progressivo** (dica → dica → solução, para não entregar a resposta)?
+- ~~Prova ou treino?~~ **Decidido:** os dois. Cada atividade declara seu `modo`, e a janela e o teto de tentativas controlam a avaliação. Falta o antifraude do modo prova.
+- O feedback ao aluno deve ser **imediato e completo** (hoje é assim) ou **progressivo** (dica → dica → solução, para não entregar a resposta)?
 - Métricas de sucesso do produto: retenção do aluno? nº de submissões até acertar? redução de erros recorrentes?
 
 > Estas perguntas são de **produto**, não de código. Traga-as para a discussão da disciplina antes de codar features grandes.
