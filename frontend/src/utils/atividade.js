@@ -50,6 +50,27 @@ export const janelaTexto = (atividade) => {
   return null
 }
 
+// Uma atividade sai da frente quando o aluno resolveu todas as questões dela.
+export const concluida = (atividade) =>
+  atividade.total_questoes > 0
+  && atividade.questoes_resolvidas === atividade.total_questoes
+
+const ORDEM_SITUACAO = { aberta: 0, agendada: 1, encerrada: 2 }
+
+/** O que exige ação primeiro: aberta, agendada, encerrada, concluídas ao fim. */
+export const ordenarAtividades = (atividades) =>
+  [...atividades].sort((a, b) => {
+    const feitaA = concluida(a) ? 1 : 0
+    const feitaB = concluida(b) ? 1 : 0
+    if (feitaA !== feitaB) return feitaA - feitaB
+
+    const situacaoA = ORDEM_SITUACAO[a.situacao] ?? 0
+    const situacaoB = ORDEM_SITUACAO[b.situacao] ?? 0
+    if (situacaoA !== situacaoB) return situacaoA - situacaoB
+
+    return a.titulo.localeCompare(b.titulo, 'pt-BR')
+  })
+
 export const categoriaColor = (categoria) => {
   if (!categoria) return 'gray'
   if (categoria === 'Correto') return 'green'

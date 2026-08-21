@@ -73,21 +73,25 @@ export default function AtividadePage() {
 
   const situacao = situacaoInfo(atividade.situacao)
   const janela = janelaTexto(atividade)
+  const detalhes = [
+    janela,
+    atividade.max_tentativas != null && `até ${atividade.max_tentativas} tentativas por questão`,
+  ].filter(Boolean)
 
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/aluno" className="text-xs text-gray-400 hover:text-gray-600">← Atividades</Link>
+        <Link to={`/aluno/turmas/${atividade.turma_id}`} className="text-xs text-gray-400 hover:text-gray-600">
+          ← {atividade.turma_nome}
+        </Link>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <h1 className="text-xl font-semibold text-gray-900">{atividade.titulo}</h1>
           <Badge color={atividade.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(atividade.modo)}</Badge>
           <Badge color={situacao.color}>{situacao.label}</Badge>
         </div>
-        <p className="mt-1 text-xs text-gray-400">
-          {atividade.turma_nome}
-          {janela && ` · ${janela}`}
-          {atividade.max_tentativas != null && ` · até ${atividade.max_tentativas} tentativas por questão`}
-        </p>
+        {detalhes.length > 0 && (
+          <p className="mt-1 text-xs text-gray-400">{detalhes.join(' · ')}</p>
+        )}
         <p className="mt-3 text-sm text-gray-500">
           {atividade.questoes_resolvidas} de {atividade.total_questoes} questões resolvidas
         </p>

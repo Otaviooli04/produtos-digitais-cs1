@@ -28,7 +28,8 @@ const QuestionPage = lazy(() => import('./pages/QuestionPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const AlunoLoginPage = lazy(() => import('./pages/aluno/AlunoLoginPage'))
 const AlunoRegisterPage = lazy(() => import('./pages/aluno/AlunoRegisterPage'))
-const AlunoHomePage = lazy(() => import('./pages/aluno/AlunoHomePage'))
+const TurmasPage = lazy(() => import('./pages/aluno/TurmasPage'))
+const TurmaPage = lazy(() => import('./pages/aluno/TurmaPage'))
 const AtividadePage = lazy(() => import('./pages/aluno/AtividadePage'))
 const QuestaoPage = lazy(() => import('./pages/aluno/QuestaoPage'))
 const ProgressoPage = lazy(() => import('./pages/aluno/ProgressoPage'))
@@ -57,7 +58,9 @@ export default function App() {
               <Route path="aluno/cadastro" element={<AlunoRegisterPage />} />
               <Route element={<AlunoProtectedRoute />}>
                 <Route element={<AlunoLayout />}>
-                  <Route path="aluno" element={<AlunoHomePage />} />
+                  <Route path="aluno" element={<Navigate to="/aluno/turmas" replace />} />
+                  <Route path="aluno/turmas" element={<TurmasPage />} />
+                  <Route path="aluno/turmas/:turmaId" element={<TurmaPage />} />
                   <Route path="aluno/progresso" element={<ProgressoPage />} />
                   <Route path="aluno/perfil" element={<AlunoPerfilPage />} />
                   <Route path="aluno/atividades/:examId" element={<AtividadePage />} />
