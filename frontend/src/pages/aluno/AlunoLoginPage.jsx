@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { loginAluno } from '../../api/aluno'
 import { useAlunoAuth } from '../../context/AlunoAuthContext'
 import Logo from '../../components/Logo'
+import SeletorPerfil from '../../components/SeletorPerfil'
 
 export default function AlunoLoginPage() {
   const { login } = useAlunoAuth()
@@ -37,8 +38,9 @@ export default function AlunoLoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-8">
+          <SeletorPerfil atual="aluno" contexto="login" />
           <h1 className="text-lg font-semibold text-gray-900 mb-1">Entrar</h1>
-          <p className="text-sm text-gray-400 mb-6">Área do aluno</p>
+          <p className="text-sm text-gray-400 mb-6">Suas atividades e seu progresso</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -86,12 +88,6 @@ export default function AlunoLoginPage() {
             Primeira vez?{' '}
             <Link to="/aluno/cadastro" className="text-purple-600 hover:underline font-medium">
               Criar conta
-            </Link>
-          </p>
-          <p className="mt-2 text-center text-xs text-gray-400">
-            É professor?{' '}
-            <Link to="/login" className="text-gray-500 hover:underline">
-              Entrar no painel
             </Link>
           </p>
         </div>

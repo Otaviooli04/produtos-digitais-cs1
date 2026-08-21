@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { login as apiLogin } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import Logo from '../components/Logo'
+import SeletorPerfil from '../components/SeletorPerfil'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -37,8 +38,9 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-8">
+          <SeletorPerfil atual="professor" contexto="login" />
           <h1 className="text-lg font-semibold text-gray-900 mb-1">Entrar</h1>
-          <p className="text-sm text-gray-400 mb-6">Acesse seu painel de professor</p>
+          <p className="text-sm text-gray-400 mb-6">Suas turmas e correções</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -86,12 +88,6 @@ export default function LoginPage() {
             Sem conta?{' '}
             <Link to="/register" className="text-purple-600 hover:underline font-medium">
               Criar cadastro
-            </Link>
-          </p>
-          <p className="mt-2 text-center text-xs text-gray-400">
-            É aluno?{' '}
-            <Link to="/aluno/login" className="text-gray-500 hover:underline">
-              Entrar na área do aluno
             </Link>
           </p>
         </div>
