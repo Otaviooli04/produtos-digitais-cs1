@@ -88,6 +88,12 @@ export default function LoginPage() {
               Criar cadastro
             </Link>
           </p>
+          <p className="mt-2 text-center text-xs text-gray-400">
+            É aluno?{' '}
+            <Link to="/aluno/login" className="text-gray-500 hover:underline">
+              Entrar na área do aluno
+            </Link>
+          </p>
         </div>
       </div>
     </div>
