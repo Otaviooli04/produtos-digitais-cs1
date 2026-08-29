@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getResults } from '../api/exam'
+import { getEffortReport, getResults } from '../api/exam'
 import Spinner from '../components/Spinner'
 import Badge from '../components/Badge'
 import WhoList from '../components/WhoList'
@@ -38,13 +38,17 @@ function Chevron({ open }) {
 export default function ResultsPage() {
   const { id } = useParams()
   const [data, setData] = useState(null)
+  const [esforco, setEsforco] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState({})
   const [openRow, setOpenRow] = useState({})
 
   useEffect(() => {
-    getResults(id)
-      .then(res => setData(res.data))
+    Promise.all([getResults(id), getEffortReport(id).catch(() => null)])
+      .then(([res, rel]) => {
+        setData(res.data)
+        if (rel) setEsforco(rel.data)
+      })
       .finally(() => setLoading(false))
   }, [id])
 
@@ -63,6 +67,40 @@ export default function ResultsPage() {
       </div>
 
       <h1 className="text-xl font-semibold text-gray-900 mb-6">Resultados de {data.filename}</h1>
+
+      {esforco && esforco.total_submissoes > 0 && (
+        <div className="mb-6 bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-900">Esforço de correção</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Submissões agrupadas por sintoma: você revisa uma vez por dificuldade, não uma vez por aluno.
+          </p>
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide">Submissões</p>
+              <p className="text-2xl font-bold text-gray-900">{esforco.total_submissoes}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide">Itens a revisar</p>
+              <p className="text-2xl font-bold text-gray-900">{esforco.itens_a_revisar}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide">Redução</p>
+              <p className="text-2xl font-bold text-purple-600">
+                {esforco.fator_reducao ? `${esforco.fator_reducao}×` : '—'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide">Tempo poupado</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {Math.round(esforco.minutos_economizados / 6) / 10}h
+              </p>
+              <p className="text-xs text-gray-400">
+                estimando {esforco.minutos_por_item} min por item
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-5">
         {data.questions.map((q) => {

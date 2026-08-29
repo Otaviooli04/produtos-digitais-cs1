@@ -9,6 +9,7 @@ import Badge from '../components/Badge'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import QuestionForm from '../components/QuestionForm'
+import DisponibilidadeCard from '../components/DisponibilidadeCard'
 import Logo from '../components/Logo'
 
 export default function ExamDashboard() {
@@ -204,6 +205,11 @@ export default function ExamDashboard() {
           </button>
         </div>
       </div>
+
+      <DisponibilidadeCard
+        exam={exam}
+        onSave={async (dados) => { await updateExam(id, dados); await loadExam() }}
+      />
 
       {extractJob && (
         <div className="mb-5 rounded-xl border border-purple-200 bg-purple-50 px-5 py-4">

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { register as apiRegister } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import Logo from '../components/Logo'
+import SeletorPerfil from '../components/SeletorPerfil'
 
 export default function RegisterPage() {
   const { login } = useAuth()
@@ -40,8 +41,9 @@ export default function RegisterPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-8">
+          <SeletorPerfil atual="professor" contexto="cadastro" />
           <h1 className="text-lg font-semibold text-gray-900 mb-1">Criar conta</h1>
-          <p className="text-sm text-gray-400 mb-6">Cadastro de professor</p>
+          <p className="text-sm text-gray-400 mb-6">Para criar turmas e corrigir provas</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

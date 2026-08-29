@@ -28,6 +28,15 @@ def evaluate_submission(exam_id: int, question_number: str, code: str, db: Sessi
     if dry_run:
         return {"question_number": question_number, **result}
 
+    persist_submission(question, code, result, db, matricula=matricula)
+    return {"question_number": question_number, **result}
+
+
+def persist_submission(question: Question, code: str, result: dict, db: Session,
+                       matricula=None, student_id=None, attempt_number: int = 1) -> Submission:
+    """Grava a tentativa e seus resultados de teste. Toda submissão é persistida,
+    inclusive as intermediárias — é esse histórico que sustenta o acompanhamento
+    do aluno."""
     submission = Submission(
         question_id=question.id,
         code=code,
@@ -40,6 +49,8 @@ def evaluate_submission(exam_id: int, question_number: str, code: str, db: Sessi
         ast_structures=result.get("ast_structures", []),
         ast_functions=result.get("ast_functions", []),
         matricula=matricula,
+        student_id=student_id,
+        attempt_number=attempt_number,
     )
     db.add(submission)
     db.flush()
@@ -54,7 +65,8 @@ def evaluate_submission(exam_id: int, question_number: str, code: str, db: Sessi
         ))
 
     db.commit()
-    return {"question_number": question_number, **result}
+    db.refresh(submission)
+    return submission
 
 
 def delete_submission(submission: Submission, db: Session) -> None:

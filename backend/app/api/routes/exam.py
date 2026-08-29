@@ -13,6 +13,7 @@ from app.models.schemas import (
     ClusterInfo,
     ClusteringResponse,
     ClusterInsight,
+    EffortReportResponse,
     ExamResponse,
     ExamResultsResponse,
     ExamStudentsResponse,
@@ -30,6 +31,7 @@ from app.models.schemas import (
     TestCaseUpdateRequest,
 )
 from app.services.bulk_submission_service import start_bulk_processing
+from app.services.effort_report_service import build_effort_report
 from app.services.exam_service import (
     add_test_cases,
     create_question,
@@ -144,7 +146,16 @@ def patch_exam(
         ).first()
         if not turma:
             raise HTTPException(status_code=404, detail="Turma não encontrada.")
-    update_exam(exam, db, filename=body.filename, turma_id=body.turma_id)
+    update_exam(
+        exam, db,
+        filename=body.filename,
+        turma_id=body.turma_id,
+        modo=body.modo,
+        abre_em=body.abre_em,
+        fecha_em=body.fecha_em,
+        max_tentativas=body.max_tentativas,
+        limpar=body.limpar,
+    )
     return _exam_to_response(exam)
 
 
@@ -302,6 +313,17 @@ def get_student(
 ):
     exam = get_exam_or_404(exam_id, db, professor_id=professor.id)
     return get_student_detail(exam, matricula, db)
+
+
+@router.get("/{exam_id}/effort-report", response_model=EffortReportResponse)
+def get_effort_report(
+    exam_id: int,
+    db: Session = Depends(get_db),
+    professor: Professor = Depends(get_current_professor),
+):
+    """Quanto a correção encolheu: submissões recebidas versus itens a revisar."""
+    exam = get_exam_or_404(exam_id, db, professor_id=professor.id)
+    return build_effort_report(exam)
 
 
 @router.get("/{exam_id}/results", response_model=ExamResultsResponse)
@@ -557,5 +579,9 @@ def _exam_to_response(exam: Exam) -> ExamResponse:
         turma_id=exam.turma_id,
         turma_nome=exam.turma.nome if exam.turma else None,
         total_points=sum((q.points if q.points is not None else 1.0) for q in exam.questions),
+        modo=exam.modo or "prova",
+        abre_em=exam.abre_em.isoformat() if exam.abre_em else None,
+        fecha_em=exam.fecha_em.isoformat() if exam.fecha_em else None,
+        max_tentativas=exam.max_tentativas,
         questions=[_question_to_response(q) for q in sorted(exam.questions, key=_question_sort_key)],
     )
