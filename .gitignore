@@ -41,6 +41,9 @@ Thumbs.db
 # Arquivos locais de desenvolvimento
 annotations.txt
 
+# Documentos da disciplina (ficam so na maquina local)
+docs/produto/
+
 # Artefatos gerados / dados locais (regeneráveis ou descartáveis)
 backend/results/
 backend/comparacao_demo.png
