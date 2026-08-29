@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { login as apiLogin } from '../api/auth'
-import { useAuth } from '../context/AuthContext'
-import Logo from '../components/Logo'
-import SeletorPerfil from '../components/SeletorPerfil'
+import { loginAluno } from '../../api/aluno'
+import { useAlunoAuth } from '../../context/AlunoAuthContext'
+import Logo from '../../components/Logo'
+import SeletorPerfil from '../../components/SeletorPerfil'
 
-export default function LoginPage() {
-  const { login } = useAuth()
+export default function AlunoLoginPage() {
+  const { login } = useAlunoAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -19,11 +19,11 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const { data } = await apiLogin(email.trim(), senha)
-      login(data.access_token, data.professor)
-      navigate('/', { replace: true })
+      const { data } = await loginAluno(email.trim(), senha)
+      login(data.access_token, data.aluno)
+      navigate('/aluno', { replace: true })
     } catch (err) {
-      setError(err.response?.data?.detail || 'Erro ao fazer login.')
+      setError(err.response?.data?.detail || 'Erro ao entrar.')
     } finally {
       setLoading(false)
     }
@@ -38,9 +38,9 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-8">
-          <SeletorPerfil atual="professor" contexto="login" />
+          <SeletorPerfil atual="aluno" contexto="login" />
           <h1 className="text-lg font-semibold text-gray-900 mb-1">Entrar</h1>
-          <p className="text-sm text-gray-400 mb-6">Suas turmas e correções</p>
+          <p className="text-sm text-gray-400 mb-6">Suas atividades e seu progresso</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -49,7 +49,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="professor@unifei.edu.br"
+                placeholder="aluno@unifei.edu.br"
                 autoComplete="email"
                 required
                 className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -85,9 +85,9 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-5 text-center text-xs text-gray-400">
-            Sem conta?{' '}
-            <Link to="/register" className="text-purple-600 hover:underline font-medium">
-              Criar cadastro
+            Primeira vez?{' '}
+            <Link to="/aluno/cadastro" className="text-purple-600 hover:underline font-medium">
+              Criar conta
             </Link>
           </p>
         </div>

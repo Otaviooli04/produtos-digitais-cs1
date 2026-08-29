@@ -92,3 +92,5 @@ export const deleteTestCase = (examId, questionNumber, tcId) =>
 
 export const updateTestCase = (examId, questionNumber, tcId, data) =>
   api.put(`/exam/${examId}/questions/${questionNumber}/testcases/${tcId}`, data)
+
+export const getEffortReport = (examId) => api.get(`/exam/${examId}/effort-report`)

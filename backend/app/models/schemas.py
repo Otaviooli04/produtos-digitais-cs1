@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Literal
 
@@ -21,6 +23,49 @@ class TokenResponse(BaseModel):
     professor: ProfessorResponse
 
 
+class StudentCreate(BaseModel):
+    email: str
+    nome: str = ""
+    matricula: str = ""
+    senha: str
+
+
+class StudentLogin(BaseModel):
+    email: str
+    senha: str
+
+
+class StudentResponse(BaseModel):
+    id: int
+    email: str
+    nome: str
+    matricula: Optional[str] = None
+    created_at: str
+
+
+class StudentTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    aluno: StudentResponse
+
+
+class StudentUpdate(BaseModel):
+    nome: str
+    matricula: str = ""
+
+
+class TurmaEntrarRequest(BaseModel):
+    codigo_acesso: str
+
+
+class TurmaDoAlunoResponse(BaseModel):
+    id: int
+    nome: str
+    codigo: str
+    professor_nome: Optional[str] = None
+    exam_count: int
+
+
 class TurmaCreate(BaseModel):
     nome: str
     codigo: str
@@ -37,21 +82,26 @@ class ExamSummary(BaseModel):
     created_at: str
     question_count: int
     submission_count: int
+    modo: str = "prova"
 
 
 class TurmaResponse(BaseModel):
     id: int
     nome: str
     codigo: str
+    codigo_acesso: Optional[str] = None
     created_at: str
     exam_count: int
+    aluno_count: int = 0
 
 
 class TurmaDetailResponse(BaseModel):
     id: int
     nome: str
     codigo: str
+    codigo_acesso: Optional[str] = None
     created_at: str
+    aluno_count: int = 0
     exams: List[ExamSummary]
 
 
@@ -191,6 +241,13 @@ class TestCaseUpdateRequest(BaseModel):
 class ExamUpdate(BaseModel):
     filename: Optional[str] = None
     turma_id: Optional[int] = None
+    modo: Optional[Literal["treino", "prova"]] = None
+    abre_em: Optional[datetime] = None
+    fecha_em: Optional[datetime] = None
+    max_tentativas: Optional[int] = None
+    # Campos de janela e teto aceitam volta a "sem limite", que em JSON chega como
+    # null e é indistinguível de "não enviado". A lista abaixo diz o que limpar.
+    limpar: List[Literal["abre_em", "fecha_em", "max_tentativas"]] = []
 
 
 class QuestionCreate(BaseModel):
@@ -242,6 +299,10 @@ class ExamResponse(BaseModel):
     turma_id: Optional[int] = None
     turma_nome: Optional[str] = None
     total_points: float = 0.0
+    modo: str = "prova"
+    abre_em: Optional[str] = None
+    fecha_em: Optional[str] = None
+    max_tentativas: Optional[int] = None
     questions: List[QuestionResponse]
 
 
@@ -408,3 +469,139 @@ class TurmaAnalyticsResponse(BaseModel):
     total_submissoes: int
     provas: List[ExamAnalytics]
     top_erros: List[ErrorCount]
+
+
+# ── Aluno: atividades, tentativas e progresso ────────────────────────────────
+
+class AtividadeResumo(BaseModel):
+    exam_id: int
+    titulo: str
+    turma_id: int
+    turma_nome: str
+    modo: str
+    abre_em: Optional[str] = None
+    fecha_em: Optional[str] = None
+    max_tentativas: Optional[int] = None
+    aberta: bool
+    situacao: str  # 'aberta' | 'agendada' | 'encerrada'
+    total_questoes: int
+    questoes_resolvidas: int
+    tentativas: int
+
+
+class AtividadeQuestao(BaseModel):
+    id: int
+    number: str
+    statement: str
+    points: float = 1.0
+    required_structures: List[str] = []
+    forbidden_structures: List[str] = []
+    requires_loop: bool = False
+    required_functions: List[FunctionRequirement] = []
+    tentativas: int = 0
+    resolvida: bool = False
+    tentativas_restantes: Optional[int] = None  # None = ilimitado
+    melhor_testes_passados: int = 0
+    testes_totais: int = 0
+    ultima_categoria: Optional[str] = None
+    ultimo_codigo: Optional[str] = None
+
+
+class AtividadeDetalhe(AtividadeResumo):
+    questoes: List[AtividadeQuestao] = []
+
+
+class AlunoSubmissaoRequest(BaseModel):
+    code: str
+
+
+class TentativaResponse(BaseModel):
+    submission_id: int
+    attempt_number: int
+    code: str
+    all_tests_passed: Optional[bool] = None
+    compile_error: str = ""
+    warnings: str = ""
+    error_category: str = ""
+    pedagogical_diagnosis: str = ""
+    actionable_feedback: str = ""
+    submitted_at: str
+    tests_passed: int = 0
+    tests_total: int = 0
+    explicacao: Optional[str] = None
+    test_results: List[TestResult] = []
+
+
+class ExplicacaoResponse(BaseModel):
+    explicacao: str
+    gerada_agora: bool
+
+
+class AlunoSubmissaoResponse(BaseModel):
+    tentativa: TentativaResponse
+    tentativas: int
+    tentativas_restantes: Optional[int] = None
+    resolvida: bool
+    structure_check: Optional[StructureCheck] = None
+    function_check: Optional[FunctionCheck] = None
+
+
+class HistoricoQuestaoResponse(BaseModel):
+    question_number: str
+    statement: str
+    resolvida: bool
+    tentativas: List[TentativaResponse] = []
+
+
+class EvolucaoPonto(BaseModel):
+    periodo: str  # segunda-feira da semana, em ISO
+    tentativas: int
+    resolvidas: int
+
+
+class ProgressoResponse(BaseModel):
+    total_atividades: int
+    atividades_concluidas: int
+    total_questoes: int
+    questoes_resolvidas: int
+    total_tentativas: int
+    tentativas_por_questao_resolvida: Optional[float] = None
+    acertos_de_primeira: int
+    dias_seguidos: int
+    ultima_submissao: Optional[str] = None
+    evolucao: List[EvolucaoPonto] = []
+
+
+class ErroRecorrente(BaseModel):
+    error_category: str
+    total: int
+    recentes: int
+    anteriores: int
+    tendencia: str  # 'melhorando' | 'piorando' | 'estavel'
+    questoes: List[str] = []
+    ultima_ocorrencia: str
+    o_que_fazer: str = ""
+
+
+class ErrosRecorrentesResponse(BaseModel):
+    total_submissoes: int
+    total_com_erro: int
+    erros: List[ErroRecorrente] = []
+
+
+class EffortReportQuestion(BaseModel):
+    question_number: str
+    submissoes: int
+    grupos: int
+    fator_reducao: Optional[float] = None
+
+
+class EffortReportResponse(BaseModel):
+    exam_id: int
+    filename: str
+    total_submissoes: int
+    itens_a_revisar: int
+    fator_reducao: Optional[float] = None
+    minutos_por_item: int
+    minutos_economizados: int
+    questoes: List[EffortReportQuestion] = []

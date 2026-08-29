@@ -105,13 +105,24 @@ def delete_exam(exam: Exam, db: Session) -> None:
 
 
 def update_exam(exam: Exam, db: Session, filename: str = None, turma_id=None,
-                clear_turma: bool = False) -> Exam:
+                clear_turma: bool = False, modo: str = None, abre_em=None,
+                fecha_em=None, max_tentativas=None, limpar: list = None) -> Exam:
     if filename is not None:
         exam.filename = filename
     if clear_turma:
         exam.turma_id = None
     elif turma_id is not None:
         exam.turma_id = turma_id
+    if modo is not None:
+        exam.modo = modo
+    if abre_em is not None:
+        exam.abre_em = abre_em
+    if fecha_em is not None:
+        exam.fecha_em = fecha_em
+    if max_tentativas is not None:
+        exam.max_tentativas = max_tentativas
+    for campo in (limpar or []):
+        setattr(exam, campo, None)
     db.commit()
     db.refresh(exam)
     return exam

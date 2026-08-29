@@ -18,6 +18,7 @@ google-genai
 
 # Persistência
 sqlalchemy
+alembic
 psycopg2-binary
 
 # ML
