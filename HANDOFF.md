@@ -384,7 +384,7 @@ A disciplina de Produtos Digitais reposiciona o sistema: de **ferramenta de corr
 7. **Lado do professor.** Código de acesso visível na turma e configuração de disponibilidade da atividade. Relatório de esforço economizado em `/exam/{id}/effort-report`.
 
 ### O que ainda falta
-Trilha direcionada com geração de exercícios, antifraude do modo prova, relatório de fim de lista, instrumentação de uso (DAU/WAU) e acesso sem turma. O mapa completo, ligando cada funcionalidade dos documentos da disciplina ao código, está em `docs/produto/mapa-funcionalidades.md`.
+Trilha direcionada com geração de exercícios, antifraude do modo prova, relatório de fim de lista, instrumentação de uso (DAU/WAU) e acesso sem turma. O mapa completo, ligando cada funcionalidade dos documentos da disciplina ao código, está em `docs/mapa-funcionalidades.md`.
 
 ### Perguntas de produto ainda em aberto (decisões a tomar com o novo Claude)
 - ~~Prova ou treino?~~ **Decidido:** os dois. Cada atividade declara seu `modo`, e a janela e o teto de tentativas controlam a avaliação. Falta o antifraude do modo prova.

@@ -6,7 +6,7 @@ Guia para o Claude Code neste repositório. **Leia `HANDOFF.md` primeiro** — e
 
 Sistema de *Learning Analytics* para CS1 (turmas introdutórias de programação em C). Originou-se de um TCC concluído e validado. **Esta fase é a disciplina de Produtos Digitais**, com foco em transformá-lo em **produto voltado ao aluno** (feedback personalizado, acompanhamento, engajamento). Detalhes e backlog de produto em `HANDOFF.md` (seção 15).
 
-O sistema corrige código C de provas como um **funil interpretável**: análise estática (tree-sitter) + execução isolada (Docker/GCC) + heurísticas pedagógicas classificam o erro, e as submissões são **agrupadas por assinatura de falha** para o professor intervir por grupo. O lado do aluno já tem conta, entrada por código de turma, modo treino/prova, histórico de tentativas, progresso e painel de erros recorrentes. O que falta está mapeado em `docs/produto/mapa-funcionalidades.md`.
+O sistema corrige código C de provas como um **funil interpretável**: análise estática (tree-sitter) + execução isolada (Docker/GCC) + heurísticas pedagógicas classificam o erro, e as submissões são **agrupadas por assinatura de falha** para o professor intervir por grupo. O lado do aluno já tem conta, entrada por código de turma, modo treino/prova, histórico de tentativas, progresso e painel de erros recorrentes. O que falta está mapeado em `docs/mapa-funcionalidades.md`.
 
 ## Arquitetura
 

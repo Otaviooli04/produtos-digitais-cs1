@@ -41,7 +41,8 @@ Thumbs.db
 # Arquivos locais de desenvolvimento
 annotations.txt
 
-# Documentos da disciplina (ficam so na maquina local)
+# Entregas da disciplina (ficam so na maquina local)
+# A documentacao do sistema fica versionada direto em docs/
 docs/produto/
 
 # Artefatos gerados / dados locais (regeneráveis ou descartáveis)
