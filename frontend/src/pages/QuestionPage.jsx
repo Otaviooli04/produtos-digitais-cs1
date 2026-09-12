@@ -228,10 +228,13 @@ export default function QuestionPage() {
   const scatterByCluster = (c) =>
     clusterResult?.scatter.filter(p => p.cluster_id === c.cluster_id) ?? []
 
+  // Matrícula é opcional na conta do aluno, então a lista usa `identificacao`,
+  // que o backend já resolve para matrícula, nome ou número do envio.
   const alunosByCluster = (cluster_id) =>
     clusterResult?.scatter
-      .filter(p => p.cluster_id === cluster_id && p.matricula)
-      .map(p => p.matricula) ?? []
+      .filter(p => p.cluster_id === cluster_id)
+      .map(p => p.identificacao || p.matricula)
+      .filter(Boolean) ?? []
 
   const noisePoints = clusterResult?.scatter.filter(p => p.cluster_id === -1) ?? []
 

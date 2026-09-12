@@ -10,6 +10,7 @@ import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import QuestionForm from '../components/QuestionForm'
 import DisponibilidadeCard from '../components/DisponibilidadeCard'
+import PublicacaoCard from '../components/PublicacaoCard'
 import Logo from '../components/Logo'
 
 export default function ExamDashboard() {
@@ -78,7 +79,7 @@ export default function ExamDashboard() {
     if (!renameValue.trim()) return
     setBusy(true)
     try {
-      await updateExam(id, { filename: renameValue.trim() })
+      await updateExam(id, { titulo: renameValue.trim() })
       setRenameOpen(false)
       await loadExam()
     } catch {
@@ -129,6 +130,10 @@ export default function ExamDashboard() {
   const resultsByQuestion = {}
   results?.questions?.forEach(q => { resultsByQuestion[q.question_number] = q })
 
+  // O que o aluno lê. Sem título definido, o nome do arquivo sem a extensão é um
+  // ponto de partida melhor do que "prova1_2026.pdf".
+  const nomeDaAtividade = exam.titulo || (exam.filename || '').replace(/\.[^.]+$/, '') || `Atividade ${id}`
+
   return (
     <div>
       {exam.turma_id ? (
@@ -137,14 +142,17 @@ export default function ExamDashboard() {
           <span>›</span>
           <Link to={`/turma/${exam.turma_id}`} className="hover:text-gray-600">{exam.turma_nome}</Link>
           <span>›</span>
-          <span className="text-gray-600">{exam.filename}</span>
+          <span className="text-gray-600">{nomeDaAtividade}</span>
         </div>
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-6">
         <div className="min-w-0">
-          <p className="text-xs text-gray-400 mb-0.5">Prova #{id}</p>
-          <h1 className="text-xl font-semibold text-gray-900 truncate">{exam.filename}</h1>
+          <p className="text-xs text-gray-400 mb-0.5">Prova #{id} · {exam.filename}</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-xl font-semibold text-gray-900 truncate">{nomeDaAtividade}</h1>
+            {!exam.publicada && <Badge color="yellow">rascunho</Badge>}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
@@ -184,9 +192,9 @@ export default function ExamDashboard() {
             Resultados
           </Link>
           <button
-            onClick={() => { setRenameValue(exam.filename); setRenameOpen(true) }}
-            title="Renomear prova"
-            aria-label="Renomear prova"
+            onClick={() => { setRenameValue(nomeDaAtividade); setRenameOpen(true) }}
+            title="Nome da atividade"
+            aria-label="Nome da atividade"
             className="inline-flex items-center justify-center p-2 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -205,6 +213,11 @@ export default function ExamDashboard() {
           </button>
         </div>
       </div>
+
+      <PublicacaoCard
+        exam={exam}
+        onSave={async (dados) => { await updateExam(id, dados); await loadExam() }}
+      />
 
       <DisponibilidadeCard
         exam={exam}

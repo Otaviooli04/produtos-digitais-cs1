@@ -104,11 +104,28 @@ def delete_exam(exam: Exam, db: Session) -> None:
     db.commit()
 
 
+def impedimentos_para_publicar(exam: Exam) -> list[str]:
+    """Uma atividade sem questão, ou com questão sem caso de teste, é insolúvel
+    para o aluno. Publicar assim é o mesmo defeito que o portão veio evitar."""
+    if not exam.questions:
+        return ["A atividade não tem nenhuma questão."]
+    sem_teste = [q.number for q in exam.questions if not q.test_cases]
+    if sem_teste:
+        numeros = ", ".join(str(n) for n in sem_teste)
+        return [f"Sem caso de teste: questão {numeros}."]
+    return []
+
+
 def update_exam(exam: Exam, db: Session, filename: str = None, turma_id=None,
                 clear_turma: bool = False, modo: str = None, abre_em=None,
-                fecha_em=None, max_tentativas=None, limpar: list = None) -> Exam:
+                fecha_em=None, max_tentativas=None, limpar: list = None,
+                titulo: str = None, publicada: bool = None) -> Exam:
     if filename is not None:
         exam.filename = filename
+    if titulo is not None:
+        exam.titulo = titulo.strip() or None
+    if publicada is not None:
+        exam.publicada = publicada
     if clear_turma:
         exam.turma_id = None
     elif turma_id is not None:

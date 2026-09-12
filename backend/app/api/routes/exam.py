@@ -40,6 +40,7 @@ from app.services.exam_service import (
     get_exam_results,
     get_exam_students,
     get_student_detail,
+    impedimentos_para_publicar,
     start_exam_processing,
     update_exam,
     update_question,
@@ -146,9 +147,15 @@ def patch_exam(
         ).first()
         if not turma:
             raise HTTPException(status_code=404, detail="Turma não encontrada.")
+    if body.publicada is True:
+        impedimentos = impedimentos_para_publicar(exam)
+        if impedimentos:
+            raise HTTPException(status_code=422, detail=" ".join(impedimentos))
     update_exam(
         exam, db,
         filename=body.filename,
+        titulo=body.titulo,
+        publicada=body.publicada,
         turma_id=body.turma_id,
         modo=body.modo,
         abre_em=body.abre_em,
@@ -379,6 +386,16 @@ def run_clustering(
     )
 
 
+def _identificacao(submission) -> str:
+    """Matrícula quando existe, nome da conta quando não, e o id da submissão
+    como último recurso, para nunca devolver rótulo vazio."""
+    if submission.matricula:
+        return submission.matricula
+    if submission.student and submission.student.nome:
+        return submission.student.nome
+    return f"envio #{submission.id}"
+
+
 @router.get("/{exam_id}/questions/{question_number}/groups")
 def get_groups(
     exam_id: int,
@@ -394,9 +411,14 @@ def get_groups(
     if not clusters_db:
         return {"has_groups": False, "question_number": question_number}
 
+    # `identificacao` é o que o professor lê na lista do grupo. A matrícula é a
+    # primeira escolha, mas ela é opcional na conta do aluno: sem o nome como
+    # reserva, quem se cadastrou sem matrícula sumia do grupo em que submeteu.
     scatter = [
         {"x": float(s.umap_x), "y": float(s.umap_y),
-         "cluster_id": s.cluster_id, "matricula": s.matricula}
+         "cluster_id": s.cluster_id, "matricula": s.matricula,
+         "student_id": s.student_id,
+         "identificacao": _identificacao(s)}
         for s in question.submissions
         if s.cluster_id is not None and s.umap_x is not None and s.umap_y is not None
     ]
@@ -572,9 +594,14 @@ def _question_sort_key(q):
 
 
 def _exam_to_response(exam: Exam) -> ExamResponse:
+    impedimentos = impedimentos_para_publicar(exam)
     return ExamResponse(
         id=exam.id,
         filename=exam.filename,
+        titulo=exam.titulo,
+        publicada=bool(exam.publicada),
+        pode_publicar=not impedimentos,
+        impedimentos=impedimentos,
         created_at=exam.created_at.isoformat() if exam.created_at else "",
         turma_id=exam.turma_id,
         turma_nome=exam.turma.nome if exam.turma else None,

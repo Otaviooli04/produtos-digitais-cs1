@@ -71,7 +71,9 @@ class Enrollment(Base):
 class Exam(Base):
     """Atividade da turma. `modo` diz o que ela é para o aluno: 'treino' libera
     tentativas ilimitadas a qualquer momento, 'prova' respeita a janela e o teto
-    de tentativas definidos pelo professor."""
+    de tentativas definidos pelo professor. `publicada` é outra coisa: enquanto
+    for False a atividade não existe para o aluno, o que dá ao professor o tempo
+    de revisar o que o extrator produziu."""
     __tablename__ = "exams"
 
     MODO_TREINO = "treino"
@@ -82,6 +84,8 @@ class Exam(Base):
     raw_text = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     turma_id = Column(Integer, ForeignKey("turmas.id"), nullable=True)
+    titulo = Column(String, nullable=True)  # None = cai no nome do arquivo
+    publicada = Column(Boolean, default=False, server_default="false", nullable=False)
     modo = Column(String, default=MODO_PROVA, server_default=MODO_PROVA)
     abre_em = Column(DateTime, nullable=True)
     fecha_em = Column(DateTime, nullable=True)

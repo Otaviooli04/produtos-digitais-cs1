@@ -105,12 +105,15 @@ def run_jobs_sync(db, monkeypatch):
 
 @pytest.fixture()
 def exam_factory(db, professor):
-    def _create(filename="prova.pdf", questions=None):
+    # `publicada` sai True por padrão porque quase todo teste quer a atividade
+    # visível para o aluno. O portão da publicação tem teste próprio.
+    def _create(filename="prova.pdf", questions=None, publicada=True, titulo=None):
         turma = Turma(nome="Turma Teste", codigo="TT", professor_id=professor.id)
         db.add(turma)
         db.flush()
         exam = Exam(filename=filename, raw_text="texto da prova",
-                    created_at=datetime.now(timezone.utc), turma_id=turma.id)
+                    created_at=datetime.now(timezone.utc), turma_id=turma.id,
+                    publicada=publicada, titulo=titulo)
         db.add(exam)
         db.flush()
         for q in (questions or []):
