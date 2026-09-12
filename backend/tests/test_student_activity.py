@@ -516,3 +516,134 @@ class TestAgrupamentoNoEnvioDoAluno:
         resp = self._envia(client, token, prova, "int main(){return 9;}", monkeypatch)
         assert resp.status_code == 201
         assert resp.json()["tentativa"]["error_category"] == "Saída Incorreta"
+
+
+class TestRetornoDoProfessorAoGrupo:
+    """O professor escreve uma vez e o texto chega a todo mundo que errou do
+    mesmo jeito. Era o passo 4 da jornada dele, e não existia."""
+
+    def _prepara_grupo(self, db, prova, submission_factory, quantos=3):
+        from app.ml.cluster import atribuir_grupos
+        from app.models.orm import QuestionCluster
+
+        questao = next(q for q in prova.questions if q.number == "1")
+        for i in range(quantos):
+            submission_factory(questao.id, code=f"int main(){{return {i};}}",
+                               error_category="Saída Incorreta", all_tests_passed=False)
+        atribuir_grupos(questao.id, db)
+        grupo = db.query(QuestionCluster).filter(
+            QuestionCluster.question_id == questao.id).first()
+        return questao, grupo
+
+    def test_professor_salva_e_o_grupo_guarda(
+        self, client, prova, db, submission_factory
+    ):
+        from app.models.orm import QuestionCluster
+
+        questao, grupo = self._prepara_grupo(db, prova, submission_factory)
+        resp = client.put(
+            f"/exam/{prova.id}/questions/1/grupos/{grupo.cluster_label}/resposta",
+            json={"texto": "Revejam a condição de parada do laço."},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["resposta_professor"] == "Revejam a condição de parada do laço."
+
+        db.expire_all()
+        salvo = db.get(QuestionCluster, grupo.id)
+        assert salvo.resposta_professor == "Revejam a condição de parada do laço."
+        assert salvo.resposta_em is not None
+        assert salvo.resposta_por is not None
+
+    def test_texto_vazio_apaga_a_resposta(self, client, prova, db, submission_factory):
+        from app.models.orm import QuestionCluster
+
+        questao, grupo = self._prepara_grupo(db, prova, submission_factory)
+        client.put(f"/exam/{prova.id}/questions/1/grupos/{grupo.cluster_label}/resposta",
+                   json={"texto": "texto qualquer"})
+        client.put(f"/exam/{prova.id}/questions/1/grupos/{grupo.cluster_label}/resposta",
+                   json={"texto": "   "})
+        db.expire_all()
+        assert db.get(QuestionCluster, grupo.id).resposta_professor is None
+
+    def test_grupo_inexistente_devolve_404(self, client, prova, db, submission_factory):
+        self._prepara_grupo(db, prova, submission_factory)
+        resp = client.put(f"/exam/{prova.id}/questions/1/grupos/999/resposta",
+                          json={"texto": "oi"})
+        assert resp.status_code == 404
+
+    def test_resposta_chega_na_tentativa_do_aluno(
+        self, client, token, prova, db, tentativa_factory, submission_factory
+    ):
+        from app.ml.cluster import atribuir_grupos
+        from app.models.orm import QuestionCluster
+
+        questao = next(q for q in prova.questions if q.number == "1")
+        for i in range(2):
+            submission_factory(questao.id, code=f"int main(){{return {i};}}",
+                               error_category="Saída Incorreta", all_tests_passed=False)
+        minha = tentativa_factory(_aluno_id(client, token), categoria="Saída Incorreta")
+        atribuir_grupos(questao.id, db)
+        db.expire_all()
+
+        grupo = db.query(QuestionCluster).filter(
+            QuestionCluster.question_id == questao.id,
+            QuestionCluster.cluster_label == db.get(Submission, minha.id).cluster_id,
+        ).first()
+        client.put(f"/exam/{prova.id}/questions/1/grupos/{grupo.cluster_label}/resposta",
+                   json={"texto": "Vale rever a condição de parada."})
+
+        data = client.get(
+            f"/aluno/atividades/{prova.id}/questoes/1/tentativas", headers=_auth(token)).json()
+        assert data["tentativas"][0]["resposta_do_professor"] == "Vale rever a condição de parada."
+
+    def test_aluno_de_outro_grupo_nao_recebe(
+        self, client, token, prova, db, tentativa_factory, submission_factory
+    ):
+        from app.ml.cluster import atribuir_grupos
+        from app.models.orm import QuestionCluster
+
+        questao = next(q for q in prova.questions if q.number == "1")
+        for i in range(2):
+            submission_factory(questao.id, code=f"int main(){{return {i};}}",
+                               error_category="Saída Incorreta", all_tests_passed=False)
+        # O aluno erra de outro jeito, então cai em outro grupo.
+        tentativa_factory(_aluno_id(client, token), categoria="Tudo no Main")
+        atribuir_grupos(questao.id, db)
+        db.expire_all()
+
+        outro = db.query(QuestionCluster).filter(
+            QuestionCluster.question_id == questao.id,
+            QuestionCluster.dominant_error == "Saída Incorreta",
+        ).first()
+        client.put(f"/exam/{prova.id}/questions/1/grupos/{outro.cluster_label}/resposta",
+                   json={"texto": "Só para quem errou a saída."})
+
+        data = client.get(
+            f"/aluno/atividades/{prova.id}/questoes/1/tentativas", headers=_auth(token)).json()
+        assert data["tentativas"][0]["resposta_do_professor"] is None
+
+    def test_resposta_sobrevive_ao_reagrupamento(
+        self, client, prova, db, submission_factory
+    ):
+        """O risco que a chave estável existe para evitar: re-agrupar renumera os
+        rótulos, e a resposta não pode migrar de grupo nem sumir."""
+        from app.ml.cluster import atribuir_grupos
+        from app.models.orm import QuestionCluster
+
+        questao, grupo = self._prepara_grupo(db, prova, submission_factory)
+        client.put(f"/exam/{prova.id}/questions/1/grupos/{grupo.cluster_label}/resposta",
+                   json={"texto": "Revejam a condição de parada."})
+        chave = grupo.chave
+
+        # Chega gente errando de outro jeito, o que muda a numeração dos grupos.
+        for i in range(4):
+            submission_factory(questao.id, code=f"int x{i}(){{return {i};}}",
+                               error_category="Tudo no Main", all_tests_passed=False)
+        atribuir_grupos(questao.id, db)
+
+        db.expire_all()
+        depois = db.query(QuestionCluster).filter(
+            QuestionCluster.question_id == questao.id,
+            QuestionCluster.chave == chave).first()
+        assert depois is not None
+        assert depois.resposta_professor == "Revejam a condição de parada."

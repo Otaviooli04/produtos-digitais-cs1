@@ -70,6 +70,28 @@ export default function TentativaDetalhe({ tentativa, functionCheck = null, most
         ))}
       </div>
 
+      {/* O retorno do professor vem em cartão próprio, fora do bloco do
+          diagnóstico, para não se confundir com o que a máquina escreveu. O aluno
+          não sabe (nem precisa saber) que o texto foi escrito para um grupo. */}
+      {tentativa.resposta_do_professor && (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-5">
+          <div className="flex items-center gap-2 mb-1.5">
+            <svg className="w-4 h-4 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <h3 className="text-sm font-medium text-green-900">Retorno do seu professor</h3>
+            {tentativa.resposta_do_professor_em && (
+              <span className="text-xs text-green-700/70">
+                {formatarData(tentativa.resposta_do_professor_em)}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-green-900 leading-relaxed whitespace-pre-wrap">
+            {tentativa.resposta_do_professor}
+          </p>
+        </div>
+      )}
+
       {functionCheck && !functionCheck.compliant && <FunctionCheckCard check={functionCheck} />}
 
       {tentativa.compile_error && (

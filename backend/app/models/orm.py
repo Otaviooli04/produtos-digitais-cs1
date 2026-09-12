@@ -169,6 +169,11 @@ class QuestionCluster(Base):
     size = Column(Integer)
     dominant_error = Column(String, default="")
     insight = Column(Text, default="")
+    # O insight é o que o Gemini escreve para o professor. A resposta é o que o
+    # professor escreve uma vez e chega a todo mundo que errou daquele jeito.
+    resposta_professor = Column(Text, nullable=True)
+    resposta_em = Column(DateTime, nullable=True)
+    resposta_por = Column(Integer, ForeignKey("professors.id"), nullable=True)
     # Linhas (1-based) do código representativo a destacar p/ o professor: erro de
     # compilação → parse do gcc; erro de lógica → atribuição do Gemini.
     highlight_lines = Column(JSON, default=list)

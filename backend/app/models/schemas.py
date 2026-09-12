@@ -523,6 +523,18 @@ class AlunoSubmissaoRequest(BaseModel):
     code: str
 
 
+class RespostaGrupoRequest(BaseModel):
+    texto: str
+
+
+class RespostaGrupoResponse(BaseModel):
+    cluster_id: int
+    chave: Optional[str] = None
+    resposta_professor: Optional[str] = None
+    resposta_em: Optional[str] = None
+    alunos_alcancados: int = 0
+
+
 class TentativaResponse(BaseModel):
     submission_id: int
     attempt_number: int
@@ -538,6 +550,10 @@ class TentativaResponse(BaseModel):
     tests_total: int = 0
     explicacao: Optional[str] = None
     test_results: List[TestResult] = []
+    # Retorno que o professor escreveu para o grupo desta tentativa. Vem só na
+    # tentativa mais recente da questão, para não repetir o mesmo texto em cinco.
+    resposta_do_professor: Optional[str] = None
+    resposta_do_professor_em: Optional[str] = None
 
 
 class ExplicacaoResponse(BaseModel):

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
@@ -24,6 +25,8 @@ from app.models.schemas import (
     QuestionCreate,
     QuestionResponse,
     QuestionUpdate,
+    RespostaGrupoRequest,
+    RespostaGrupoResponse,
     ScatterPoint,
     StudentDetailResponse,
     TestCaseAddRequest,
@@ -440,6 +443,8 @@ def get_groups(
     insights = [
         {"cluster_id": qc.cluster_label, "size": qc.size,
          "dominant_error": qc.dominant_error, "insight": qc.insight or "",
+         "resposta_professor": qc.resposta_professor or "",
+         "resposta_em": qc.resposta_em.isoformat() if qc.resposta_em else None,
          "highlight_lines": _highlight_for(qc, qc.highlight_lines)}
         for qc in clusters_db
     ]
@@ -465,6 +470,51 @@ def get_groups(
         "sem_coordenada": sem_coordenada,
         "scatter_desatualizado": sem_coordenada > 0,
     }
+
+
+@router.put(
+    "/{exam_id}/questions/{question_number}/grupos/{cluster_id}/resposta",
+    response_model=RespostaGrupoResponse,
+)
+def put_resposta_do_grupo(
+    exam_id: int,
+    question_number: str,
+    cluster_id: int,
+    body: RespostaGrupoRequest,
+    db: Session = Depends(get_db),
+    professor: Professor = Depends(get_current_professor),
+):
+    """O professor responde uma vez e o texto chega a todo mundo que errou do
+    mesmo jeito. Texto vazio apaga a resposta, que é como se desfaz.
+
+    Guarda na `chave` do grupo, não no rótulo, senão a resposta migraria de
+    grupo no próximo re-agrupamento."""
+    question = get_question_or_404(exam_id, question_number, db, professor_id=professor.id)
+    grupo = db.query(QuestionCluster).filter(
+        QuestionCluster.question_id == question.id,
+        QuestionCluster.cluster_label == cluster_id,
+    ).first()
+    if not grupo:
+        raise HTTPException(status_code=404, detail="Grupo não encontrado.")
+
+    texto = (body.texto or "").strip()
+    grupo.resposta_professor = texto or None
+    grupo.resposta_em = datetime.utcnow() if texto else None
+    grupo.resposta_por = professor.id if texto else None
+    db.commit()
+    db.refresh(grupo)
+
+    alcancados = len({
+        s.student_id for s in question.submissions
+        if s.cluster_id == cluster_id and s.student_id
+    })
+    return RespostaGrupoResponse(
+        cluster_id=cluster_id,
+        chave=grupo.chave,
+        resposta_professor=grupo.resposta_professor,
+        resposta_em=grupo.resposta_em.isoformat() if grupo.resposta_em else None,
+        alunos_alcancados=alcancados,
+    )
 
 
 @router.post("/{exam_id}/questions/{question_number}/insights", response_model=InsightsResponse)
