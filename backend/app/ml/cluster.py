@@ -6,13 +6,11 @@ from enum import Enum
 from typing import List, Optional
 
 import numpy as np
-from hdbscan import HDBSCAN
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
 from scipy.sparse import hstack, issparse
 from sqlalchemy.orm import Session, joinedload
-from umap import UMAP
 
 from app.models.orm import QuestionCluster, Submission
 
@@ -102,70 +100,23 @@ class FeatureStrategy(str, Enum):
 
 
 class ClusteringResult:
-    def __init__(
-        self,
-        clusters: list[dict],
-        scatter: list[dict],
-        silhouette: Optional[float],
-        strategy: FeatureStrategy,
-    ):
+    def __init__(self, clusters: list[dict]):
         self.clusters = clusters
-        self.scatter = scatter
-        self.silhouette = silhouette
-        self.strategy = strategy
 
 
-def cluster_question(
-    question_id: int,
-    db: Session,
-    strategy: FeatureStrategy = FeatureStrategy.TFIDF,
-) -> ClusteringResult | None:
-    submissions: List[Submission] = (
-        db.query(Submission)
-        .options(joinedload(Submission.test_results))
-        .filter(Submission.question_id == question_id)
-        .all()
-    )
+def cluster_question(question_id: int, db: Session) -> ClusteringResult | None:
+    """Agrupa a questão. É o agrupamento do TCC, sem variação: nível 1 pela
+    categoria de erro das heurísticas, nível 2 pela assinatura de falha dentro
+    das categorias grandes.
 
-    if len(submissions) < MIN_SUBMISSIONS:
-        return None
+    Determinístico e barato, então roda a cada envio de aluno, no fim do lote e
+    no botão do professor. Não existe um segundo caminho, mais rápido ou mais
+    completo: é sempre este.
 
-    codes = [s.code or "" for s in submissions]
-    ast_lists = [s.ast_structures or [] for s in submissions]
-
-    features = _build_features(codes, ast_lists, submissions, strategy)
-
-    n = len(submissions)
-    n_neighbors = min(15, n - 1)
-    umap_init = "random" if n < 10 else "spectral"
-
-    umap_viz = UMAP(
-        n_components=2,
-        n_neighbors=n_neighbors,
-        random_state=42,
-        init=umap_init,
-    )
-
-    embedded_viz = umap_viz.fit_transform(features)
-
-    # UMAP só alimenta o scatter; o agrupamento vem de two_level_grupos.
-    labels, chaves = two_level_grupos(
-        submissions, [s.error_category or "" for s in submissions])
-
-    silhouette = None
-
-    _persist_results(submissions, labels, embedded_viz, question_id, db, chaves)
-
-    return _build_result(submissions, labels, embedded_viz, silhouette, strategy)
-
-
-def atribuir_grupos(question_id: int, db: Session) -> int | None:
-    """Agrupa sem o UMAP, que é a parte cara e só serve ao gráfico de dispersão.
-
-    É o que roda a cada envio de aluno, para o grupo existir no fluxo real da
-    turma e não só depois de o professor apertar um botão. As coordenadas do
-    gráfico continuam sendo as da última passada completa, e a tela avisa quando
-    chegou envio depois disso."""
+    UMAP e HDBSCAN não participam. Eles foram o baseline de comparação do TCC e
+    ficaram de lado, e as funções de vetorização mais abaixo neste arquivo
+    existem por causa daquela comparação, não do produto.
+    """
     submissions: List[Submission] = (
         db.query(Submission)
         .options(joinedload(Submission.test_results))
@@ -177,12 +128,16 @@ def atribuir_grupos(question_id: int, db: Session) -> int | None:
 
     labels, chaves = two_level_grupos(
         submissions, [s.error_category or "" for s in submissions])
-    _persist_results(submissions, labels, None, question_id, db, chaves)
-    return len(set(int(l) for l in labels) - {-1})
+    _persist_results(submissions, labels, question_id, db, chaves)
+    return _build_result(submissions, labels)
 
 
 # ---------------------------------------------------------------------------
-# Feature builders
+# Baseline do TCC — fora do caminho de execução
+#
+# Daqui para baixo é a vetorização que alimentava UMAP e HDBSCAN na comparação
+# do TCC. Nada disso roda no produto: o agrupamento é `two_level_grupos`, logo
+# no começo deste arquivo. Fica aqui pela reprodutibilidade daquele resultado.
 # ---------------------------------------------------------------------------
 
 def _build_features(
@@ -339,7 +294,6 @@ def _compute_silhouette(embedded: np.ndarray, labels: np.ndarray) -> Optional[fl
 def _persist_results(
     submissions: List[Submission],
     labels: np.ndarray,
-    embedded_viz: Optional[np.ndarray],
     question_id: int,
     db: Session,
     chaves: Optional[dict[int, str]] = None,
@@ -347,34 +301,20 @@ def _persist_results(
     """Grava o agrupamento sem destruir o que o grupo carrega.
 
     O caminho antigo apagava todas as linhas e recriava, o que jogava fora o
-    insight a cada re-agrupamento. Agora a linha é encontrada pela `chave`, que
-    sobrevive à renumeração, e só o que mudou é atualizado. Grupo que deixou de
-    existir é removido, e só ele.
-
-    `embedded_viz` é opcional: sem ele o UMAP não roda, as coordenadas que já
-    estavam guardadas ficam como estão e o representante é escolhido por uma
-    regra barata."""
+    insight a cada re-agrupamento. Como agora isso roda a cada envio de aluno,
+    apagar seria perder o texto do professor o tempo todo. A linha é encontrada
+    pela `chave`, que sobrevive à renumeração dos rótulos, e só o que mudou é
+    atualizado. Grupo que deixou de existir é removido, e só ele."""
     chaves = chaves or {}
     agora = datetime.utcnow()
 
-    for pos, (sub, label) in enumerate(zip(submissions, labels)):
+    for sub, label in zip(submissions, labels):
         sub.cluster_id = int(label)
-        if embedded_viz is not None:
-            x, y = embedded_viz[pos]
-            sub.umap_x = str(float(x))
-            sub.umap_y = str(float(y))
 
-    existentes = {
-        qc.chave: qc
-        for qc in db.query(QuestionCluster).filter(
-            QuestionCluster.question_id == question_id).all()
-        if qc.chave
-    }
-    sem_chave = [
-        qc for qc in db.query(QuestionCluster).filter(
-            QuestionCluster.question_id == question_id).all()
-        if not qc.chave
-    ]
+    linhas = db.query(QuestionCluster).filter(
+        QuestionCluster.question_id == question_id).all()
+    existentes = {qc.chave: qc for qc in linhas if qc.chave}
+    sem_chave = [qc for qc in linhas if not qc.chave]
 
     vivas: set[str] = set()
     for label in sorted(set(int(l) for l in labels) - {-1}):
@@ -391,7 +331,7 @@ def _persist_results(
         qc.size = len(indices)
         qc.dominant_error = _dominant_error(cluster_subs)
         qc.representative_submission_id = _escolher_representante(
-            qc.representative_submission_id, indices, submissions, embedded_viz)
+            qc.representative_submission_id, indices, submissions)
         qc.atualizado_em = agora
 
     for chave, qc in existentes.items():
@@ -408,17 +348,17 @@ def _escolher_representante(
     atual: Optional[int],
     indices: list[int],
     submissions: List[Submission],
-    embedded_viz: Optional[np.ndarray],
 ) -> int:
     """Mantém o representante que o professor já viu, enquanto ele continuar no
-    grupo, para a tela não trocar de código a cada envio novo. Só escolhe um
-    quando não há: pelo centroide, se houver embedding, senão pelo código mais
-    curto, que é o exemplo menos ruidoso de ler."""
+    grupo, para a tela não trocar de código a cada envio novo.
+
+    Quando precisa escolher, pega o código mais curto do grupo. O TCC escolhia
+    pelo ponto mais próximo do centroide no embedding do UMAP, que deixou de
+    existir junto com o UMAP. Todo mundo no grupo falhou da mesma forma, então
+    qualquer um serve de exemplo, e o mais curto é o menos ruidoso de ler."""
     no_grupo = {submissions[i].id for i in indices}
     if atual in no_grupo:
         return atual
-    if embedded_viz is not None:
-        return submissions[_find_representative(indices, embedded_viz)].id
     escolhido = min(indices, key=lambda i: (len(submissions[i].code or ""), submissions[i].id))
     return submissions[escolhido].id
 
@@ -437,13 +377,7 @@ def _find_representative(indices: list[int], embedded: np.ndarray) -> int:
     return indices[int(np.argmin(dists))]
 
 
-def _build_result(
-    submissions: List[Submission],
-    labels: np.ndarray,
-    embedded_viz: np.ndarray,
-    silhouette: Optional[float],
-    strategy: FeatureStrategy,
-) -> ClusteringResult:
+def _build_result(submissions: List[Submission], labels: np.ndarray) -> ClusteringResult:
     clusters: dict[int, dict] = {}
     for sub, label in zip(submissions, labels):
         label = int(label)
@@ -459,20 +393,4 @@ def _build_result(
             }
         clusters[label]["size"] += 1
 
-    scatter = [
-        {
-            "submission_id": sub.id,
-            "x": float(x),
-            "y": float(y),
-            "cluster_id": int(label),
-            "matricula": sub.matricula,
-        }
-        for sub, label, (x, y) in zip(submissions, labels, embedded_viz)
-    ]
-
-    return ClusteringResult(
-        clusters=list(clusters.values()),
-        scatter=scatter,
-        silhouette=silhouette,
-        strategy=strategy,
-    )
+    return ClusteringResult(clusters=list(clusters.values()))

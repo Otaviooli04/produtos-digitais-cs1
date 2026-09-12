@@ -27,8 +27,8 @@ export const salvarRespostaDoGrupo = (examId, questionNumber, clusterId, texto) 
     { texto },
   )
 
-export const runClustering = (examId, questionNumber, strategy) =>
-  api.post(`/exam/${examId}/questions/${questionNumber}/cluster?strategy=${strategy}`)
+export const runClustering = (examId, questionNumber) =>
+  api.post(`/exam/${examId}/questions/${questionNumber}/cluster`)
 
 export const runInsights = (examId, questionNumber, force = false) =>
   api.post(`/exam/${examId}/questions/${questionNumber}/insights${force ? '?force=true' : ''}`)

@@ -7,7 +7,7 @@ from app.auth.dependencies import get_current_professor
 from app.auth.ownership import get_exam_or_404, get_question_or_404
 from app.engine.error_locator import parse_compile_error_lines
 from app.llm.feedback_generator import generate_cluster_insights
-from app.ml.cluster import FeatureStrategy, cluster_question
+from app.ml.cluster import cluster_question
 from app.models.database import get_db
 from app.models.orm import Exam, Professor, Question, QuestionCluster, TestCase as TestCaseORM
 from app.models.schemas import (
@@ -27,7 +27,6 @@ from app.models.schemas import (
     QuestionUpdate,
     RespostaGrupoRequest,
     RespostaGrupoResponse,
-    ScatterPoint,
     StudentDetailResponse,
     TestCaseAddRequest,
     TestCaseResponse,
@@ -350,12 +349,13 @@ def get_results(
 def run_clustering(
     exam_id: int,
     question_number: str,
-    strategy: FeatureStrategy = Query(default=FeatureStrategy.TFIDF),
     db: Session = Depends(get_db),
     professor: Professor = Depends(get_current_professor),
 ):
+    """Refaz o agrupamento agora. Desde que ele passou a rodar a cada envio, isto
+    virou um botão de garantia, não o único caminho para o grupo existir."""
     question = get_question_or_404(exam_id, question_number, db, professor_id=professor.id)
-    result = cluster_question(question.id, db, strategy=strategy)
+    result = cluster_question(question.id, db)
     if result is None:
         raise HTTPException(status_code=422, detail="Submissões insuficientes para clustering (mínimo 3).")
 
@@ -381,11 +381,8 @@ def run_clustering(
     ]
     return ClusteringResponse(
         question_number=question_number,
-        total_submissions=len(result.scatter),
+        total_submissions=sum(c["size"] for c in result.clusters),
         clusters=clusters_out,
-        scatter=[ScatterPoint(**p) for p in result.scatter],
-        strategy=result.strategy.value,
-        silhouette_score=result.silhouette,
     )
 
 
@@ -406,31 +403,29 @@ def get_groups(
     db: Session = Depends(get_db),
     professor: Professor = Depends(get_current_professor),
 ):
-    """Grupos de dificuldade já salvos, sem re-rodar. Alimenta a aba ao abrir:
-    o agrupamento roda automaticamente no fim do lote (ou via 'Recalcular')."""
+    """Grupos de dificuldade já salvos, sem re-rodar. O agrupamento acontece a
+    cada envio de aluno, então o que está aqui já é o estado atual."""
     question = get_question_or_404(exam_id, question_number, db, professor_id=professor.id)
     clusters_db = db.query(QuestionCluster).filter(
         QuestionCluster.question_id == question.id).all()
     if not clusters_db:
         return {"has_groups": False, "question_number": question_number}
 
-    # `identificacao` é o que o professor lê na lista do grupo. A matrícula é a
-    # primeira escolha, mas ela é opcional na conta do aluno: sem o nome como
-    # reserva, quem se cadastrou sem matrícula sumia do grupo em que submeteu.
-    scatter = [
-        {"x": float(s.umap_x), "y": float(s.umap_y),
-         "cluster_id": s.cluster_id, "matricula": s.matricula,
-         "student_id": s.student_id,
-         "identificacao": _identificacao(s)}
-        for s in question.submissions
-        if s.cluster_id is not None and s.umap_x is not None and s.umap_y is not None
-    ]
+    # A lista de quem caiu em cada grupo sai do `cluster_id` da submissão, que é
+    # o que o agrupamento grava. Antes ela era derivada das coordenadas do
+    # gráfico, e quem não tinha coordenada ficava no grupo certo e invisível.
+    agrupadas = [s for s in question.submissions if s.cluster_id is not None]
+    por_grupo: dict[int, list[str]] = {}
+    for s in agrupadas:
+        por_grupo.setdefault(s.cluster_id, []).append(_identificacao(s))
+
     # Rótulo do sintoma por grupo: quais (e quantos) casos de teste o grupo falha.
     failing = _failing_summary(question.submissions)
     clusters = [
         {"cluster_id": qc.cluster_label, "size": qc.size,
          "chave": qc.chave,
          "dominant_error": qc.dominant_error,
+         "alunos": sorted(por_grupo.get(qc.cluster_label, []), key=_ordem_natural),
          "failing_label": failing.get(qc.cluster_label, (None, None))[0],
          "failing_count": failing.get(qc.cluster_label, (None, None))[1],
          "representative_submission_id": qc.representative_submission_id,
@@ -448,28 +443,22 @@ def get_groups(
          "highlight_lines": _highlight_for(qc, qc.highlight_lines)}
         for qc in clusters_db
     ]
-    # O agrupamento roda a cada envio de aluno, mas sem UMAP: as coordenadas do
-    # gráfico são as da última passada completa. `scatter_desatualizado` diz que
-    # há submissão agrupada sem lugar no desenho, e é o que justifica recalcular.
     atualizado_em = max(
         (qc.atualizado_em for qc in clusters_db if qc.atualizado_em), default=None)
-    sem_coordenada = sum(
-        1 for s in question.submissions
-        if s.cluster_id is not None and (s.umap_x is None or s.umap_y is None)
-    )
     return {
         "has_groups": True,
         "question_number": question_number,
-        "total_submissions": len(scatter),
+        "total_submissions": len(agrupadas),
         "clusters": clusters,
-        "scatter": scatter,
-        "silhouette_score": None,
-        "strategy": "tfidf_behavioral",
         "insights": insights,
         "atualizado_em": atualizado_em.isoformat() if atualizado_em else None,
-        "sem_coordenada": sem_coordenada,
-        "scatter_desatualizado": sem_coordenada > 0,
     }
+
+
+def _ordem_natural(rotulo: str):
+    """Matrícula ordena como número, nome como texto, e os dois juntos sem
+    intercalar: primeiro as matrículas, depois quem entrou sem ela."""
+    return (0, rotulo.zfill(20)) if rotulo.isdigit() else (1, rotulo.lower())
 
 
 @router.put(

@@ -5,10 +5,6 @@ import {
   deleteSubmission, reevaluateSubmission,
 } from '../api/exam'
 import ConfirmDialog from '../components/ConfirmDialog'
-import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
-} from 'recharts'
 import Spinner from '../components/Spinner'
 import Badge from '../components/Badge'
 import BarList from '../components/BarList'
@@ -29,7 +25,6 @@ const CLUSTER_COLORS = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '
 const ERROR_COLORS = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316']
 // O agrupamento roda sozinho com a estratégia comportamental; o professor não
 // escolhe features, vê os grupos já digeridos.
-const GROUP_STRATEGY = 'tfidf_behavioral'
 const TABS = [
   { key: 'respostas', label: 'Respostas' },
   { key: 'cluster', label: 'Grupos de dificuldade' },
@@ -85,7 +80,6 @@ export default function QuestionPage() {
   const [clusterResult, setClusterResult] = useState(null)
   const [insights, setInsights] = useState(null)
   const [groupsError, setGroupsError] = useState('')
-  const [techOpen, setTechOpen] = useState(false)
   const [openCode, setOpenCode] = useState({})
   const [autoInsightTried, setAutoInsightTried] = useState(false)
 
@@ -144,15 +138,21 @@ export default function QuestionPage() {
         }))
     : []
 
-  // Agrupa (ou re-agrupa). Barato, sem LLM. Re-agrupar invalida os insights antigos.
+  // Re-agrupa agora. Desde que o agrupamento roda a cada envio, isto é um botão
+  // de garantia, não o caminho normal. A tela é remontada a partir do GET, e não
+  // da resposta do POST, porque só o GET traz a lista de alunos do grupo, os
+  // insights e as respostas escritas pelo professor — que sobrevivem ao
+  // re-agrupamento, ancoradas na chave estável do grupo.
   const runClusterOnly = async () => {
     setGroupsRunning(true)
     setGroupsError('')
     try {
-      const { data } = await runClustering(id, num, GROUP_STRATEGY)
-      setClusterResult(data)
-      setInsights([])
-      setAutoInsightTried(false)
+      await runClustering(id, num)
+      const { data } = await getGroups(id, num)
+      if (data.has_groups) {
+        setClusterResult(data)
+        setInsights(data.insights || [])
+      }
     } catch (e) {
       setGroupsError(e.response?.data?.detail || 'Erro ao analisar os grupos.')
     } finally {
@@ -239,18 +239,11 @@ export default function QuestionPage() {
         })
     : []
 
-  const scatterByCluster = (c) =>
-    clusterResult?.scatter.filter(p => p.cluster_id === c.cluster_id) ?? []
-
-  // Matrícula é opcional na conta do aluno, então a lista usa `identificacao`,
-  // que o backend já resolve para matrícula, nome ou número do envio.
+  // A lista de quem caiu no grupo vem pronta do servidor, montada a partir do
+  // `cluster_id` da submissão. Antes ela era derivada das coordenadas do gráfico,
+  // e quem não tinha coordenada ficava no grupo certo e invisível aqui.
   const alunosByCluster = (cluster_id) =>
-    clusterResult?.scatter
-      .filter(p => p.cluster_id === cluster_id)
-      .map(p => p.identificacao || p.matricula)
-      .filter(Boolean) ?? []
-
-  const noisePoints = clusterResult?.scatter.filter(p => p.cluster_id === -1) ?? []
+    clusterResult?.clusters?.find(c => c.cluster_id === cluster_id)?.alunos ?? []
 
   // Preenche a descrição dos cartões automaticamente: se há grupos mas nenhum
   // insight salvo, gera uma vez ao abrir a aba (depois vem tudo do cache). Falha
@@ -481,13 +474,6 @@ export default function QuestionPage() {
                 </div>
               </div>
 
-              {clusterResult.scatter_desatualizado && (
-                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-800">
-                  {clusterResult.sem_coordenada} envio{clusterResult.sem_coordenada !== 1 ? 's' : ''} já {clusterResult.sem_coordenada !== 1 ? 'estão' : 'está'} no grupo certo, mas ainda fora do gráfico de dispersão.
-                  Recalcular refaz o desenho. Os grupos e os códigos de exemplo já estão atualizados.
-                </div>
-              )}
-
               <div className="space-y-3">
                 {rankedGroups.map(c => {
                   const alunos = alunosByCluster(c.cluster_id)
@@ -577,55 +563,6 @@ export default function QuestionPage() {
                 })}
               </div>
 
-              {/* Detalhes técnicos (scatter UMAP + métricas) — preservados p/ análise */}
-              <div className="bg-white rounded-xl border border-gray-200">
-                <button
-                  onClick={() => setTechOpen(o => !o)}
-                  className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors rounded-xl"
-                >
-                  <span>Detalhes técnicos</span>
-                  <svg className={`w-4 h-4 transition-transform ${techOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {techOpen && (
-                  <div className="px-5 pb-5 space-y-4">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <Badge color="purple">{clusterResult.total_submissions} submissões</Badge>
-                      <Badge color="gray">{clusterResult.clusters.length} grupos</Badge>
-                      {clusterResult.silhouette_score != null && (
-                        <Badge color={clusterResult.silhouette_score >= 0.5 ? 'green' : clusterResult.silhouette_score >= 0.25 ? 'yellow' : 'gray'}>
-                          Silhouette: {clusterResult.silhouette_score.toFixed(3)}
-                        </Badge>
-                      )}
-                      <Badge color="gray">Estratégia: comportamental</Badge>
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-medium text-gray-700 mb-4">Projeção UMAP 2D</h2>
-                      <ResponsiveContainer width="100%" height={360}>
-                        <ScatterChart margin={{ top: 8, right: 24, bottom: 8, left: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                          <XAxis dataKey="x" name="UMAP 1" tick={{ fontSize: 10 }} label={{ value: 'UMAP 1', position: 'insideBottom', offset: -4, fontSize: 10 }} />
-                          <YAxis dataKey="y" name="UMAP 2" tick={{ fontSize: 10 }} label={{ value: 'UMAP 2', angle: -90, position: 'insideLeft', fontSize: 10 }} />
-                          <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }} formatter={(v, name) => [v.toFixed(3), name]} />
-                          <Legend wrapperStyle={{ fontSize: 12 }} />
-                          {clusterResult.clusters.map(c => (
-                            <Scatter
-                              key={c.cluster_id}
-                              name={`Grupo ${c.cluster_id} (${c.dominant_error})`}
-                              data={scatterByCluster(c)}
-                              fill={clusterColor(c.cluster_id)}
-                            />
-                          ))}
-                          {noisePoints.length > 0 && (
-                            <Scatter name="Ruído" data={noisePoints} fill="#d1d5db" />
-                          )}
-                        </ScatterChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                )}
-              </div>
             </>
           )}
         </div>
