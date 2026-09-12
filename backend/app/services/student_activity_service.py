@@ -235,15 +235,17 @@ def submeter(student: Student, exam_id: int, question_number: str, code: str,
 
 
 def _agrupar_em_silencio(question_id: int, db: Session) -> None:
-    """Refaz o agrupamento da questão a cada envio, para o grupo existir no fluxo
-    real da turma. Sem UMAP, então é barato.
+    """Refaz o agrupamento da questão a cada envio.
+
+    É o mesmo agrupamento de sempre, o do TCC, e a única mudança é a frequência:
+    antes só rodava no fim do lote ou no botão do professor, e no fluxo real da
+    turma, em que o aluno envia um a um, nenhum dos dois disparava.
 
     Falha aqui nunca pode derrubar a submissão: o aluno já recebeu o diagnóstico
-    dele, que é o que importa nesta requisição. O agrupamento é do professor e
-    pode esperar o próximo envio ou o botão de recalcular."""
+    dele, que é o que importa nesta requisição."""
     try:
-        from app.ml.cluster import atribuir_grupos
-        atribuir_grupos(question_id, db)
+        from app.ml.cluster import cluster_question
+        cluster_question(question_id, db)
     except Exception:  # noqa: BLE001 — agrupamento é secundário à resposta do aluno
         logger.exception("Falha ao agrupar a questão %s após o envio", question_id)
         db.rollback()

@@ -482,8 +482,8 @@ class TestAgrupamentoNoEnvioDoAluno:
             submission_factory(questao.id, code=f"int main(){{return {i};}}",
                                error_category="Saída Incorreta", all_tests_passed=False)
 
-        from app.ml.cluster import atribuir_grupos
-        atribuir_grupos(questao.id, db)
+        from app.ml.cluster import cluster_question
+        cluster_question(questao.id, db)
         grupo = db.query(QuestionCluster).filter(
             QuestionCluster.question_id == questao.id).first()
         grupo.insight = "Este grupo confundiu a condição de parada."
@@ -512,7 +512,7 @@ class TestAgrupamentoNoEnvioDoAluno:
         def explode(*a, **k):
             raise RuntimeError("agrupamento quebrou")
 
-        monkeypatch.setattr(cluster_mod, "atribuir_grupos", explode)
+        monkeypatch.setattr(cluster_mod, "cluster_question", explode)
         resp = self._envia(client, token, prova, "int main(){return 9;}", monkeypatch)
         assert resp.status_code == 201
         assert resp.json()["tentativa"]["error_category"] == "Saída Incorreta"
@@ -523,14 +523,14 @@ class TestRetornoDoProfessorAoGrupo:
     mesmo jeito. Era o passo 4 da jornada dele, e não existia."""
 
     def _prepara_grupo(self, db, prova, submission_factory, quantos=3):
-        from app.ml.cluster import atribuir_grupos
+        from app.ml.cluster import cluster_question
         from app.models.orm import QuestionCluster
 
         questao = next(q for q in prova.questions if q.number == "1")
         for i in range(quantos):
             submission_factory(questao.id, code=f"int main(){{return {i};}}",
                                error_category="Saída Incorreta", all_tests_passed=False)
-        atribuir_grupos(questao.id, db)
+        cluster_question(questao.id, db)
         grupo = db.query(QuestionCluster).filter(
             QuestionCluster.question_id == questao.id).first()
         return questao, grupo
@@ -574,7 +574,7 @@ class TestRetornoDoProfessorAoGrupo:
     def test_resposta_chega_na_tentativa_do_aluno(
         self, client, token, prova, db, tentativa_factory, submission_factory
     ):
-        from app.ml.cluster import atribuir_grupos
+        from app.ml.cluster import cluster_question
         from app.models.orm import QuestionCluster
 
         questao = next(q for q in prova.questions if q.number == "1")
@@ -582,7 +582,7 @@ class TestRetornoDoProfessorAoGrupo:
             submission_factory(questao.id, code=f"int main(){{return {i};}}",
                                error_category="Saída Incorreta", all_tests_passed=False)
         minha = tentativa_factory(_aluno_id(client, token), categoria="Saída Incorreta")
-        atribuir_grupos(questao.id, db)
+        cluster_question(questao.id, db)
         db.expire_all()
 
         grupo = db.query(QuestionCluster).filter(
@@ -599,7 +599,7 @@ class TestRetornoDoProfessorAoGrupo:
     def test_aluno_de_outro_grupo_nao_recebe(
         self, client, token, prova, db, tentativa_factory, submission_factory
     ):
-        from app.ml.cluster import atribuir_grupos
+        from app.ml.cluster import cluster_question
         from app.models.orm import QuestionCluster
 
         questao = next(q for q in prova.questions if q.number == "1")
@@ -608,7 +608,7 @@ class TestRetornoDoProfessorAoGrupo:
                                error_category="Saída Incorreta", all_tests_passed=False)
         # O aluno erra de outro jeito, então cai em outro grupo.
         tentativa_factory(_aluno_id(client, token), categoria="Tudo no Main")
-        atribuir_grupos(questao.id, db)
+        cluster_question(questao.id, db)
         db.expire_all()
 
         outro = db.query(QuestionCluster).filter(
@@ -627,7 +627,7 @@ class TestRetornoDoProfessorAoGrupo:
     ):
         """O risco que a chave estável existe para evitar: re-agrupar renumera os
         rótulos, e a resposta não pode migrar de grupo nem sumir."""
-        from app.ml.cluster import atribuir_grupos
+        from app.ml.cluster import cluster_question
         from app.models.orm import QuestionCluster
 
         questao, grupo = self._prepara_grupo(db, prova, submission_factory)
@@ -639,7 +639,7 @@ class TestRetornoDoProfessorAoGrupo:
         for i in range(4):
             submission_factory(questao.id, code=f"int x{i}(){{return {i};}}",
                                error_category="Tudo no Main", all_tests_passed=False)
-        atribuir_grupos(questao.id, db)
+        cluster_question(questao.id, db)
 
         db.expire_all()
         depois = db.query(QuestionCluster).filter(

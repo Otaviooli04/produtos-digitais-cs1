@@ -431,21 +431,10 @@ class ClusterInfo(BaseModel):
     representative_code: Optional[str]
 
 
-class ScatterPoint(BaseModel):
-    submission_id: int
-    x: float
-    y: float
-    cluster_id: int
-    matricula: Optional[str] = None
-
-
 class ClusteringResponse(BaseModel):
     question_number: str
     total_submissions: int
     clusters: List[ClusterInfo]
-    scatter: List[ScatterPoint]
-    strategy: str
-    silhouette_score: Optional[float] = None
 
 
 class ClusterInsight(BaseModel):

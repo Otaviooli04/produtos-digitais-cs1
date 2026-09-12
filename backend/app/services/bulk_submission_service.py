@@ -120,7 +120,7 @@ def _process_bulk_job(db: Session, job_id: int, exam_id: int, entries: list[dict
 def _cluster_exam_questions(db: Session, exam_id: int) -> None:
     """Agrupa cada questão da prova com submissões suficientes. Best-effort."""
     from app.models.orm import Exam
-    from app.ml.cluster import cluster_question, FeatureStrategy
+    from app.ml.cluster import cluster_question
 
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if not exam:
@@ -129,6 +129,6 @@ def _cluster_exam_questions(db: Session, exam_id: int) -> None:
         if len(q.submissions) < 3:
             continue
         try:
-            cluster_question(q.id, db, strategy=FeatureStrategy.TFIDF_BEHAVIORAL)
+            cluster_question(q.id, db)
         except Exception:  # noqa: BLE001 — agrupamento não pode quebrar o lote
             db.rollback()
