@@ -33,6 +33,8 @@ const TurmaPage = lazy(() => import('./pages/aluno/TurmaPage'))
 const AtividadePage = lazy(() => import('./pages/aluno/AtividadePage'))
 const QuestaoPage = lazy(() => import('./pages/aluno/QuestaoPage'))
 const ProgressoPage = lazy(() => import('./pages/aluno/ProgressoPage'))
+const TreinoPage = lazy(() => import('./pages/aluno/TreinoPage'))
+const ExercicioTreinoPage = lazy(() => import('./pages/aluno/ExercicioTreinoPage'))
 const AlunoPerfilPage = lazy(() => import('./pages/aluno/AlunoPerfilPage'))
 
 function PageFallback() {
@@ -62,6 +64,8 @@ export default function App() {
                   <Route path="aluno/turmas" element={<TurmasPage />} />
                   <Route path="aluno/turmas/:turmaId" element={<TurmaPage />} />
                   <Route path="aluno/progresso" element={<ProgressoPage />} />
+                  <Route path="aluno/treino" element={<TreinoPage />} />
+                  <Route path="aluno/treino/:exercicioId" element={<ExercicioTreinoPage />} />
                   <Route path="aluno/perfil" element={<AlunoPerfilPage />} />
                   <Route path="aluno/atividades/:examId" element={<AtividadePage />} />
                   <Route path="aluno/atividades/:examId/questoes/:numero" element={<QuestaoPage />} />

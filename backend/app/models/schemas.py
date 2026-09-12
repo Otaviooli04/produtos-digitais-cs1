@@ -648,3 +648,74 @@ class EffortReportResponse(BaseModel):
     minutos_por_item: int
     minutos_economizados: int
     questoes: List[EffortReportQuestion] = []
+
+
+# ── Aluno: trilha de treino ──────────────────────────────────────────────────
+
+class CategoriaParaTreinar(BaseModel):
+    error_category: str
+    ocorrencias: int
+    o_que_fazer: str = ""
+    exercicios_gerados: int = 0
+    exercicios_resolvidos: int = 0
+    tem_pendente: bool = False
+
+
+class ExercicioResumo(BaseModel):
+    id: int
+    titulo: str
+    error_category: str
+    resolvido: bool = False
+    tentativas: int = 0
+    created_at: str = ""
+
+
+class TentativaDeTreinoResponse(BaseModel):
+    id: int
+    attempt_number: int
+    code: str
+    all_tests_passed: Optional[bool] = None
+    compile_error: str = ""
+    warnings: str = ""
+    error_category: str = ""
+    pedagogical_diagnosis: str = ""
+    actionable_feedback: str = ""
+    submitted_at: str = ""
+    tests_passed: int = 0
+    tests_total: int = 0
+    test_results: List[TestResult] = []
+
+
+class ExercicioDetalhe(ExercicioResumo):
+    enunciado: str
+    required_structures: List[str] = []
+    total_testes: int = 0
+    # True quando a trilha devolveu um exercício que já existia em vez de gastar
+    # uma geração nova, o que a tela avisa ao aluno.
+    reaproveitado: bool = False
+    tentativas_lista: List[TentativaDeTreinoResponse] = []
+
+
+class TrilhaResponse(BaseModel):
+    categorias: List[CategoriaParaTreinar] = []
+    exercicios: List[ExercicioResumo] = []
+    geracoes_restantes_hoje: int = 0
+
+
+class TreinoGerarRequest(BaseModel):
+    error_category: Optional[str] = None
+
+
+class TreinoSubmissaoRequest(BaseModel):
+    code: str
+
+
+class TreinoSubmissaoResponse(BaseModel):
+    tentativa: TentativaDeTreinoResponse
+    tentativas: int
+    resolvido: bool = False
+    structure_check: Optional[StructureCheck] = None
+
+
+class ReportarExercicioRequest(BaseModel):
+    motivo: str = ""

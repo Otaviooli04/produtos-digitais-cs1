@@ -36,3 +36,18 @@ export const getErrosRecorrentes = () => alunoApi.get('/aluno/erros-recorrentes'
 
 export const explicarTentativa = (submissionId) =>
   alunoApi.post(`/aluno/tentativas/${submissionId}/explicacao`)
+
+// ── trilha de treino ─────────────────────────────────────────────────────────
+
+export const getTrilha = () => alunoApi.get('/aluno/treino')
+
+export const gerarExercicio = (errorCategory = null) =>
+  alunoApi.post('/aluno/treino/gerar', { error_category: errorCategory })
+
+export const getExercicio = (exercicioId) => alunoApi.get(`/aluno/treino/${exercicioId}`)
+
+export const treinar = (exercicioId, code) =>
+  alunoApi.post(`/aluno/treino/${exercicioId}/tentativas`, { code })
+
+export const reportarExercicio = (exercicioId, motivo) =>
+  alunoApi.post(`/aluno/treino/${exercicioId}/reportar`, { motivo })

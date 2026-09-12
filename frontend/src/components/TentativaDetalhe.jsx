@@ -9,13 +9,20 @@ import { categoriaColor, formatarData } from '../utils/atividade'
  * Resultado de uma tentativa como o aluno precisa ler: o que aconteceu, por que
  * e o que fazer. Mesmo bloco serve para o envio recém-feito e para o histórico.
  */
-export default function TentativaDetalhe({ tentativa, functionCheck = null, mostrarCodigo = false }) {
+export default function TentativaDetalhe({
+  tentativa, functionCheck = null, mostrarCodigo = false, permitirExplicacao = true,
+}) {
   const [explicacao, setExplicacao] = useState(tentativa?.explicacao || null)
   const [gerando, setGerando] = useState(false)
   const [erroExplicacao, setErroExplicacao] = useState('')
 
   if (!tentativa) return null
 
+  // A explicação individual é da tentativa de PROVA, que tem `submission_id` e
+  // cache próprio. Tentativa de treino não passa por ali: ela já vem com o
+  // diagnóstico e o que fazer, e pedir explicação seria chamada de LLM por
+  // tentativa num lugar onde as tentativas são ilimitadas.
+  const podeExplicar = permitirExplicacao && tentativa.submission_id != null
   const temErro = tentativa.error_category && tentativa.error_category !== 'Correto'
 
   const pedirExplicacao = async () => {
@@ -50,7 +57,7 @@ export default function TentativaDetalhe({ tentativa, functionCheck = null, most
           </div>
         )}
 
-        {temErro && (explicacao ? (
+        {temErro && podeExplicar && (explicacao ? (
           <div className="mt-3 rounded-lg bg-purple-50 border border-purple-100 px-4 py-2.5">
             <p className="text-xs font-medium text-purple-800 mb-0.5">Explicando o seu código</p>
             <p className="text-xs text-purple-700 whitespace-pre-wrap">{explicacao}</p>
