@@ -4,6 +4,9 @@ from collections import Counter, defaultdict
 
 # UNIFEI: aprovado é quem obtém pelo menos 60% da prova (por NOTA).
 APPROVAL_THRESHOLD = 0.60
+# Variação em pontos percentuais a partir da qual a dificuldade mudou de
+# verdade entre a primeira e a última prova. Abaixo disso é ruído da amostra.
+VARIACAO_RELEVANTE = 5.0
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.orm import Exam, Question, Submission, Turma
@@ -113,6 +116,7 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
     all_submissions: list[Submission] = []
     provas = []
     pass_rates = []
+    erros_por_prova: list[tuple] = []
 
     for exam in sorted(turma.exams, key=lambda e: e.created_at):
         exam_subs: list[Submission] = []
@@ -156,14 +160,24 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
         if pass_rate is not None:
             pass_rates.append(pass_rate)
 
+        erros_da_prova = Counter(
+            s.error_category for s in exam_subs
+            if s.error_category and s.error_category != "Correto"
+        )
         provas.append({
             "id": exam.id,
             "filename": exam.filename,
+            "titulo": exam.titulo,
             "created_at": exam.created_at.isoformat(),
             "pass_rate": round(pass_rate, 1) if pass_rate is not None else None,
             "total_submissoes": len(exam_subs),
             "total_alunos": total_alunos_exam,
+            "top_erros": [
+                {"error_category": cat, "count": cnt}
+                for cat, cnt in erros_da_prova.most_common(5)
+            ],
         })
+        erros_por_prova.append((exam, exam_subs, erros_da_prova))
 
     total_alunos = len({s.matricula for s in all_submissions if s.matricula})
     total_submissoes = len(all_submissions)
@@ -185,4 +199,57 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
         "total_submissoes": total_submissoes,
         "provas": provas,
         "top_erros": top_erros,
+        "trajetoria": _trajetoria_de_erros(erros_por_prova),
     }
+
+
+def _trajetoria_de_erros(erros_por_prova: list[tuple]) -> list[dict]:
+    """A dificuldade que atravessa a turma de uma prova para a outra.
+
+    `top_erros` soma tudo e responde qual erro é o mais comum da turma. Isso
+    aqui responde outra coisa: se ele está caindo ou voltando ao longo do
+    semestre. Só entram categorias presentes em duas ou mais provas, porque com
+    uma só não existe trajetória.
+
+    A comparação é por proporção, não por contagem: prova com mais envios teria
+    mais ocorrências de tudo, e o número cresceria sem a dificuldade ter crescido."""
+    series: dict[str, list[dict]] = defaultdict(list)
+
+    for exam, exam_subs, erros in erros_por_prova:
+        com_erro = sum(erros.values())
+        if not com_erro:
+            continue
+        for categoria, ocorrencias in erros.items():
+            alunos = len({
+                s.matricula for s in exam_subs
+                if s.error_category == categoria and s.matricula
+            })
+            series[categoria].append({
+                "exam_id": exam.id,
+                "titulo": exam.titulo or exam.filename or f"Atividade {exam.id}",
+                "ocorrencias": ocorrencias,
+                "alunos": alunos,
+                "proporcao": round(ocorrencias / com_erro * 100, 1),
+            })
+
+    trajetoria = []
+    for categoria, pontos in series.items():
+        if len(pontos) < 2:
+            continue
+        delta = pontos[-1]["proporcao"] - pontos[0]["proporcao"]
+        if delta >= VARIACAO_RELEVANTE:
+            tendencia = "subindo"
+        elif delta <= -VARIACAO_RELEVANTE:
+            tendencia = "caindo"
+        else:
+            tendencia = "estavel"
+        trajetoria.append({
+            "error_category": categoria,
+            "provas": len(pontos),
+            "total": sum(p["ocorrencias"] for p in pontos),
+            "tendencia": tendencia,
+            "pontos": pontos,
+        })
+
+    trajetoria.sort(key=lambda t: (-t["provas"], -t["total"]))
+    return trajetoria

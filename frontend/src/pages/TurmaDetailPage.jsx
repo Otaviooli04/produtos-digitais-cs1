@@ -6,6 +6,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import ListControls from '../components/ListControls'
 import Badge from '../components/Badge'
 import BarList from '../components/BarList'
+import TrajetoriaDeErros from '../components/TrajetoriaDeErros'
 import { shortError } from '../utils/errorLabels'
 
 const SORT_OPTIONS = [
@@ -233,6 +234,10 @@ export default function TurmaDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {analytics?.trajetoria?.length > 0 && (
+        <TrajetoriaDeErros trajetoria={analytics.trajetoria} />
       )}
 
       {/* Provas */}

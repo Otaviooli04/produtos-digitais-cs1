@@ -464,10 +464,28 @@ class InsightsResponse(BaseModel):
 class ExamAnalytics(BaseModel):
     id: int
     filename: str
+    titulo: Optional[str] = None
     created_at: str
     pass_rate: Optional[float]
     total_submissoes: int
     total_alunos: int
+    top_erros: List[ErrorCount] = []
+
+
+class PontoDaTrajetoria(BaseModel):
+    exam_id: int
+    titulo: str
+    ocorrencias: int
+    alunos: int
+    proporcao: float  # dos envios com erro daquela prova
+
+
+class TrajetoriaDeErro(BaseModel):
+    error_category: str
+    provas: int          # em quantas provas a categoria apareceu
+    total: int
+    tendencia: str       # 'subindo' | 'caindo' | 'estavel'
+    pontos: List[PontoDaTrajetoria] = []
 
 
 class TurmaAnalyticsResponse(BaseModel):
@@ -477,6 +495,7 @@ class TurmaAnalyticsResponse(BaseModel):
     total_submissoes: int
     provas: List[ExamAnalytics]
     top_erros: List[ErrorCount]
+    trajetoria: List[TrajetoriaDeErro] = []
 
 
 # ── Aluno: atividades, tentativas e progresso ────────────────────────────────
