@@ -21,7 +21,24 @@ EXERCICIO_FAKE = {
         {"input": "0", "expected_output": "0"},
     ],
     "required_structures": ["For"],
+    "solucao_referencia": (
+        "#include <stdio.h>\nint main(){int n,s=0;scanf(\"%d\",&n);"
+        "for(int i=1;i<=n;i++)s+=i;printf(\"%d\\n\",s);return 0;}"
+    ),
 }
+
+
+def _resultado_referencia(passou_por_caso):
+    """Resposta do evaluate_code ao rodar a solução de referência."""
+    return {
+        "compile_error": "",
+        "warnings": "",
+        "all_tests_passed": all(passou_por_caso),
+        "diagnosis": {"error_category": "Correto", "pedagogical_diagnosis": "",
+                      "actionable_feedback": ""},
+        "test_results": [{"passed": p} for p in passou_por_caso],
+        "structure_check": None,
+    }
 
 
 def _auth(token):
@@ -60,6 +77,9 @@ def erros_do_aluno(db, aluno, exam_factory):
 
 @pytest.fixture()
 def gemini_ok(monkeypatch):
+    """Gemini devolve o exercício fake e a referência confirma todos os casos.
+    O Docker fica de fora: `conferir_casos` roda de verdade sobre um resultado
+    de execução falso."""
     chamadas = []
 
     def fake(categoria, diagnostico, exemplos):
@@ -67,7 +87,22 @@ def gemini_ok(monkeypatch):
         return dict(EXERCICIO_FAKE)
 
     monkeypatch.setattr("app.services.treino_service.gerar_exercicio", fake)
+    monkeypatch.setattr("app.services.treino_service.evaluate_code",
+                        lambda *a, **k: _resultado_referencia([True, True, True]))
     return chamadas
+
+
+@pytest.fixture()
+def sem_thread(monkeypatch, db):
+    """Pré-geração roda na hora e na sessão do teste.
+
+    Em produção `_em_segundo_plano` abre uma `SessionLocal` própria, que aponta
+    para o banco real. Num teste isso escaparia do banco de teste, então aqui a
+    tarefa recebe a sessão da suíte. Mesmo motivo do `run_jobs_sync` do conftest."""
+    def sincrono(alvo):
+        alvo(db)
+
+    monkeypatch.setattr("app.services.treino_service._em_segundo_plano", sincrono)
 
 
 class TestOQueEntraNaTrilha:
@@ -314,3 +349,150 @@ class TestValidacaoDoQueOModeloDevolve:
 
         with pytest.raises(ExercicioInvalido):
             _validar("Claro! Aqui está o exercício que você pediu.")
+
+
+class TestConferenciaPelaSolucaoDeReferencia:
+    """O modelo erra aritmética. Numa amostra real ele disse que a soma dos
+    dígitos dos múltiplos de 3 entre 1 e 10 é 9, quando é 18. Caso de teste
+    errado reprova o aluno que acertou."""
+
+    def test_caso_que_nao_bate_com_a_referencia_e_descartado(self, db, aluno, erros_do_aluno, monkeypatch):
+        from app.services.treino_service import gerar_para_categoria
+
+        monkeypatch.setattr("app.services.treino_service.gerar_exercicio",
+                            lambda *a, **k: dict(EXERCICIO_FAKE))
+        # O segundo caso discorda da saída real da referência.
+        monkeypatch.setattr("app.services.treino_service.evaluate_code",
+                            lambda *a, **k: _resultado_referencia([True, False, True]))
+
+        exercicio = gerar_para_categoria(aluno, None, db)
+        assert exercicio["total_testes"] == 2
+        salvo = db.get(ExercicioGerado, exercicio["id"])
+        assert [c["input"] for c in salvo.casos_teste] == ["3", "0"]
+
+    def test_poucos_casos_confirmados_recusa_o_exercicio(self, db, aluno, erros_do_aluno, monkeypatch):
+        from app.services.treino_service import TreinoIndisponivel, gerar_para_categoria
+
+        monkeypatch.setattr("app.services.treino_service.gerar_exercicio",
+                            lambda *a, **k: dict(EXERCICIO_FAKE))
+        monkeypatch.setattr("app.services.treino_service.evaluate_code",
+                            lambda *a, **k: _resultado_referencia([True, False, False]))
+
+        with pytest.raises(TreinoIndisponivel):
+            gerar_para_categoria(aluno, None, db)
+        assert db.query(ExercicioGerado).count() == 0, "exercicio torto nao pode ser gravado"
+
+    def test_referencia_que_nao_compila_recusa(self, db, aluno, erros_do_aluno, monkeypatch):
+        from app.services.treino_service import TreinoIndisponivel, gerar_para_categoria
+
+        monkeypatch.setattr("app.services.treino_service.gerar_exercicio",
+                            lambda *a, **k: dict(EXERCICIO_FAKE))
+        monkeypatch.setattr("app.services.treino_service.evaluate_code", lambda *a, **k: {
+            "compile_error": "main.c:3: error: expected ';'",
+            "warnings": "", "all_tests_passed": False,
+            "diagnosis": {"error_category": "Erro de Compilação",
+                          "pedagogical_diagnosis": "", "actionable_feedback": ""},
+            "test_results": [], "structure_check": None,
+        })
+
+        with pytest.raises(TreinoIndisponivel):
+            gerar_para_categoria(aluno, None, db)
+        assert db.query(ExercicioGerado).count() == 0
+
+    def test_gerador_recusa_resposta_sem_solucao_de_referencia(self):
+        import json
+
+        from app.llm.exercise_generator import ExercicioInvalido, _validar
+
+        sem_ref = {k: v for k, v in EXERCICIO_FAKE.items() if k != "solucao_referencia"}
+        with pytest.raises(ExercicioInvalido):
+            _validar(json.dumps(sem_ref))
+
+
+class TestPreGeracao:
+    """Tira o Gemini do caminho do aluno: com um exercício já pronto, abrir a
+    trilha custa uma consulta ao banco em vez de nove segundos de geração."""
+
+    def test_resolver_prepara_o_proximo(self, db, aluno, erros_do_aluno, gemini_ok, sem_thread, monkeypatch):
+        from app.services import treino_service
+
+        exercicio = treino_service.gerar_para_categoria(aluno, None, db)
+        categoria = exercicio["error_category"]
+
+        # O envio acerta; o evaluate_code do treino é o mesmo mock da referência.
+        treino_service.treinar(aluno, exercicio["id"], "int main(){}", db)
+
+        db.expire_all()
+        pendentes = db.query(ExercicioGerado).filter(
+            ExercicioGerado.student_id == aluno.id,
+            ExercicioGerado.error_category == categoria,
+            ExercicioGerado.resolvido.is_(False)).count()
+        assert pendentes == 1, "o proximo tinha que estar pronto"
+
+    def test_abrir_a_trilha_aquece_a_categoria_mais_forte(
+        self, db, aluno, erros_do_aluno, gemini_ok, sem_thread
+    ):
+        from app.services.treino_service import trilha
+
+        assert db.query(ExercicioGerado).count() == 0
+        trilha(aluno, db)
+        db.expire_all()
+        (gerado,) = db.query(ExercicioGerado).all()
+        assert gerado.error_category == "Acesso Fora dos Limites: Off-by-One"
+
+    def test_nao_gera_quando_ja_existe_pendente(
+        self, db, aluno, erros_do_aluno, gemini_ok, sem_thread
+    ):
+        from app.services.treino_service import trilha
+
+        trilha(aluno, db)
+        db.expire_all()
+        trilha(aluno, db)
+        db.expire_all()
+        assert len(gemini_ok) == 1, "a segunda visita nao pode gastar geracao"
+
+    def test_teto_do_dia_vale_para_a_pre_geracao(
+        self, db, aluno, erros_do_aluno, gemini_ok, sem_thread
+    ):
+        from app.llm.exercise_generator import GERACOES_POR_DIA
+        from app.services.treino_service import trilha
+
+        for i in range(GERACOES_POR_DIA):
+            db.add(ExercicioGerado(
+                student_id=aluno.id, error_category="Outra Coisa",
+                titulo=f"g{i}", enunciado="x" * 30,
+                casos_teste=[{"input": "", "expected_output": "1"}],
+                resolvido=True, created_at=datetime.utcnow()))
+        db.commit()
+
+        trilha(aluno, db)
+        db.expire_all()
+        assert len(gemini_ok) == 0, "sem teto, a pre-geracao torraria a cota"
+
+    def test_geracao_em_voo_nao_duplica(self, db, aluno, erros_do_aluno, gemini_ok, monkeypatch):
+        """F5 na trilha nao pode disparar uma geracao por recarga."""
+        from app.services import treino_service
+
+        disparos = []
+        monkeypatch.setattr(treino_service, "_em_segundo_plano",
+                            lambda alvo: disparos.append(alvo))
+
+        treino_service.trilha(aluno, db)
+        treino_service.trilha(aluno, db)
+        assert len(disparos) == 1, "a segunda chamada achou a chave em voo"
+
+    def test_sem_categoria_entrega_o_que_ja_esta_pronto(
+        self, db, aluno, erros_do_aluno, gemini_ok, sem_thread
+    ):
+        """A regra antiga preferia categoria SEM pendente, então ignorava o
+        exercício pré-gerado e fazia o aluno esperar uma geração nova."""
+        from app.services.treino_service import gerar_para_categoria, trilha
+
+        trilha(aluno, db)          # aquece Off-by-One em segundo plano
+        db.expire_all()
+        antes = len(gemini_ok)
+
+        escolhido = gerar_para_categoria(aluno, None, db)
+        assert escolhido["reaproveitado"] is True
+        assert escolhido["error_category"] == "Acesso Fora dos Limites: Off-by-One"
+        assert len(gemini_ok) == antes, "nao podia gerar tendo um pronto"

@@ -13,6 +13,8 @@ Três decisões de produto moram aqui:
 - **Teto de custo na geração**, não no treino: gerar é chamada de LLM por aluno,
   treinar no que já existe é de graça.
 """
+import logging
+import threading
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -22,7 +24,13 @@ from app.engine.evaluators.code_evaluator import evaluate_code
 from app.llm.exercise_generator import GERACOES_POR_DIA, ExercicioInvalido, gerar_exercicio
 from app.models.orm import ExercicioGerado, Student, Submission, TentativaDeTreino
 
+logger = logging.getLogger(__name__)
+
 CATEGORIA_CORRETA = "Correto"
+
+# Quantos casos precisam bater com a solução de referência para o exercício
+# valer. Abaixo disso ele é descartado em vez de chegar torto ao aluno.
+MIN_CASOS_CONFIRMADOS = 2
 
 
 class TreinoIndisponivel(RuntimeError):
@@ -73,6 +81,12 @@ def categorias_para_treinar(student: Student, db: Session) -> list[dict]:
 
 
 def trilha(student: Student, db: Session) -> dict:
+    categorias = categorias_para_treinar(student, db)
+    # Aquece a categoria que ele mais erra, que é a que o botão grande oferece.
+    # Sem exercício pendente ali, o primeiro clique esperaria o Gemini.
+    if categorias and not categorias[0]["tem_pendente"]:
+        preparar_proximo(student.id, categorias[0]["error_category"])
+
     exercicios = (
         db.query(ExercicioGerado)
         .filter(ExercicioGerado.student_id == student.id,
@@ -81,7 +95,7 @@ def trilha(student: Student, db: Session) -> dict:
         .all()
     )
     return {
-        "categorias": categorias_para_treinar(student, db),
+        "categorias": categorias,
         "exercicios": [_exercicio_resumo(e) for e in exercicios],
         "geracoes_restantes_hoje": _restantes_hoje(student, db),
     }
@@ -117,7 +131,12 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
         if not alvo:
             raise TreinoIndisponivel("Você não tem erros nessa categoria.")
     else:
-        alvo = next((c for c in categorias if not c["tem_pendente"]), categorias[0])
+        # Sem categoria pedida, vale o que já está pronto: a lista vem ordenada
+        # pelo que ele mais erra, e entregar na hora um exercício da categoria
+        # certa vale mais do que fazer o aluno esperar uma geração de outra.
+        # A regra era a inversa antes de existir pré-geração, e nesse arranjo
+        # ela passava por cima do exercício que já estava esperando.
+        alvo = next((c for c in categorias if c["tem_pendente"]), categorias[0])
 
     pendente = (
         db.query(ExercicioGerado)
@@ -136,29 +155,140 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
             f"Você já gerou {GERACOES_POR_DIA} exercícios nas últimas 24 horas. "
             "Treinar nos que já estão aqui continua liberado.")
 
-    ja_vistos = [
-        e.enunciado for e in db.query(ExercicioGerado).filter(
-            ExercicioGerado.student_id == student.id,
-            ExercicioGerado.error_category == alvo["error_category"]).all()
-    ]
     try:
-        dados = gerar_exercicio(alvo["error_category"], alvo["o_que_fazer"], ja_vistos)
+        exercicio = _gerar_e_salvar(student, alvo["error_category"], alvo["o_que_fazer"], db)
     except ExercicioInvalido as e:
         raise TreinoIndisponivel(
             "Não consegui montar um exercício bom agora. Tente de novo.") from e
+    return _exercicio_detalhe(exercicio, db)
+
+
+def _gerar_e_salvar(student: Student, categoria: str, diagnostico: str,
+                    db: Session) -> ExercicioGerado:
+    """Gera, confere os casos contra a solução de referência e grava.
+
+    Levanta `ExercicioInvalido` quando o que voltou não serve, e nesse caso nada
+    é gravado: melhor o aluno tentar de novo do que treinar em exercício torto."""
+    ja_vistos = [
+        e.enunciado for e in db.query(ExercicioGerado).filter(
+            ExercicioGerado.student_id == student.id,
+            ExercicioGerado.error_category == categoria).all()
+    ]
+    dados = gerar_exercicio(categoria, diagnostico, ja_vistos)
+
+    confirmados = conferir_casos(dados)
+    if len(confirmados) < MIN_CASOS_CONFIRMADOS:
+        raise ExercicioInvalido(
+            f"só {len(confirmados)} caso(s) bateram com a solução de referência")
 
     exercicio = ExercicioGerado(
         student_id=student.id,
-        error_category=alvo["error_category"],
+        error_category=categoria,
         titulo=dados["titulo"],
         enunciado=dados["enunciado"],
-        casos_teste=dados["casos_teste"],
+        casos_teste=confirmados,
         required_structures=dados["required_structures"],
     )
     db.add(exercicio)
     db.commit()
     db.refresh(exercicio)
-    return _exercicio_detalhe(exercicio, db)
+    return exercicio
+
+
+def conferir_casos(dados: dict) -> list[dict]:
+    """Compila a solução de referência e roda contra as entradas, mantendo só os
+    casos em que a saída real bate com a que o modelo escreveu.
+
+    Isso existe porque o modelo erra aritmética. Numa amostra real ele afirmou
+    que a soma dos dígitos dos múltiplos de 3 entre 1 e 10 é 9, quando é 18, e
+    dois dos quatro casos daquele exercício estavam errados. Caso de teste
+    errado reprova o aluno que acertou, que é o oposto do que o produto existe
+    para fazer.
+
+    Guardar direto o que a referência imprime seria mais permissivo, mas
+    confiaria numa solução que ninguém leu. Exigir que os dois caminhos
+    concordem é o que dá confiança: são duas derivações independentes da mesma
+    resposta, uma escrita e outra executada.
+
+    A referência roda sem exigência de estrutura: aqui só interessa a saída."""
+    referencia = dados.get("solucao_referencia") or ""
+    casos = dados.get("casos_teste") or []
+    if not referencia or not casos:
+        return []
+
+    resultado = evaluate_code(referencia, casos, [], [], [])
+    if resultado.get("compile_error"):
+        raise ExercicioInvalido("a solução de referência não compila")
+
+    return [
+        caso for caso, r in zip(casos, resultado.get("test_results") or [])
+        if r.get("passed")
+    ]
+
+
+# ── pré-geração ──────────────────────────────────────────────────────────────
+
+# Chaves (aluno, categoria) com geração em voo. Sem isso, o aluno apertando F5
+# na trilha dispararia uma geração por recarga e torraria o teto do dia.
+_em_voo: set[tuple[int, str]] = set()
+_trava = threading.Lock()
+
+
+def _em_segundo_plano(alvo) -> None:
+    """Roda `alvo(db)` numa thread com sessão própria.
+
+    Espelha o `run_in_background` do professor, mas sem criar linha de
+    `ProcessingJob`: aquela fila é o acompanhamento das provas dele, e geração
+    de treino não tem o que fazer ali. Falha aqui é silenciosa de propósito, o
+    aluno só perde a vantagem de ter o próximo pronto e gera sob demanda."""
+    def _worker():
+        from app.models.database import SessionLocal
+        db = SessionLocal()
+        try:
+            alvo(db)
+        except Exception:  # noqa: BLE001 — pré-geração é conveniência, não função
+            logger.exception("Falha ao pré-gerar exercício de treino")
+        finally:
+            db.close()
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
+def preparar_proximo(student_id: int, categoria: str) -> None:
+    """Deixa o próximo exercício da categoria pronto antes de o aluno pedir.
+
+    É isto que tira a geração do caminho dele: com um exercício esperando, abrir
+    a trilha custa uma consulta ao banco em vez dos nove segundos do Gemini mais
+    os dois do Docker. Não faz nada quando já existe um pendente, quando o teto
+    do dia acabou ou quando já há geração em voo para a mesma chave."""
+    chave = (student_id, categoria)
+    with _trava:
+        if chave in _em_voo:
+            return
+        _em_voo.add(chave)
+
+    def _tarefa(db: Session):
+        try:
+            student = db.get(Student, student_id)
+            if not student:
+                return
+            pendente = db.query(ExercicioGerado).filter(
+                ExercicioGerado.student_id == student_id,
+                ExercicioGerado.error_category == categoria,
+                ExercicioGerado.resolvido.is_(False),
+                ExercicioGerado.reportado.is_(False),
+            ).first()
+            if pendente or _restantes_hoje(student, db) <= 0:
+                return
+            diagnostico = next(
+                (c["o_que_fazer"] for c in categorias_para_treinar(student, db)
+                 if c["error_category"] == categoria), "")
+            _gerar_e_salvar(student, categoria, diagnostico, db)
+        finally:
+            with _trava:
+                _em_voo.discard(chave)
+
+    _em_segundo_plano(_tarefa)
 
 
 # ── treino ───────────────────────────────────────────────────────────────────
@@ -209,10 +339,16 @@ def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict
         attempt_number=len(anteriores) + 1,
     )
     db.add(tentativa)
-    if resultado.get("all_tests_passed"):
+    acertou = bool(resultado.get("all_tests_passed"))
+    if acertou:
         exercicio.resolvido = True
     db.commit()
     db.refresh(tentativa)
+
+    # Acabou de resolver: o próximo daquela categoria já começa a ser preparado,
+    # então quando ele voltar à trilha não há espera.
+    if acertou:
+        preparar_proximo(student.id, exercicio.error_category)
 
     return {
         "tentativa": _tentativa_dict(tentativa),

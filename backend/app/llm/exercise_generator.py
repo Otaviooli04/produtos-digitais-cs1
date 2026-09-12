@@ -32,7 +32,11 @@ class ExercicioInvalido(RuntimeError):
 
 
 def gerar_exercicio(error_category: str, diagnostico: str, exemplos: list[str]) -> dict:
-    """Devolve `{titulo, enunciado, casos_teste, required_structures}`.
+    """Devolve `{titulo, enunciado, casos_teste, required_structures, solucao_referencia}`.
+
+    A solução de referência não é para o aluno ver: ela é executada contra as
+    entradas para conferir as saídas esperadas que o modelo escreveu. Modelo
+    erra aritmética, e um caso de teste errado reprova quem acertou.
 
     `exemplos` são enunciados que o aluno já viu, só para o modelo não repetir o
     mesmo problema com outras palavras."""
@@ -71,7 +75,8 @@ Responda apenas com JSON neste formato:
   "casos_teste": [
     {{"input": "entrada exata, com quebras de linha se houver", "expected_output": "saída exata"}}
   ],
-  "required_structures": ["For"]
+  "required_structures": ["For"],
+  "solucao_referencia": "#include <stdio.h>\\nint main() {{ ... }}"
 }}
 
 Regras obrigatórias:
@@ -82,7 +87,13 @@ Regras obrigatórias:
 - A saída esperada termina em quebra de linha implícita, não escreva "\\n".
 - `required_structures` só com os valores: For, While, DoWhile, If, Switch,
   Function, Recursion, Array, Pointer. Use lista vazia se nada for obrigatório.
-- Não escreva a solução, nem trechos de código em C, em lugar nenhum.
+- O `enunciado` não pode conter código em C nem entregar a solução. A solução
+  fica exclusivamente no campo `solucao_referencia`, que o aluno nunca vê.
+- `solucao_referencia` é um programa em C completo e compilável que resolve o
+  enunciado, lendo da entrada padrão e escrevendo na saída padrão.
+- Cada `expected_output` precisa ser exatamente o que a `solucao_referencia`
+  imprime para aquela entrada. Nós vamos compilar e rodar a referência para
+  conferir, e todo caso em que os dois discordarem será descartado.
 - Português do Brasil.
 """
 
@@ -129,9 +140,14 @@ def _validar(texto: str) -> dict:
         e for e in (dados.get("required_structures") or [])
         if isinstance(e, str) and e in ESTRUTURAS_VALIDAS
     ]
+    referencia = (dados.get("solucao_referencia") or "").strip()
+    if "main" not in referencia:
+        raise ExercicioInvalido("sem solução de referência para conferir os casos")
+
     return {
         "titulo": titulo[:120],
         "enunciado": enunciado,
         "casos_teste": limpos[:5],
         "required_structures": estruturas,
+        "solucao_referencia": referencia,
     }
