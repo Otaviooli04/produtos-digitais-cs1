@@ -421,3 +421,98 @@ class TestTituloDaAtividade:
         tentativa_factory(_aluno_id(client, token), categoria="Acesso Fora dos Limites: Off-by-One")
         data = client.get("/aluno/erros-recorrentes", headers=_auth(token)).json()
         assert data["erros"][0]["questoes"] == ["Lista 3 · Q1"]
+
+
+class TestAgrupamentoNoEnvioDoAluno:
+    """Antes disso o agrupamento só rodava no lote ou no botão do professor, e no
+    fluxo real da turma, em que o aluno envia um a um, nenhum dos dois disparava."""
+
+    def _envia(self, client, token, prova, codigo, monkeypatch, categoria="Saída Incorreta"):
+        from app.services import student_activity_service as svc
+
+        monkeypatch.setattr(svc, "evaluate_code", lambda *a, **k: {
+            "compile_error": "",
+            "warnings": "",
+            "all_tests_passed": categoria == "Correto",
+            "diagnosis": {
+                "error_category": categoria,
+                "pedagogical_diagnosis": "diagnóstico",
+                "actionable_feedback": "o que fazer",
+            },
+            "ast_structures": [],
+            "ast_functions": [],
+            "test_results": [],
+        })
+        return client.post(
+            f"/aluno/atividades/{prova.id}/questoes/1/submissoes",
+            json={"code": codigo},
+            headers=_auth(token),
+        )
+
+    def test_grupo_existe_sem_ninguem_apertar_botao(
+        self, client, token, prova, db, monkeypatch, submission_factory
+    ):
+        from app.models.orm import QuestionCluster
+
+        questao = next(q for q in prova.questions if q.number == "1")
+        # Duas submissões antigas, para cruzar o mínimo de agrupamento no envio.
+        submission_factory(questao.id, code="int main(){return 1;}",
+                           error_category="Saída Incorreta", all_tests_passed=False)
+        submission_factory(questao.id, code="int main(){return 2;}",
+                           error_category="Saída Incorreta", all_tests_passed=False)
+
+        resp = self._envia(client, token, prova, "int main(){return 3;}", monkeypatch)
+        assert resp.status_code == 201
+
+        db.expire_all()
+        grupos = db.query(QuestionCluster).filter(
+            QuestionCluster.question_id == questao.id).all()
+        assert grupos, "o envio do aluno precisa formar o grupo sozinho"
+        assert all(g.chave for g in grupos)
+        assert all(g.atualizado_em for g in grupos)
+
+    def test_agrupar_nao_apaga_o_insight_do_professor(
+        self, client, token, prova, db, monkeypatch, submission_factory
+    ):
+        """Re-agrupar apagava as linhas e levava junto o que estava escrito nelas."""
+        from app.models.orm import QuestionCluster
+
+        questao = next(q for q in prova.questions if q.number == "1")
+        for i in range(3):
+            submission_factory(questao.id, code=f"int main(){{return {i};}}",
+                               error_category="Saída Incorreta", all_tests_passed=False)
+
+        from app.ml.cluster import atribuir_grupos
+        atribuir_grupos(questao.id, db)
+        grupo = db.query(QuestionCluster).filter(
+            QuestionCluster.question_id == questao.id).first()
+        grupo.insight = "Este grupo confundiu a condição de parada."
+        db.commit()
+        chave = grupo.chave
+
+        self._envia(client, token, prova, "int main(){return 9;}", monkeypatch)
+
+        db.expire_all()
+        depois = db.query(QuestionCluster).filter(
+            QuestionCluster.question_id == questao.id,
+            QuestionCluster.chave == chave).first()
+        assert depois is not None
+        assert depois.insight == "Este grupo confundiu a condição de parada."
+
+    def test_falha_no_agrupamento_nao_derruba_a_submissao(
+        self, client, token, prova, monkeypatch, submission_factory
+    ):
+        questao = next(q for q in prova.questions if q.number == "1")
+        for i in range(3):
+            submission_factory(questao.id, code=f"int main(){{return {i};}}",
+                               error_category="Saída Incorreta", all_tests_passed=False)
+
+        import app.ml.cluster as cluster_mod
+
+        def explode(*a, **k):
+            raise RuntimeError("agrupamento quebrou")
+
+        monkeypatch.setattr(cluster_mod, "atribuir_grupos", explode)
+        resp = self._envia(client, token, prova, "int main(){return 9;}", monkeypatch)
+        assert resp.status_code == 201
+        assert resp.json()["tentativa"]["error_category"] == "Saída Incorreta"

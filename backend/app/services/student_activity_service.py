@@ -8,6 +8,7 @@ Duas regras sustentam este módulo:
   sempre que estiverem preenchidos. `modo` diz ao aluno o que a atividade é
   (treino ou prova) e define os padrões que o professor vê ao criá-la.
 """
+import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -15,6 +16,8 @@ from sqlalchemy.orm import Session
 
 from app.engine.evaluators.code_evaluator import evaluate_code
 from app.models.orm import Exam, Question, Student, Submission
+
+logger = logging.getLogger(__name__)
 
 CATEGORIA_CORRETA = "Correto"
 # Quantas submissões contam como "recentes" ao medir a tendência de um erro.
@@ -218,6 +221,8 @@ def submeter(student: Student, exam_id: int, question_number: str, code: str,
         attempt_number=len(anteriores) + 1,
     )
 
+    _agrupar_em_silencio(question.id, db)
+
     usadas = len(anteriores) + 1
     return {
         "tentativa": tentativa_to_dict(submissao),
@@ -227,6 +232,21 @@ def submeter(student: Student, exam_id: int, question_number: str, code: str,
         "structure_check": result.get("structure_check"),
         "function_check": result.get("function_check"),
     }
+
+
+def _agrupar_em_silencio(question_id: int, db: Session) -> None:
+    """Refaz o agrupamento da questão a cada envio, para o grupo existir no fluxo
+    real da turma. Sem UMAP, então é barato.
+
+    Falha aqui nunca pode derrubar a submissão: o aluno já recebeu o diagnóstico
+    dele, que é o que importa nesta requisição. O agrupamento é do professor e
+    pode esperar o próximo envio ou o botão de recalcular."""
+    try:
+        from app.ml.cluster import atribuir_grupos
+        atribuir_grupos(question_id, db)
+    except Exception:  # noqa: BLE001 — agrupamento é secundário à resposta do aluno
+        logger.exception("Falha ao agrupar a questão %s após o envio", question_id)
+        db.rollback()
 
 
 def tentativa_to_dict(sub: Submission) -> dict:

@@ -426,11 +426,14 @@ def get_groups(
     failing = _failing_summary(question.submissions)
     clusters = [
         {"cluster_id": qc.cluster_label, "size": qc.size,
+         "chave": qc.chave,
          "dominant_error": qc.dominant_error,
          "failing_label": failing.get(qc.cluster_label, (None, None))[0],
          "failing_count": failing.get(qc.cluster_label, (None, None))[1],
          "representative_submission_id": qc.representative_submission_id,
          "representative_matricula": qc.representative.matricula if qc.representative else None,
+         "representative_identificacao": (
+             _identificacao(qc.representative) if qc.representative else None),
          "representative_code": qc.representative.code if qc.representative else None}
         for qc in clusters_db
     ]
@@ -440,6 +443,15 @@ def get_groups(
          "highlight_lines": _highlight_for(qc, qc.highlight_lines)}
         for qc in clusters_db
     ]
+    # O agrupamento roda a cada envio de aluno, mas sem UMAP: as coordenadas do
+    # gráfico são as da última passada completa. `scatter_desatualizado` diz que
+    # há submissão agrupada sem lugar no desenho, e é o que justifica recalcular.
+    atualizado_em = max(
+        (qc.atualizado_em for qc in clusters_db if qc.atualizado_em), default=None)
+    sem_coordenada = sum(
+        1 for s in question.submissions
+        if s.cluster_id is not None and (s.umap_x is None or s.umap_y is None)
+    )
     return {
         "has_groups": True,
         "question_number": question_number,
@@ -449,6 +461,9 @@ def get_groups(
         "silhouette_score": None,
         "strategy": "tfidf_behavioral",
         "insights": insights,
+        "atualizado_em": atualizado_em.isoformat() if atualizado_em else None,
+        "sem_coordenada": sem_coordenada,
+        "scatter_desatualizado": sem_coordenada > 0,
     }
 
 
@@ -466,8 +481,9 @@ def run_insights(
         raise HTTPException(status_code=422, detail="Nenhum cluster encontrado. Execute o clustering antes de gerar insights.")
 
     # Só gera via Gemini os clusters ainda sem insight salvo (ou todos se force).
-    # O insight fica persistido em QuestionCluster; re-clusterizar apaga as linhas
-    # e invalida o cache naturalmente.
+    # O insight fica persistido em QuestionCluster e agora SOBREVIVE ao
+    # re-agrupamento, porque a linha é reconciliada pela chave estável do grupo.
+    # Grupo que deixou de existir é removido, e leva o insight dele junto.
     pending = [qc for qc in clusters_db if force or not qc.insight]
     if pending:
         payload = [

@@ -28,6 +28,20 @@ export const formatarData = (iso) => {
   })
 }
 
+/** "há 3 minutos", "há 2 horas". Serve para dizer quando o grupo foi formado. */
+export const formatRelativo = (iso) => {
+  if (!iso) return ''
+  const segundos = Math.round((Date.now() - paraData(iso).getTime()) / 1000)
+  if (segundos < 60) return 'agora há pouco'
+  const minutos = Math.round(segundos / 60)
+  if (minutos < 60) return `há ${minutos} minuto${minutos !== 1 ? 's' : ''}`
+  const horas = Math.round(minutos / 60)
+  if (horas < 24) return `há ${horas} hora${horas !== 1 ? 's' : ''}`
+  const dias = Math.round(horas / 24)
+  if (dias < 30) return `há ${dias} dia${dias !== 1 ? 's' : ''}`
+  return `em ${formatarData(iso)}`
+}
+
 /** ISO (UTC) → valor de um <input type="datetime-local"> na hora local. */
 export const isoParaInputLocal = (iso) => {
   if (!iso) return ''
