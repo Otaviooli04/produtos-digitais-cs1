@@ -214,3 +214,49 @@ class ProcessingJob(Base):
     professor_id = Column(Integer, ForeignKey("professors.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ExercicioGerado(Base):
+    """Exercício que o Gemini escreveu sob medida para o erro que o aluno repete.
+
+    Fica fora de `questions` de propósito: o gerado nunca vale nota, não entra na
+    análise da turma e não aparece no painel do professor. É treino."""
+    __tablename__ = "exercicios_gerados"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True)
+    error_category = Column(String, nullable=False, index=True)
+    titulo = Column(String, nullable=False)
+    enunciado = Column(Text, nullable=False)
+    casos_teste = Column(JSON, default=list)
+    required_structures = Column(JSON, default=list)
+    resolvido = Column(Boolean, default=False, server_default="false", nullable=False)
+    # Sem fila de revisão do professor, o aluno é quem sinaliza exercício ruim.
+    reportado = Column(Boolean, default=False, server_default="false", nullable=False)
+    reportado_motivo = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("Student")
+    tentativas = relationship(
+        "TentativaDeTreino", back_populates="exercicio", cascade="all, delete-orphan")
+
+
+class TentativaDeTreino(Base):
+    """Tentativa contra um exercício gerado. Ilimitada, e sem efeito em nota."""
+    __tablename__ = "tentativas_de_treino"
+
+    id = Column(Integer, primary_key=True, index=True)
+    exercicio_id = Column(Integer, ForeignKey("exercicios_gerados.id"), nullable=False, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True)
+    code = Column(Text, nullable=False)
+    compile_error = Column(Text, default="")
+    warnings = Column(Text, default="")
+    all_tests_passed = Column(Boolean, nullable=True)
+    error_category = Column(String, default="")
+    pedagogical_diagnosis = Column(Text, default="")
+    actionable_feedback = Column(Text, default="")
+    test_results = Column(JSON, default=list)
+    attempt_number = Column(Integer, default=1, server_default="1")
+    submitted_at = Column(DateTime, default=datetime.utcnow)
+
+    exercicio = relationship("ExercicioGerado", back_populates="tentativas")

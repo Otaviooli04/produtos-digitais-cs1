@@ -27,6 +27,7 @@ export default function AlunoLayout() {
             </Link>
             <div className="hidden sm:flex items-center gap-1">
               <NavLink to="/aluno/turmas" className={linkClass}>Turmas</NavLink>
+              <NavLink to="/aluno/treino" className={linkClass}>Treino</NavLink>
               <NavLink to="/aluno/progresso" className={linkClass}>Meu progresso</NavLink>
             </div>
           </div>
@@ -52,6 +53,7 @@ export default function AlunoLayout() {
         </div>
         <div className="sm:hidden border-t border-gray-100 px-6 py-2 flex gap-1">
           <NavLink to="/aluno/turmas" className={linkClass}>Turmas</NavLink>
+          <NavLink to="/aluno/treino" className={linkClass}>Treino</NavLink>
           <NavLink to="/aluno/progresso" className={linkClass}>Meu progresso</NavLink>
         </div>
       </nav>
