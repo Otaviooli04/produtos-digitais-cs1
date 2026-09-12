@@ -364,3 +364,60 @@ class TestExplicacaoIndividual:
         alheia = tentativa_factory(outro.id, "1", "Saída Incorreta")
         resp = client.post(f"/aluno/tentativas/{alheia.id}/explicacao", headers=_auth(token))
         assert resp.status_code == 404
+
+
+class TestPublicacaoDaAtividade:
+    """O portão entre a atividade montada e a atividade visível para o aluno.
+    Antes dele, subir o PDF já colocava a prova na tela do aluno, com as questões
+    que o extrator tinha acabado de produzir."""
+
+    def test_rascunho_nao_aparece_na_lista(self, client, token, prova, db):
+        prova.publicada = False
+        db.commit()
+        assert client.get("/aluno/atividades", headers=_auth(token)).json() == []
+
+    def test_rascunho_nao_abre_nem_por_id(self, client, token, prova, db):
+        prova.publicada = False
+        db.commit()
+        resp = client.get(f"/aluno/atividades/{prova.id}", headers=_auth(token))
+        assert resp.status_code == 404
+
+    def test_rascunho_nao_aceita_submissao(self, client, token, prova, db):
+        prova.publicada = False
+        db.commit()
+        resp = client.post(
+            f"/aluno/atividades/{prova.id}/questoes/1/submissoes",
+            json={"code": "int main(){return 0;}"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 404
+
+    def test_publicar_devolve_a_atividade_ao_aluno(self, client, token, prova, db):
+        prova.publicada = False
+        db.commit()
+        assert client.get("/aluno/atividades", headers=_auth(token)).json() == []
+        prova.publicada = True
+        db.commit()
+        (atividade,) = client.get("/aluno/atividades", headers=_auth(token)).json()
+        assert atividade["exam_id"] == prova.id
+
+
+class TestTituloDaAtividade:
+    def test_sem_titulo_cai_no_nome_do_arquivo(self, client, token, prova):
+        (atividade,) = client.get("/aluno/atividades", headers=_auth(token)).json()
+        assert atividade["titulo"] == "prova.pdf"
+
+    def test_titulo_definido_vence_o_nome_do_arquivo(self, client, token, prova, db):
+        prova.titulo = "Lista 3 · Vetores e laços"
+        db.commit()
+        (atividade,) = client.get("/aluno/atividades", headers=_auth(token)).json()
+        assert atividade["titulo"] == "Lista 3 · Vetores e laços"
+
+    def test_titulo_aparece_no_painel_de_erros_recorrentes(
+        self, client, token, prova, tentativa_factory, db
+    ):
+        prova.titulo = "Lista 3"
+        db.commit()
+        tentativa_factory(_aluno_id(client, token), categoria="Acesso Fora dos Limites: Off-by-One")
+        data = client.get("/aluno/erros-recorrentes", headers=_auth(token)).json()
+        assert data["erros"][0]["questoes"] == ["Lista 3 · Q1"]

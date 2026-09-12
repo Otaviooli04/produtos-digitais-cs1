@@ -91,9 +91,15 @@ def _atividade_do_aluno(student: Student, exam_id: int, db: Session) -> Exam:
     """Só existe atividade para o aluno dentro de turma em que ele entrou."""
     turma_ids = _turma_ids(student)
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
-    if not exam or exam.turma_id not in turma_ids:
+    if not exam or exam.turma_id not in turma_ids or not exam.publicada:
         raise ValueError("Atividade não encontrada.")
     return exam
+
+
+def titulo_da_atividade(exam: Exam) -> str:
+    """O nome que o aluno lê. O arquivo é só a origem, e serve de reserva
+    enquanto o professor não dá um nome à atividade."""
+    return exam.titulo or exam.filename or f"Atividade {exam.id}"
 
 
 # ── lista e detalhe ──────────────────────────────────────────────────────────
@@ -109,7 +115,7 @@ def listar_atividades(student: Student, db: Session, turma_id: int | None = None
 
     exams = (
         db.query(Exam)
-        .filter(Exam.turma_id.in_(turma_ids))
+        .filter(Exam.turma_id.in_(turma_ids), Exam.publicada.is_(True))
         .order_by(Exam.created_at.desc())
         .all()
     )
@@ -125,7 +131,7 @@ def _resumo(exam: Exam, mapa: dict[int, list[Submission]]) -> dict:
     situacao = _situacao(exam)
     return {
         "exam_id": exam.id,
-        "titulo": exam.filename or f"Atividade {exam.id}",
+        "titulo": titulo_da_atividade(exam),
         "turma_id": exam.turma_id,
         "turma_nome": exam.turma.nome if exam.turma else "",
         "modo": exam.modo or Exam.MODO_PROVA,
@@ -415,9 +421,11 @@ def erros_recorrentes(student: Student, db: Session) -> dict:
     """O padrão que o aluno repete, que é justamente o que ele não enxerga sozinho.
     Determinístico: sai das categorias das heurísticas, sem chamada de LLM."""
     turma_ids = _turma_ids(student)
-    exams = db.query(Exam).filter(Exam.turma_id.in_(turma_ids)).all() if turma_ids else []
+    exams = db.query(Exam).filter(
+        Exam.turma_id.in_(turma_ids), Exam.publicada.is_(True)
+    ).all() if turma_ids else []
     rotulo_questao = {
-        q.id: f"{e.filename or 'Atividade'} · Q{q.number}"
+        q.id: f"{titulo_da_atividade(e)} · Q{q.number}"
         for e in exams for q in e.questions
     }
 

@@ -4,6 +4,7 @@ import { getTurma, getTurmaAnalytics, deleteExam } from '../api/exam'
 import Spinner from '../components/Spinner'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ListControls from '../components/ListControls'
+import Badge from '../components/Badge'
 import BarList from '../components/BarList'
 import { shortError } from '../utils/errorLabels'
 
@@ -101,10 +102,11 @@ export default function TurmaDetailPage() {
   const displayedExams = (turma.exams ?? [])
     .filter(exam => {
       const q = search.trim().toLowerCase()
-      return q ? exam.filename.toLowerCase().includes(q) : true
+      return q ? (exam.titulo || exam.filename).toLowerCase().includes(q) : true
     })
     .sort((a, b) => {
-      if (sort === 'name') return a.filename.localeCompare(b.filename, 'pt-BR')
+      if (sort === 'name')
+        return (a.titulo || a.filename).localeCompare(b.titulo || b.filename, 'pt-BR')
       const da = new Date(a.created_at).getTime()
       const db = new Date(b.created_at).getTime()
       return sort === 'oldest' ? da - db : db - da
@@ -265,7 +267,10 @@ export default function TurmaDetailPage() {
                 >
                   <div onClick={() => navigate(`/exam/${exam.id}`)} className="cursor-pointer flex-1">
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h2 className="text-sm font-semibold text-gray-900 leading-tight truncate flex-1">{exam.filename}</h2>
+                      <h2 className="text-sm font-semibold text-gray-900 leading-tight truncate flex-1">
+                        {exam.titulo || exam.filename}
+                      </h2>
+                      {!exam.publicada && <Badge color="yellow">rascunho</Badge>}
                     </div>
                     <div className="flex gap-4 text-xs text-gray-500 mb-1">
                       <span>{exam.question_count} {exam.question_count === 1 ? 'questão' : 'questões'}</span>

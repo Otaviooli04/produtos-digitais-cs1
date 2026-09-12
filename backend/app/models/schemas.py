@@ -79,6 +79,8 @@ class TurmaUpdate(BaseModel):
 class ExamSummary(BaseModel):
     id: int
     filename: str
+    titulo: Optional[str] = None
+    publicada: bool = False
     created_at: str
     question_count: int
     submission_count: int
@@ -240,6 +242,8 @@ class TestCaseUpdateRequest(BaseModel):
 
 class ExamUpdate(BaseModel):
     filename: Optional[str] = None
+    titulo: Optional[str] = None
+    publicada: Optional[bool] = None
     turma_id: Optional[int] = None
     modo: Optional[Literal["treino", "prova"]] = None
     abre_em: Optional[datetime] = None
@@ -295,6 +299,10 @@ class QuestionResponse(BaseModel):
 class ExamResponse(BaseModel):
     id: int
     filename: str
+    titulo: Optional[str] = None
+    publicada: bool = False
+    pode_publicar: bool = False
+    impedimentos: List[str] = []
     created_at: str
     turma_id: Optional[int] = None
     turma_nome: Optional[str] = None
