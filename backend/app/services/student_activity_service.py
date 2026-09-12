@@ -225,7 +225,7 @@ def submeter(student: Student, exam_id: int, question_number: str, code: str,
 
     usadas = len(anteriores) + 1
     return {
-        "tentativa": tentativa_to_dict(submissao),
+        "tentativa": tentativa_to_dict(submissao, db, com_resposta=True),
         "tentativas": usadas,
         "tentativas_restantes": _restantes(exam, usadas),
         "resolvida": _resolvida(anteriores + [submissao]),
@@ -249,8 +249,30 @@ def _agrupar_em_silencio(question_id: int, db: Session) -> None:
         db.rollback()
 
 
-def tentativa_to_dict(sub: Submission) -> dict:
+def resposta_do_grupo(sub: Submission, db: Session) -> tuple[str | None, str | None]:
+    """O retorno que o professor escreveu para o grupo desta tentativa.
+
+    O aluno nunca vê que está em um grupo, nem quem mais está nele. Ele vê um
+    retorno do professor dele, porque é o que é: dizer ao aluno que a resposta
+    foi escrita para um grupo seria dizer que ela não é dele."""
+    from app.models.orm import QuestionCluster
+
+    if sub.cluster_id is None:
+        return None, None
+    grupo = db.query(QuestionCluster).filter(
+        QuestionCluster.question_id == sub.question_id,
+        QuestionCluster.cluster_label == sub.cluster_id,
+    ).first()
+    if not grupo or not grupo.resposta_professor:
+        return None, None
+    return grupo.resposta_professor, _iso(grupo.resposta_em)
+
+
+def tentativa_to_dict(sub: Submission, db: Session | None = None,
+                      com_resposta: bool = False) -> dict:
     passados, total = _testes(sub)
+    resposta, resposta_em = (
+        resposta_do_grupo(sub, db) if (com_resposta and db is not None) else (None, None))
     return {
         "submission_id": sub.id,
         "attempt_number": sub.attempt_number or 1,
@@ -274,6 +296,8 @@ def tentativa_to_dict(sub: Submission) -> dict:
             }
             for tr in sub.test_results
         ],
+        "resposta_do_professor": resposta,
+        "resposta_do_professor_em": resposta_em,
     }
 
 
@@ -291,8 +315,13 @@ def historico_questao(student: Student, exam_id: int, question_number: str,
         "question_number": question.number,
         "statement": question.statement or "",
         "resolvida": _resolvida(tentativas),
-        # Mais recente primeiro: é o que o aluno quer ver ao abrir a tela.
-        "tentativas": [tentativa_to_dict(s) for s in reversed(tentativas)],
+        # Mais recente primeiro: é o que o aluno quer ver ao abrir a tela. Só ela
+        # carrega o retorno do professor, senão o mesmo texto apareceria repetido
+        # em toda tentativa antiga que caiu no mesmo grupo.
+        "tentativas": [
+            tentativa_to_dict(s, db, com_resposta=(i == 0))
+            for i, s in enumerate(reversed(tentativas))
+        ],
     }
 
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import {
-  getExam, getQuestionSubmissions, getGroups, runClustering, runInsights,
+  getExam, getQuestionSubmissions, getGroups, runClustering, runInsights, salvarRespostaDoGrupo,
   deleteSubmission, reevaluateSubmission,
 } from '../api/exam'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -17,6 +17,7 @@ import ListControls from '../components/ListControls'
 import { shortError } from '../utils/errorLabels'
 import { compileErrorLines } from '../utils/highlightLines'
 import { formatRelativo } from '../utils/atividade'
+import RespostaAoGrupo from '../components/RespostaAoGrupo'
 
 const SUB_SORTS = [
   { value: 'situacao', label: 'Situação' },
@@ -176,6 +177,18 @@ export default function QuestionPage() {
   const hasInsights = insights?.some(x => x.insight)
   const isCorrect = (err) => /correto/i.test(err || '')
   const insightFor = (cid) => insights?.find(x => x.cluster_id === cid)?.insight || ''
+  const respostaFor = (cid) => insights?.find(x => x.cluster_id === cid)?.resposta_professor || ''
+  const respostaEmFor = (cid) => insights?.find(x => x.cluster_id === cid)?.resposta_em || null
+
+  // Grava e atualiza só a linha mexida, para a tela não recarregar tudo.
+  const salvarResposta = async (clusterId, texto) => {
+    const { data } = await salvarRespostaDoGrupo(id, num, clusterId, texto)
+    setInsights(atual => (atual || []).map(x => (
+      x.cluster_id === clusterId
+        ? { ...x, resposta_professor: data.resposta_professor || '', resposta_em: data.resposta_em }
+        : x
+    )))
+  }
   // Linhas problemáticas do código representativo (mesmo canal dos insights).
   const highlightFor = (cid) => insights?.find(x => x.cluster_id === cid)?.highlight_lines || []
 
@@ -519,6 +532,14 @@ export default function QuestionPage() {
                           ))}
                         </div>
                       )}
+
+                      <RespostaAoGrupo
+                        resposta={respostaFor(c.cluster_id)}
+                        respostaEm={respostaEmFor(c.cluster_id)}
+                        insight={insight}
+                        alunos={c.size}
+                        onSave={(texto) => salvarResposta(c.cluster_id, texto)}
+                      />
 
                       {c.representative_code && (
                         <div className="mt-3">

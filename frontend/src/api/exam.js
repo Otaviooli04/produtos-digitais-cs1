@@ -21,6 +21,12 @@ export const getResults = (examId) => api.get(`/exam/${examId}/results`)
 export const getGroups = (examId, questionNumber) =>
   api.get(`/exam/${examId}/questions/${questionNumber}/groups`)
 
+export const salvarRespostaDoGrupo = (examId, questionNumber, clusterId, texto) =>
+  api.put(
+    `/exam/${examId}/questions/${questionNumber}/grupos/${clusterId}/resposta`,
+    { texto },
+  )
+
 export const runClustering = (examId, questionNumber, strategy) =>
   api.post(`/exam/${examId}/questions/${questionNumber}/cluster?strategy=${strategy}`)
 
