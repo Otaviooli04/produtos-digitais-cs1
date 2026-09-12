@@ -160,7 +160,12 @@ class QuestionCluster(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     question_id = Column(Integer, ForeignKey("questions.id"))
+    # `cluster_label` é posicional e muda quando o grupo é refeito. `chave` é a
+    # identidade estável: categoria de erro mais assinatura de falha, que é o que
+    # define o grupo. Todo texto preso ao grupo se ancora na chave, não no label.
     cluster_label = Column(Integer)
+    chave = Column(String, nullable=True, index=True)
+    atualizado_em = Column(DateTime, nullable=True)
     size = Column(Integer)
     dominant_error = Column(String, default="")
     insight = Column(Text, default="")

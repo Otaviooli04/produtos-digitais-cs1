@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
@@ -38,11 +39,25 @@ def failure_signature(sub) -> Optional[tuple]:
 
 
 def two_level_labels(submissions: List["Submission"], error_categories: list[str]) -> np.ndarray:
+    """Compatibilidade: só os rótulos. Quem precisa da identidade do grupo usa
+    `two_level_grupos`."""
+    labels, _ = two_level_grupos(submissions, error_categories)
+    return labels
+
+
+def two_level_grupos(
+    submissions: List["Submission"], error_categories: list[str],
+) -> tuple[np.ndarray, dict[int, str]]:
     """Nível 1: categoria de erro. Nível 2: dentro de categorias grandes, agrupa por
     assinatura de falha. Categorias pequenas e "Correto" ficam inteiras; assinaturas
-    raras viram um grupo residual."""
+    raras viram um grupo residual.
+
+    Devolve os rótulos e, para cada rótulo, a chave estável do grupo. O rótulo é
+    posicional e muda quando o grupo é refeito, a chave não: ela é feita do que
+    define o grupo, então é ela que ancora o que o professor escreveu ali."""
     n = len(error_categories)
     labels = np.full(n, -1, dtype=int)
+    chaves: dict[int, str] = {}
     by_cat: dict[str, list[int]] = {}
     for i, cat in enumerate(error_categories):
         by_cat.setdefault(cat or "unknown", []).append(i)
@@ -52,6 +67,7 @@ def two_level_labels(submissions: List["Submission"], error_categories: list[str
         if len(idx) < SUBCLUSTER_MIN or _is_correct_category(cat):
             for i in idx:
                 labels[i] = next_label
+            chaves[next_label] = f"cat:{cat}"
             next_label += 1
             continue
 
@@ -65,14 +81,16 @@ def two_level_labels(submissions: List["Submission"], error_categories: list[str
             if sig is not None and len(members) >= 2:
                 for i in members:
                     labels[i] = next_label
+                chaves[next_label] = f"cat:{cat}|sig:{','.join(str(v) for v in sig)}"
                 next_label += 1
             else:
                 if residual is None:
                     residual = next_label
+                    chaves[next_label] = f"cat:{cat}|sig:residual"
                     next_label += 1
                 for i in members:
                     labels[i] = residual
-    return labels
+    return labels, chaves
 
 
 class FeatureStrategy(str, Enum):
@@ -118,17 +136,9 @@ def cluster_question(
     features = _build_features(codes, ast_lists, submissions, strategy)
 
     n = len(submissions)
-    n_components_cluster = min(5, n - 1)
     n_neighbors = min(15, n - 1)
     umap_init = "random" if n < 10 else "spectral"
 
-    umap_cluster = UMAP(
-        n_components=n_components_cluster,
-        n_neighbors=n_neighbors,
-        random_state=42,
-        min_dist=0.0,
-        init=umap_init,
-    )
     umap_viz = UMAP(
         n_components=2,
         n_neighbors=n_neighbors,
@@ -138,14 +148,37 @@ def cluster_question(
 
     embedded_viz = umap_viz.fit_transform(features)
 
-    # UMAP só alimenta o scatter; o agrupamento vem de two_level_labels.
-    labels = two_level_labels(submissions, [s.error_category or "" for s in submissions])
+    # UMAP só alimenta o scatter; o agrupamento vem de two_level_grupos.
+    labels, chaves = two_level_grupos(
+        submissions, [s.error_category or "" for s in submissions])
 
     silhouette = None
 
-    _persist_results(submissions, labels, embedded_viz, question_id, db)
+    _persist_results(submissions, labels, embedded_viz, question_id, db, chaves)
 
     return _build_result(submissions, labels, embedded_viz, silhouette, strategy)
+
+
+def atribuir_grupos(question_id: int, db: Session) -> int | None:
+    """Agrupa sem o UMAP, que é a parte cara e só serve ao gráfico de dispersão.
+
+    É o que roda a cada envio de aluno, para o grupo existir no fluxo real da
+    turma e não só depois de o professor apertar um botão. As coordenadas do
+    gráfico continuam sendo as da última passada completa, e a tela avisa quando
+    chegou envio depois disso."""
+    submissions: List[Submission] = (
+        db.query(Submission)
+        .options(joinedload(Submission.test_results))
+        .filter(Submission.question_id == question_id)
+        .all()
+    )
+    if len(submissions) < MIN_SUBMISSIONS:
+        return None
+
+    labels, chaves = two_level_grupos(
+        submissions, [s.error_category or "" for s in submissions])
+    _persist_results(submissions, labels, None, question_id, db, chaves)
+    return len(set(int(l) for l in labels) - {-1})
 
 
 # ---------------------------------------------------------------------------
@@ -306,32 +339,88 @@ def _compute_silhouette(embedded: np.ndarray, labels: np.ndarray) -> Optional[fl
 def _persist_results(
     submissions: List[Submission],
     labels: np.ndarray,
-    embedded_viz: np.ndarray,
+    embedded_viz: Optional[np.ndarray],
     question_id: int,
     db: Session,
+    chaves: Optional[dict[int, str]] = None,
 ) -> None:
-    db.query(QuestionCluster).filter(QuestionCluster.question_id == question_id).delete()
+    """Grava o agrupamento sem destruir o que o grupo carrega.
 
-    for sub, label, (x, y) in zip(submissions, labels, embedded_viz):
+    O caminho antigo apagava todas as linhas e recriava, o que jogava fora o
+    insight a cada re-agrupamento. Agora a linha é encontrada pela `chave`, que
+    sobrevive à renumeração, e só o que mudou é atualizado. Grupo que deixou de
+    existir é removido, e só ele.
+
+    `embedded_viz` é opcional: sem ele o UMAP não roda, as coordenadas que já
+    estavam guardadas ficam como estão e o representante é escolhido por uma
+    regra barata."""
+    chaves = chaves or {}
+    agora = datetime.utcnow()
+
+    for pos, (sub, label) in enumerate(zip(submissions, labels)):
         sub.cluster_id = int(label)
-        sub.umap_x = str(float(x))
-        sub.umap_y = str(float(y))
+        if embedded_viz is not None:
+            x, y = embedded_viz[pos]
+            sub.umap_x = str(float(x))
+            sub.umap_y = str(float(y))
 
-    unique_labels = set(labels) - {-1}
-    for label in unique_labels:
-        indices = [i for i, l in enumerate(labels) if l == label]
+    existentes = {
+        qc.chave: qc
+        for qc in db.query(QuestionCluster).filter(
+            QuestionCluster.question_id == question_id).all()
+        if qc.chave
+    }
+    sem_chave = [
+        qc for qc in db.query(QuestionCluster).filter(
+            QuestionCluster.question_id == question_id).all()
+        if not qc.chave
+    ]
+
+    vivas: set[str] = set()
+    for label in sorted(set(int(l) for l in labels) - {-1}):
+        indices = [i for i, l in enumerate(labels) if int(l) == label]
         cluster_subs = [submissions[i] for i in indices]
-        dominant_error = _dominant_error(cluster_subs)
-        representative = _find_representative(indices, embedded_viz)
-        db.add(QuestionCluster(
-            question_id=question_id,
-            cluster_label=int(label),
-            size=len(indices),
-            dominant_error=dominant_error,
-            representative_submission_id=submissions[representative].id,
-        ))
+        chave = chaves.get(label) or f"label:{label}"
+        vivas.add(chave)
+
+        qc = existentes.get(chave)
+        if qc is None:
+            qc = QuestionCluster(question_id=question_id, chave=chave)
+            db.add(qc)
+        qc.cluster_label = label
+        qc.size = len(indices)
+        qc.dominant_error = _dominant_error(cluster_subs)
+        qc.representative_submission_id = _escolher_representante(
+            qc.representative_submission_id, indices, submissions, embedded_viz)
+        qc.atualizado_em = agora
+
+    for chave, qc in existentes.items():
+        if chave not in vivas:
+            db.delete(qc)
+    # Linhas anteriores à chave estável não têm como ser reconciliadas.
+    for qc in sem_chave:
+        db.delete(qc)
 
     db.commit()
+
+
+def _escolher_representante(
+    atual: Optional[int],
+    indices: list[int],
+    submissions: List[Submission],
+    embedded_viz: Optional[np.ndarray],
+) -> int:
+    """Mantém o representante que o professor já viu, enquanto ele continuar no
+    grupo, para a tela não trocar de código a cada envio novo. Só escolhe um
+    quando não há: pelo centroide, se houver embedding, senão pelo código mais
+    curto, que é o exemplo menos ruidoso de ler."""
+    no_grupo = {submissions[i].id for i in indices}
+    if atual in no_grupo:
+        return atual
+    if embedded_viz is not None:
+        return submissions[_find_representative(indices, embedded_viz)].id
+    escolhido = min(indices, key=lambda i: (len(submissions[i].code or ""), submissions[i].id))
+    return submissions[escolhido].id
 
 
 def _dominant_error(subs: List[Submission]) -> str:

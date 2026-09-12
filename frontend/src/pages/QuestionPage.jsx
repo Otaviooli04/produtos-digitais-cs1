@@ -16,6 +16,7 @@ import CodeBlock from '../components/CodeBlock'
 import ListControls from '../components/ListControls'
 import { shortError } from '../utils/errorLabels'
 import { compileErrorLines } from '../utils/highlightLines'
+import { formatRelativo } from '../utils/atividade'
 
 const SUB_SORTS = [
   { value: 'situacao', label: 'Situação' },
@@ -435,9 +436,16 @@ export default function QuestionPage() {
           {clusterResult && (
             <>
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <p className="text-sm text-gray-500">
-                  {rankedGroups.length} grupo{rankedGroups.length !== 1 ? 's' : ''} em {clusterResult.total_submissions} submissões
-                </p>
+                <div>
+                  <p className="text-sm text-gray-500">
+                    {rankedGroups.length} grupo{rankedGroups.length !== 1 ? 's' : ''} em {clusterResult.total_submissions} submissões
+                  </p>
+                  {clusterResult.atualizado_em && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Agrupado {formatRelativo(clusterResult.atualizado_em)}
+                    </p>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   {!hasInsights && (
                     <button
@@ -459,6 +467,13 @@ export default function QuestionPage() {
                   </button>
                 </div>
               </div>
+
+              {clusterResult.scatter_desatualizado && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-800">
+                  {clusterResult.sem_coordenada} envio{clusterResult.sem_coordenada !== 1 ? 's' : ''} já {clusterResult.sem_coordenada !== 1 ? 'estão' : 'está'} no grupo certo, mas ainda fora do gráfico de dispersão.
+                  Recalcular refaz o desenho. Os grupos e os códigos de exemplo já estão atualizados.
+                </div>
+              )}
 
               <div className="space-y-3">
                 {rankedGroups.map(c => {
