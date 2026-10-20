@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_professor
+from app.auth.ownership import get_exam_or_404
 from app.models.database import get_db
 from app.models.orm import Professor, Submission
 from app.models.schemas import CodeSubmissionRequest, CodeSubmissionResponse
@@ -22,7 +23,12 @@ def _get_submission_or_404(submission_id: int, db: Session, professor_id: int) -
 
 
 @router.post("/evaluate", response_model=CodeSubmissionResponse)
-async def submit_answer(body: CodeSubmissionRequest, db: Session = Depends(get_db)):
+async def submit_answer(
+    body: CodeSubmissionRequest,
+    db: Session = Depends(get_db),
+    professor: Professor = Depends(get_current_professor),
+):
+    get_exam_or_404(body.exam_id, db, professor_id=professor.id)
     try:
         return evaluate_submission(body.exam_id, body.question_number, body.code, db, matricula=body.matricula, dry_run=body.dry_run)
     except ValueError as e:
