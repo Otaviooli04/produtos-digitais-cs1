@@ -199,7 +199,8 @@ JWT de professor: `routes.py` (register/login), `service.py` (hash bcrypt, emiss
 ## 7. Pipeline de avaliação de uma submissão
 
 ```
-POST /submission/evaluate  (ou lote via /exam/{id}/submissions/bulk)
+POST /aluno/atividades/{id}/questoes/{n}/submissoes  (aluno com conta)
+POST /submission/evaluate  (teste do professor dono, ou lote via /exam/{id}/submissions/bulk)
         │
         ▼  code_evaluator.evaluate_code()
         ├─► dynamic_analyzer.compile_and_run()   → compila+roda no Docker isolado
@@ -210,7 +211,7 @@ POST /submission/evaluate  (ou lote via /exam/{id}/submissions/bulk)
    persiste Submission + SubmissionTestResult
 ```
 
-**Saída para o aluno** (já disponível hoje na submissão pública): resultado por caso de teste (entrada, saída esperada, saída obtida, passou?), a categoria pedagógica do erro, o feedback acionável (o que fazer para corrigir) e a checagem de conformidade estrutural/de funções.
+**Saída para o aluno** (já disponível hoje no envio do aluno com conta): resultado por caso de teste (entrada, saída esperada, saída obtida, passou?), a categoria pedagógica do erro, o feedback acionável (o que fazer para corrigir) e a checagem de conformidade estrutural/de funções.
 
 Detalhe importante da robustez: a **normalização de saída** tolera diferenças de whitespace e alinhamento (`%Nd`), para não reprovar um aluno por espaço a mais. E o `dynamic_analyzer` trata `TimeoutExpired` sem abortar o lote inteiro.
 
@@ -277,7 +278,7 @@ React 19 + Vite 8 + Tailwind v4 + React Router 7 + Recharts 3 + axios. Páginas 
 **Fluxo do professor (protegido por login):**
 `TurmaListPage` → `TurmaDetailPage` → upload da prova (`ExamUploadPage`) → `ExamDashboard` → por questão: `QuestionPage` (grupos, insights, destaque do erro — arquivo maior, ~27 KB), `TestCasesPage`, `SubmissionsPage`, envio em lote (`BulkSubmitPage`), `ResultsPage`, `StudentsPage`/`StudentDetailPage`.
 
-**Rota pública do aluno:** `submit/:examId` → `StudentSubmitPage`. **Este é o ponto de entrada do aluno hoje** — ele submete código e recebe o diagnóstico. É a base sobre a qual o produto voltado ao aluno vai crescer.
+**Área do aluno:** `/aluno`, com conta e entrada na turma por código. O envio de código e o diagnóstico ficam em `pages/aluno/QuestaoPage.jsx`. A rota pública `submit/:examId` do TCC saiu em 20/10/2026 e hoje só redireciona para `/aluno`.
 
 **Componentes reutilizáveis:** `Modal`, `ConfirmDialog`, `QuestionForm`, `JobDock` (barra de progresso das tarefas em segundo plano), `BarList`/`Badge`/`CodeBlock`/`FunctionCheckCard`/`ListControls`/`WhoList`/`Logo`. Contexto de auth em `context/AuthContext.jsx`. Cliente HTTP em `api/client.js` (axios com token). Utilidades: `errorLabels.js`, `highlightLines.js`.
 
@@ -292,7 +293,7 @@ React 19 + Vite 8 + Tailwind v4 + React Router 7 + Recharts 3 + axios. Páginas 
 3. **Professor** revisa/edita os requisitos e os casos de teste por questão.
 4. **Professor** envia em **lote** o ZIP com as submissões da turma. O sistema compila (Docker), roda contra os casos de teste, classifica por heurísticas e **agrupa por sintoma** (também assíncrono).
 5. **Professor** revisa os **grupos**, vê o código representativo com as **linhas do erro destacadas**, gera (opcionalmente) a **síntese pedagógica** do grupo e a **propaga** à turma.
-6. **Aluno** (fluxo público) submete código e recebe **diagnóstico imediato** + resultado por caso de teste + feedback acionável.
+6. **Aluno** (com conta, na turma) submete código e recebe **diagnóstico imediato** + resultado por caso de teste + feedback acionável.
 
 ---
 
@@ -369,7 +370,7 @@ pytest tests/integration/ -m integration -v     # requer Docker + GEMINI_API_KEY
 A disciplina de Produtos Digitais reposiciona o sistema: de **ferramenta de correção do professor** para **turma virtual com os dois lados** (o aluno treina, faz prova, vê o que errou e acompanha a evolução; o professor mantém o painel). O motor pedagógico já era forte — o que foi construído aqui é a camada de produto para o aluno.
 
 ### O que já serve de base (não precisa reconstruir)
-- **Submissão pública do aluno** (`StudentSubmitPage`, rota `/submit/:examId`) com diagnóstico imediato.
+- **Envio do aluno com conta** (`pages/aluno/QuestaoPage.jsx`, rota `/aluno/atividades/:examId/questoes/:numero`) com diagnóstico imediato. A página pública `/submit/:examId` do TCC saiu em 20/10/2026, porque deixava enviar sem conta, fora da janela e com qualquer matrícula. O link antigo redireciona para `/aluno`.
 - **Feedback pedagógico acionável** por submissão (categoria + o que fazer para corrigir), não só "passou/falhou".
 - **Checagem estrutural e de funções** por questão.
 - **Motor de avaliação** determinístico, isolado (Docker) e robusto a código que não compila.
@@ -434,7 +435,7 @@ Regras absolutas do Otávio, reunidas para evitar retrabalho:
 | Modelo de dados | `backend/app/models/orm.py` + `backend/migrations/versions/` |
 | Agrupamento / estudo de features | `backend/app/ml/cluster.py`, `backend/evaluate_clustering.py` |
 | Insights e custo do LLM | `backend/app/llm/feedback_generator.py` |
-| Entrada do aluno (base do produto) | `frontend/src/pages/StudentSubmitPage.jsx` + rota `/submit/:examId` |
+| Entrada do aluno (base do produto) | `frontend/src/pages/aluno/QuestaoPage.jsx` + rota `/aluno/atividades/:examId/questoes/:numero` |
 | Painel de grupos/insights/destaque | `frontend/src/pages/QuestionPage.jsx` |
 
 ---

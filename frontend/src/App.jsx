@@ -11,7 +11,6 @@ import Spinner from './components/Spinner'
 // Páginas em lazy-load para manter o bundle inicial leve.
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
-const UploadPage = lazy(() => import('./pages/UploadPage'))
 const ExamDashboard = lazy(() => import('./pages/ExamDashboard'))
 const TestCasesPage = lazy(() => import('./pages/TestCasesPage'))
 const SubmitPage = lazy(() => import('./pages/SubmitPage'))
@@ -20,7 +19,6 @@ const TurmaListPage = lazy(() => import('./pages/TurmaListPage'))
 const TurmaDetailPage = lazy(() => import('./pages/TurmaDetailPage'))
 const ExamUploadPage = lazy(() => import('./pages/ExamUploadPage'))
 const SubmissionsPage = lazy(() => import('./pages/SubmissionsPage'))
-const StudentSubmitPage = lazy(() => import('./pages/StudentSubmitPage'))
 const BulkSubmitPage = lazy(() => import('./pages/BulkSubmitPage'))
 const StudentsPage = lazy(() => import('./pages/StudentsPage'))
 const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage'))
@@ -52,8 +50,8 @@ export default function App() {
         <BrowserRouter>
           <Suspense fallback={<PageFallback />}>
             <Routes>
-              {/* Público — submissão avulsa, sem conta (link direto da prova) */}
-              <Route path="submit/:examId" element={<StudentSubmitPage />} />
+              {/* Link antigo do TCC: o envio agora exige conta de aluno */}
+              <Route path="submit/*" element={<Navigate to="/aluno" replace />} />
 
               {/* Aluno */}
               <Route path="aluno/login" element={<AlunoLoginPage />} />
@@ -83,7 +81,6 @@ export default function App() {
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="turma/:turmaId" element={<TurmaDetailPage />} />
                   <Route path="turma/:turmaId/upload" element={<ExamUploadPage />} />
-                  <Route path="upload" element={<UploadPage />} />
                   <Route path="exam/:id" element={<ExamDashboard />} />
                   <Route path="exam/:id/questions/:num" element={<QuestionPage />} />
                   <Route path="exam/:id/questions/:num/testcases" element={<TestCasesPage />} />

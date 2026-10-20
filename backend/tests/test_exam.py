@@ -1,6 +1,9 @@
 import json
 from unittest.mock import patch
 
+import pytest
+
+from app.models.orm import Turma
 from tests.conftest import gemini_response
 
 
@@ -36,13 +39,22 @@ def _mock_gemini_client(response_text: str):
     return client
 
 
+@pytest.fixture()
+def turma(db, professor):
+    turma = Turma(nome="Turma Teste", codigo="TT", professor_id=professor.id)
+    db.add(turma)
+    db.commit()
+    return turma
+
+
 class TestExamUpload:
-    def test_upload_cria_prova_e_questoes(self, client, run_jobs_sync):
+    def test_upload_cria_prova_e_questoes(self, client, run_jobs_sync, turma):
         parse, gemini = _mock_upload_dependencies()
         with parse, gemini:
             resp = client.post(
                 "/exam/upload",
                 files={"file": ("prova.pdf", FAKE_PDF_BYTES, "application/pdf")},
+                data={"turma_id": turma.id},
             )
         # O upload é assíncrono: a rota cria a prova e dispara a extração em job.
         assert resp.status_code == 200
@@ -64,7 +76,7 @@ class TestExamUpload:
         )
         assert resp.status_code == 400
 
-    def test_upload_gemini_falha_marca_job_com_erro(self, client, run_jobs_sync):
+    def test_upload_gemini_falha_marca_job_com_erro(self, client, run_jobs_sync, turma):
         parse = patch("app.services.exam_service.parse_document", return_value="texto")
         gemini = patch(
             "app.engine.semantic_extractor.genai.Client",
@@ -74,6 +86,7 @@ class TestExamUpload:
             resp = client.post(
                 "/exam/upload",
                 files={"file": ("prova.pdf", FAKE_PDF_BYTES, "application/pdf")},
+                data={"turma_id": turma.id},
             )
         # A falha do Gemini ocorre em segundo plano: a rota responde 200 e o erro
         # fica registrado no status do job, sem questões na prova.

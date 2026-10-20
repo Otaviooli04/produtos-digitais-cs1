@@ -9,6 +9,10 @@ from app.models.orm import Professor
 
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Professor e aluno ficam em tabelas diferentes e os ids se repetem entre elas.
+# Sem o papel no token, o aluno de id N passaria pelas rotas como o professor de id N.
+PROFESSOR_ROLE = "professor"
+
 
 def hash_password(plain: str) -> str:
     return _pwd.hash(plain)
@@ -21,7 +25,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 def create_access_token(professor_id: int) -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS)
     return jwt.encode(
-        {"sub": str(professor_id), "exp": expire},
+        {"sub": str(professor_id), "role": PROFESSOR_ROLE, "exp": expire},
         SECRET_KEY,
         algorithm=JWT_ALGORITHM,
     )
@@ -30,8 +34,13 @@ def create_access_token(professor_id: int) -> str:
 def decode_token(token: str) -> int | None:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
+    except JWTError:
+        return None
+    if payload.get("role") != PROFESSOR_ROLE:
+        return None
+    try:
         return int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
+    except (KeyError, ValueError):
         return None
 
 

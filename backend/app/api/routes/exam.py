@@ -97,16 +97,16 @@ def _highlight_for(qc, llm_lines) -> list:
     return llm_lines or []
 
 
-# ── público: alunos precisam carregar a prova antes de submeter ──────────────
-@router.get("/{exam_id}", response_model=ExamResponse)
-def get_exam(exam_id: int, db: Session = Depends(get_db)):
-    exam = db.query(Exam).filter(Exam.id == exam_id).first()
-    if not exam:
-        raise HTTPException(status_code=404, detail="Prova não encontrada.")
-    return _exam_to_response(exam)
-
-
 # ── rotas protegidas (professor autenticado) ─────────────────────────────────
+@router.get("/{exam_id}", response_model=ExamResponse)
+def get_exam(
+    exam_id: int,
+    db: Session = Depends(get_db),
+    professor: Professor = Depends(get_current_professor),
+):
+    return _exam_to_response(get_exam_or_404(exam_id, db, professor_id=professor.id))
+
+
 @router.post("/upload", response_model=ExamUploadStartResponse)
 async def upload_exam(
     file: UploadFile = File(...),
