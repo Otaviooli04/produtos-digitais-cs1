@@ -129,6 +129,15 @@ GEMINI_EXAM_STRUCTURE = """{
 # Fixtures de integração
 # ---------------------------------------------------------------------------
 
+def _turma_do(db, professor) -> Turma:
+    """A atividade precisa de uma turma do professor: sem ela não tem dono e as
+    rotas do professor respondem 404."""
+    turma = Turma(nome="Turma Teste", codigo="TT", professor_id=professor.id)
+    db.add(turma)
+    db.flush()
+    return turma
+
+
 @pytest.fixture()
 def int_client():
     """Client com banco de teste real, sem mocks de dependências."""
@@ -168,7 +177,7 @@ class TestDockerGCC:
 
         # Cria prova e questão diretamente (sem chamar Gemini)
         from app.models.orm import Exam, Question, TestCase
-        exam = Exam(filename="prova_integracao.pdf", raw_text="texto")
+        exam = Exam(filename="prova_integracao.pdf", raw_text="texto", turma_id=_turma_do(db, professor).id)
         db.add(exam)
         db.flush()
         q = Question(
@@ -202,7 +211,7 @@ class TestDockerGCC:
         client, db, professor = int_client
 
         from app.models.orm import Exam, Question, TestCase
-        exam = Exam(filename="prova.pdf", raw_text="texto")
+        exam = Exam(filename="prova.pdf", raw_text="texto", turma_id=_turma_do(db, professor).id)
         db.add(exam)
         db.flush()
         q = Question(exam_id=exam.id, number="1", statement="Par ou ímpar",
@@ -229,7 +238,7 @@ class TestDockerGCC:
         client, db, professor = int_client
 
         from app.models.orm import Exam, Question, TestCase
-        exam = Exam(filename="prova.pdf", raw_text="texto")
+        exam = Exam(filename="prova.pdf", raw_text="texto", turma_id=_turma_do(db, professor).id)
         db.add(exam)
         db.flush()
         q = Question(exam_id=exam.id, number="1", statement="Raiz quadrada",
@@ -255,7 +264,7 @@ class TestDockerGCC:
         client, db, professor = int_client
 
         from app.models.orm import Exam, Question
-        exam = Exam(filename="prova.pdf", raw_text="texto")
+        exam = Exam(filename="prova.pdf", raw_text="texto", turma_id=_turma_do(db, professor).id)
         db.add(exam)
         db.flush()
         q = Question(exam_id=exam.id, number="1", statement="Qualquer",
@@ -296,6 +305,7 @@ class TestGeminiReal:
                 "/exam/upload",
                 files={"file": ("prova.docx", b"docx-fake",
                                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+                data={"turma_id": _turma_do(db, professor).id},
             )
 
         assert resp.status_code == 200

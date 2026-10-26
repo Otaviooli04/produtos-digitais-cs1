@@ -126,7 +126,7 @@ npm run dev
 
 ## API (principais rotas)
 
-Autenticação por token (Bearer) exceto cadastro, login e leitura pública da prova.
+Autenticação por token (Bearer) exceto cadastro e login. O token leva o papel (professor ou aluno), e cada lado recusa o token do outro. As rotas de `/exam` e `/submission` exigem o professor dono da atividade.
 
 | Método | Rota | Descrição |
 |--------|------|-----------|

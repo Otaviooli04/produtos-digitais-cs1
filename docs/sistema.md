@@ -53,7 +53,7 @@ O veredito do sistema foi validado contra o avaliador consolidado do Moodle (mó
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                 Frontend (React 19 + Vite + Tailwind v4)          │
-│        painel do professor  +  submissão pública do aluno        │
+│        painel do professor  +  área do aluno com conta           │
 └───────────────────────────────┬──────────────────────────────────┘
                                 │ HTTP (REST, token JWT)
 ┌───────────────────────────────▼──────────────────────────────────┐
@@ -414,7 +414,7 @@ alembic revision --autogenerate -m "descricao"
 
 ## 10. API — Endpoints
 
-Base: `http://localhost:8000` · Swagger em `/docs`. Autenticação por token Bearer (JWT), exceto cadastro, login e a submissão pública do aluno. Routers montados: `auth`, `exam`, `submission`, `turma`, `jobs`.
+Base: `http://localhost:8000` · Swagger em `/docs`. Autenticação por token Bearer (JWT), exceto cadastro e login. O token leva o papel (professor ou aluno), e cada lado recusa o token do outro. Routers montados: `auth`, `exam`, `submission`, `turma`, `jobs`.
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -438,11 +438,11 @@ Base: `http://localhost:8000` · Swagger em `/docs`. Autenticação por token Be
 
 ## 11. Frontend
 
-Painel do professor + submissão pública do aluno. React 19 + Vite + Tailwind v4 + React Router 7 + Recharts + axios. Páginas em lazy-load (bundle inicial leve). Rotas em `frontend/src/App.jsx`.
+Painel do professor + área do aluno com conta. React 19 + Vite + Tailwind v4 + React Router 7 + Recharts + axios. Páginas em lazy-load (bundle inicial leve). Rotas em `frontend/src/App.jsx`.
 
 **Fluxo do professor (protegido):** `TurmaListPage` → `TurmaDetailPage` → upload da prova (`ExamUploadPage`) → `ExamDashboard` → por questão: `QuestionPage` (grupos, insights, destaque do erro), `TestCasesPage`, `SubmissionsPage`, envio em lote (`BulkSubmitPage`), `ResultsPage`, `StudentsPage` / `StudentDetailPage`.
 
-**Fluxo do aluno (público):** rota `/submit/:examId` → `StudentSubmitPage`. Submete código e recebe o diagnóstico imediato. É a base do produto voltado ao aluno.
+**Fluxo do aluno (com conta):** `/aluno/turmas` → turma → atividade → `QuestaoPage`, onde submete código e recebe o diagnóstico imediato. A rota pública `/submit/:examId` do TCC saiu em 20/10/2026 e só redireciona para `/aluno`.
 
 **Componentes reutilizáveis:** `Modal`, `ConfirmDialog`, `QuestionForm`, `JobDock` (progresso das tarefas), `BarList`, `Badge`, `CodeBlock`, `FunctionCheckCard`, `ListControls`, `WhoList`, `Logo`. Auth em `context/AuthContext.jsx`, cliente HTTP em `api/client.js`.
 
