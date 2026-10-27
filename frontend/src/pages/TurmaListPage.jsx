@@ -12,6 +12,9 @@ const SORT_OPTIONS = [
   { value: 'name', label: 'Nome (A–Z)' },
 ]
 
+// Campo vazio é "não informado", que o backend guarda como nulo.
+const paraAlunos = (valor) => (valor === '' ? null : Number(valor))
+
 export default function TurmaListPage() {
   const navigate = useNavigate()
   const [turmas, setTurmas] = useState([])
@@ -21,6 +24,7 @@ export default function TurmaListPage() {
   const [showForm, setShowForm] = useState(false)
   const [nome, setNome] = useState('')
   const [codigo, setCodigo] = useState('')
+  const [alunosPrevistos, setAlunosPrevistos] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
 
@@ -28,20 +32,27 @@ export default function TurmaListPage() {
   const [editTurma, setEditTurma] = useState(null)
   const [editNome, setEditNome] = useState('')
   const [editCodigo, setEditCodigo] = useState('')
+  const [editAlunos, setEditAlunos] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
-  const openEdit = (t) => { setEditTurma(t); setEditNome(t.nome); setEditCodigo(t.codigo) }
+  const openEdit = (t) => {
+    setEditTurma(t)
+    setEditNome(t.nome)
+    setEditCodigo(t.codigo)
+    setEditAlunos(t.alunos_previstos ?? '')
+  }
 
   const saveEdit = async (e) => {
     e.preventDefault()
     if (!editNome.trim() || !editCodigo.trim()) return
     setSaving(true)
     try {
-      await updateTurma(editTurma.id, editNome.trim(), editCodigo.trim())
+      await updateTurma(editTurma.id, editNome.trim(), editCodigo.trim(), paraAlunos(editAlunos))
       setTurmas(prev => prev.map(t => t.id === editTurma.id
-        ? { ...t, nome: editNome.trim(), codigo: editCodigo.trim() } : t))
+        ? { ...t, nome: editNome.trim(), codigo: editCodigo.trim(), alunos_previstos: paraAlunos(editAlunos) }
+        : t))
       setEditTurma(null)
     } catch {
       setError('Erro ao salvar turma.')
@@ -76,10 +87,11 @@ export default function TurmaListPage() {
     setCreating(true)
     setError('')
     try {
-      const { data } = await createTurma(nome.trim(), codigo.trim())
+      const { data } = await createTurma(nome.trim(), codigo.trim(), paraAlunos(alunosPrevistos))
       setTurmas(prev => [{ ...data, exam_count: data.exams?.length ?? 0 }, ...prev])
       setNome('')
       setCodigo('')
+      setAlunosPrevistos('')
       setShowForm(false)
     } catch {
       setError('Erro ao criar turma.')
@@ -138,6 +150,15 @@ export default function TurmaListPage() {
               onChange={e => setCodigo(e.target.value)}
               placeholder="Código (ex: CS1-2026-1)"
               className="flex-1 text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+            <input
+              type="number"
+              min={1}
+              max={1000}
+              value={alunosPrevistos}
+              onChange={e => setAlunosPrevistos(e.target.value)}
+              placeholder="Alunos na turma (opcional)"
+              className="sm:w-56 text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
             <button
               type="submit"
@@ -227,6 +248,11 @@ export default function TurmaListPage() {
           <input
             type="text" value={editCodigo} onChange={e => setEditCodigo(e.target.value)}
             placeholder="Código"
+            className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          />
+          <input
+            type="number" min={1} max={1000} value={editAlunos} onChange={e => setEditAlunos(e.target.value)}
+            placeholder="Alunos na turma (opcional)"
             className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
           <div className="flex justify-end gap-2 pt-1">
