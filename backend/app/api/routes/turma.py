@@ -38,7 +38,8 @@ def post_turma(
     db: Session = Depends(get_db),
     professor: Professor = Depends(get_current_professor),
 ):
-    turma = create_turma(body.nome, body.codigo, db, professor_id=professor.id)
+    turma = create_turma(body.nome, body.codigo, db, professor_id=professor.id,
+                         alunos_previstos=body.alunos_previstos)
     return get_turma_detail(turma.id, db)
 
 
@@ -62,7 +63,8 @@ def put_turma(
     professor: Professor = Depends(get_current_professor),
 ):
     turma = _get_turma_or_404(turma_id, db, professor.id)
-    update_turma(turma, body.nome, body.codigo, db)
+    opcionais = body.model_dump(include={"alunos_previstos"}, exclude_unset=True)
+    update_turma(turma, body.nome, body.codigo, db, **opcionais)
     return get_turma_detail(turma.id, db)
 
 

@@ -44,6 +44,9 @@ class Turma(Base):
     # Não confundir com `codigo`, que é o identificador da disciplina no papel do
     # professor e pode se repetir entre professores.
     codigo_acesso = Column(String, unique=True, nullable=True, index=True)
+    # Tamanho da turma informado pelo professor. É o denominador da aquisição no
+    # funil, porque o sistema só conhece quem entrou, não quem deveria entrar.
+    alunos_previstos = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     professor_id = Column(Integer, ForeignKey("professors.id"), nullable=True)
 

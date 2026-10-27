@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional, Literal
 
 
@@ -69,11 +69,13 @@ class TurmaDoAlunoResponse(BaseModel):
 class TurmaCreate(BaseModel):
     nome: str
     codigo: str
+    alunos_previstos: Optional[int] = Field(None, ge=1, le=1000)
 
 
 class TurmaUpdate(BaseModel):
     nome: str
     codigo: str
+    alunos_previstos: Optional[int] = Field(None, ge=1, le=1000)
 
 
 class ExamSummary(BaseModel):
@@ -92,6 +94,7 @@ class TurmaResponse(BaseModel):
     nome: str
     codigo: str
     codigo_acesso: Optional[str] = None
+    alunos_previstos: Optional[int] = None
     created_at: str
     exam_count: int
     aluno_count: int = 0
@@ -102,6 +105,7 @@ class TurmaDetailResponse(BaseModel):
     nome: str
     codigo: str
     codigo_acesso: Optional[str] = None
+    alunos_previstos: Optional[int] = None
     created_at: str
     aluno_count: int = 0
     exams: List[ExamSummary]
