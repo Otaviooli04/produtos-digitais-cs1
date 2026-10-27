@@ -76,7 +76,7 @@ As regras abaixo detalham a seção 1 do desenho, que já foi aprovada.
 
 - **Questão em aberto:** questão sem acerto do aluno numa atividade publicada da turma cuja situação é "aberta" pela regra de `_situacao`, e em que o aluno ainda pode enviar. Quem já usou o `max_tentativas` da atividade naquela questão, contando todas as tentativas como faz `submeter`, não tem mais o que fazer nela, então ela deixa de estar em aberto para ele.
 - **Pendente:** o aluno tem ao menos uma questão em aberto. A trilha não deixa ninguém pendente, porque é treino opcional.
-- **Dias sem envio:** tempo desde o último envio do aluno, de lista ou de trilha, falha técnica incluída. Quem nunca enviou conta desde a matrícula.
+- **Dias sem envio:** tempo desde o último envio do aluno, de lista ou de trilha, falha técnica incluída. Quem nunca enviou conta desde a matrícula. As comparações abaixo usam o tempo exato entre os dois instantes, não dias inteiros. Exatamente 14 dias ainda não é "mais de 14", e exatamente 7 dias já é "7 dias ou mais". O `dias_sem_envio` da resposta é só para mostrar, arredondado para baixo.
 - Quem não está pendente fica fora do risco, mesmo parado há muito tempo (RN09).
 - **Vermelho**, se pendente e com uma destas condições:
   - mais de 14 dias sem envio, com o motivo "Mais de 14 dias sem envio"
@@ -229,6 +229,9 @@ AlunoEmRisco
   - base zero dá taxa nula
 - Saúde:
   - pendente com 15 dias sem envio é vermelho
+  - pendente com exatamente 14 dias sem envio é amarelo, e com exatamente 7 dias também
+  - pendente com exatamente 7 dias sem envio e último envio errado é amarelo, porque "Parou depois de errar" pede mais de 7
+  - pendente com 6 dias sem envio e sem 5 erros numa questão fica fora das listas
   - pendente com 8 dias sem envio e último envio errado numa questão em aberto é vermelho por "Parou depois de errar"
   - pendente com 8 dias sem envio e último envio certo é amarelo
   - pendente com 3 dias sem envio e 5 erros numa questão em aberto é amarelo
