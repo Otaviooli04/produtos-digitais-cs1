@@ -6,8 +6,10 @@ from app.models.database import get_db
 from app.models.orm import Professor
 from app.models.orm import Turma
 from app.models.schemas import (
-    TurmaAnalyticsResponse, TurmaCreate, TurmaDetailResponse, TurmaResponse, TurmaUpdate,
+    FunilTurmaResponse, TurmaAnalyticsResponse, TurmaCreate, TurmaDetailResponse, TurmaResponse,
+    TurmaUpdate,
 )
+from app.services.funil_service import funil_da_turma
 from app.services.turma_service import (
     create_turma, delete_turma, get_turma_analytics, get_turma_detail, list_turmas, update_turma,
 )
@@ -88,3 +90,13 @@ def get_analytics(
     if not data:
         raise HTTPException(status_code=404, detail="Turma não encontrada.")
     return data
+
+
+@router.get("/{turma_id}/funil", response_model=FunilTurmaResponse)
+def get_funil(
+    turma_id: int,
+    db: Session = Depends(get_db),
+    professor: Professor = Depends(get_current_professor),
+):
+    turma = _get_turma_or_404(turma_id, db, professor.id)
+    return funil_da_turma(turma, db)

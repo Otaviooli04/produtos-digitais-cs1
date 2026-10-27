@@ -2,9 +2,14 @@
 from datetime import datetime, timedelta
 
 import pytest
+from fastapi.testclient import TestClient
 
+from app.auth.student_service import create_student_token
+from app.main import app as fastapi_app
+from app.models.database import get_db
 from app.models.orm import (
-    Enrollment, ExercicioGerado, Exam, Question, Student, Submission, TentativaDeTreino, Turma,
+    Enrollment, ExercicioGerado, Exam, Professor, Question, Student, Submission,
+    TentativaDeTreino, Turma,
 )
 from app.services.funil_service import funil_da_turma, funil_geral
 
@@ -184,3 +189,54 @@ class TestFunilGeral:
         assert geral["total"]["matriculados"] == 0
         assert geral["total"]["taxa_ativacao"] is None
         assert geral["total"]["north_star"]["total"] == 0
+
+
+@pytest.fixture()
+def anonimo(db):
+    """Cliente sem professor injetado: quem decide é a autenticação de verdade."""
+    def override_get_db():
+        yield db
+
+    fastapi_app.dependency_overrides[get_db] = override_get_db
+    with TestClient(fastapi_app) as c:
+        yield c
+    fastapi_app.dependency_overrides.clear()
+
+
+class TestRota:
+    def test_dono_recebe_o_funil(self, client, db, professor):
+        turma = _turma(db, professor)
+        _atividade(db, turma)
+        _aluno(db, "ana@teste.com", "Ana Lima", [turma],
+               entrada=datetime.utcnow() - timedelta(days=20))
+
+        resp = client.get(f"/turmas/{turma.id}/funil")
+
+        assert resp.status_code == 200
+        corpo = resp.json()
+        assert corpo["turma_id"] == turma.id
+        assert len(corpo["north_star"]["semanas"]) == 8
+        assert len(corpo["retencao"]["semanas"]) == 8
+        assert corpo["aquisicao"]["meta"] == 80.0
+        assert corpo["saude"]["vermelho"][0]["nome"] == "Ana Lima"
+        assert corpo["saude"]["vermelho"][0]["ultimo_envio"] is None
+        assert corpo["protecao"]["itens_com_acerto"] == 0
+
+    def test_turma_de_outro_professor_da_404(self, client, db):
+        outro = Professor(email="outro@teste.com", nome="Outro Professor", senha_hash="x")
+        db.add(outro)
+        db.commit()
+        turma = _turma(db, outro)
+        assert client.get(f"/turmas/{turma.id}/funil").status_code == 404
+
+    def test_token_de_aluno_da_401(self, anonimo, db, professor):
+        turma = _turma(db, professor)
+        ana = _aluno(db, "ana@teste.com", "Ana", [turma])
+        token = create_student_token(ana.id)
+        resp = anonimo.get(f"/turmas/{turma.id}/funil",
+                           headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 401
+
+    def test_sem_token_da_401(self, anonimo, db, professor):
+        turma = _turma(db, professor)
+        assert anonimo.get(f"/turmas/{turma.id}/funil").status_code == 401
