@@ -7,6 +7,7 @@ import ListControls from '../components/ListControls'
 import Badge from '../components/Badge'
 import BarList from '../components/BarList'
 import TrajetoriaDeErros from '../components/TrajetoriaDeErros'
+import FunilDaTurma from '../components/FunilDaTurma'
 import { shortError } from '../utils/errorLabels'
 
 const SORT_OPTIONS = [
@@ -53,6 +54,7 @@ export default function TurmaDetailPage() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('recent')
   const [copiado, setCopiado] = useState(false)
+  const [recargaFunil, setRecargaFunil] = useState(0)
 
   const copiarCodigo = async () => {
     if (!turma?.codigo_acesso) return
@@ -73,6 +75,7 @@ export default function TurmaDetailPage() {
       setDeleteExamTarget(null)
       // Rebusca os analytics (agregados no servidor) após remover a prova.
       getTurmaAnalytics(turmaId).then(({ data: a }) => setAnalytics(a)).catch(() => {})
+      setRecargaFunil(n => n + 1)
     } catch {
       setError('Erro ao excluir a prova.')
     } finally {
@@ -205,6 +208,8 @@ export default function TurmaDetailPage() {
           />
         </div>
       )}
+
+      <FunilDaTurma turmaId={turmaId} recarga={recargaFunil} />
 
       {/* Charts — só mostra se há dados */}
       {analytics && (evolucaoData.length > 0 || errosData.length > 0) && (
