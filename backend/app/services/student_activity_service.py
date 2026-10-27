@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.engine.evaluators.code_evaluator import evaluate_code
 from app.models.orm import Exam, Question, Student, Submission
+from app.services.calendario import semana_iso, situacao_da_atividade
 
 logger = logging.getLogger(__name__)
 
@@ -32,15 +33,6 @@ class AtividadeIndisponivel(Exception):
 
 def _turma_ids(student: Student) -> list[int]:
     return [e.turma_id for e in student.enrollments]
-
-
-def _situacao(exam: Exam, agora: datetime | None = None) -> str:
-    agora = agora or datetime.utcnow()
-    if exam.abre_em and agora < exam.abre_em:
-        return "agendada"
-    if exam.fecha_em and agora > exam.fecha_em:
-        return "encerrada"
-    return "aberta"
 
 
 def _tentativas_por_questao(student: Student, db: Session,
@@ -131,7 +123,7 @@ def _resumo(exam: Exam, mapa: dict[int, list[Submission]]) -> dict:
     questoes = _questoes_ordenadas(exam)
     tentativas = sum(len(mapa.get(q.id, [])) for q in questoes)
     resolvidas = sum(1 for q in questoes if _resolvida(mapa.get(q.id, [])))
-    situacao = _situacao(exam)
+    situacao = situacao_da_atividade(exam)
     return {
         "exam_id": exam.id,
         "titulo": titulo_da_atividade(exam),
@@ -190,7 +182,7 @@ def _questao_com_status(question: Question, exam: Exam, tentativas: list[Submiss
 def submeter(student: Student, exam_id: int, question_number: str, code: str,
              db: Session) -> dict:
     exam = _atividade_do_aluno(student, exam_id, db)
-    situacao = _situacao(exam)
+    situacao = situacao_da_atividade(exam)
     if situacao == "agendada":
         raise AtividadeIndisponivel("Esta atividade ainda não abriu.")
     if situacao == "encerrada":
@@ -445,11 +437,11 @@ def _evolucao(mapa: dict[int, list[Submission]], questoes: list[Question]) -> li
         for sub in mapa.get(q.id, []):
             if not sub.submitted_at:
                 continue
-            tentativas_por_semana[_semana(sub.submitted_at)] += 1
+            tentativas_por_semana[semana_iso(sub.submitted_at)] += 1
         primeira_correta = next(
             (s for s in mapa.get(q.id, []) if s.error_category == CATEGORIA_CORRETA), None)
         if primeira_correta and primeira_correta.submitted_at:
-            resolvidas_por_semana[_semana(primeira_correta.submitted_at)] += 1
+            resolvidas_por_semana[semana_iso(primeira_correta.submitted_at)] += 1
 
     return [
         {
@@ -459,11 +451,6 @@ def _evolucao(mapa: dict[int, list[Submission]], questoes: list[Question]) -> li
         }
         for semana in sorted(tentativas_por_semana)
     ]
-
-
-def _semana(momento: datetime) -> str:
-    dia = momento.date()
-    return (dia - timedelta(days=dia.weekday())).isoformat()
 
 
 # ── erros recorrentes ────────────────────────────────────────────────────────
