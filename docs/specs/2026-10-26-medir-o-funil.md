@@ -76,7 +76,7 @@ As regras abaixo detalham a seção 1 do desenho, que já foi aprovada.
 
 - **Questão em aberto:** questão sem acerto do aluno numa atividade publicada da turma cuja situação é "aberta" pela regra de `_situacao`, e em que o aluno ainda pode enviar. Quem já usou o `max_tentativas` da atividade naquela questão, contando todas as tentativas como faz `submeter`, não tem mais o que fazer nela, então ela deixa de estar em aberto para ele.
 - **Pendente:** o aluno tem ao menos uma questão em aberto. A trilha não deixa ninguém pendente, porque é treino opcional.
-- **Dias sem envio:** tempo desde o último envio do aluno, de lista ou de trilha, falha técnica incluída. Quem nunca enviou conta desde a matrícula. As comparações abaixo usam o tempo exato entre os dois instantes, não dias inteiros. Exatamente 14 dias ainda não é "mais de 14", e exatamente 7 dias já é "7 dias ou mais". O `dias_sem_envio` da resposta é só para mostrar, arredondado para baixo.
+- **Dias sem envio:** tempo desde o último envio do aluno, de lista ou de trilha, falha técnica incluída. Quem nunca enviou conta desde a matrícula. Se o último envio é de antes da matrícula, o que acontece com a trilha, que não tem turma, a contagem também começa na matrícula. As comparações abaixo usam o tempo exato entre os dois instantes, não dias inteiros. Exatamente 14 dias ainda não é "mais de 14", e exatamente 7 dias já é "7 dias ou mais". O `dias_sem_envio` da resposta é só para mostrar, arredondado para baixo.
 - Quem não está pendente fica fora do risco, mesmo parado há muito tempo (RN09).
 - **Vermelho**, se pendente e com uma destas condições:
   - mais de 14 dias sem envio, com o motivo "Mais de 14 dias sem envio"
@@ -240,6 +240,7 @@ AlunoEmRisco
   - questão sem acerto só em atividade encerrada ou agendada não deixa pendente
   - questão sem acerto em que o aluno já usou o `max_tentativas` não deixa pendente
   - envio na trilha conta para os dias sem envio, e 5 erros na trilha não viram motivo
+  - trilha de antes da matrícula não conta como tempo sem envio de quem acabou de entrar na turma
 - Proteção: média de tentativas até acertar e acerto de primeira, com a falha técnica ignorada nas duas.
 
 **Serviço com banco**

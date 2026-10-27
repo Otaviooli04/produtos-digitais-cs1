@@ -304,6 +304,19 @@ class TestSaude:
         tentativas += [tent(ERRO, _dias(1, minutes=i), item=7, origem=TRILHA) for i in range(5)]
         assert _cores(_saude(tentativas)) == ([], [])
 
+    def test_trilha_de_antes_da_matricula_nao_conta_como_parado(self):
+        tentativas = [tent(ACERTO, _dias(30), item=7, origem=TRILHA)]
+        s = _saude(tentativas, matriculas=[mat(1, _dias(2), nome="Ana")])
+        assert _cores(s) == ([], [])
+
+    def test_cinco_erros_e_8_dias_e_parou_depois_de_errar(self):
+        s = _saude([tent(ERRO, _dias(8, minutes=i), item=10) for i in range(5)])
+        assert _cores(s) == ([("Ana", "Parou depois de errar")], [])
+
+    def test_cinco_erros_e_exatamente_7_dias_e_sem_envio(self):
+        s = _saude([tent(ERRO, _dias(7, minutes=i), item=10) for i in range(5)])
+        assert _cores(s) == ([], [("Ana", "7 a 14 dias sem envio")])
+
     def test_ordem_por_dias_sem_envio_e_depois_por_nome(self):
         matriculas = [mat(1, _dias(16), nome="Caio"), mat(2, _dias(20), nome="Bia"),
                       mat(3, _dias(16), nome="Ana")]
