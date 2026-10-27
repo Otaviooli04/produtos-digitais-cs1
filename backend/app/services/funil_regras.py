@@ -28,6 +28,17 @@ META_ATIVACAO = 60.0
 META_RETENCAO = 50.0
 META_VERMELHO = 15.0
 
+VERMELHO = "vermelho"
+AMARELO = "amarelo"
+LIMITE_VERMELHO = timedelta(days=14)
+LIMITE_AMARELO = timedelta(days=7)
+ERROS_SEGUIDOS = 5
+
+MOTIVO_SEM_ENVIO_LONGO = "Mais de 14 dias sem envio"
+MOTIVO_PAROU_DEPOIS_DE_ERRAR = "Parou depois de errar"
+MOTIVO_SEM_ENVIO = "7 a 14 dias sem envio"
+MOTIVO_ERROS_SEGUIDOS = "5 erros seguidos na mesma questão"
+
 
 @dataclass(frozen=True)
 class Tentativa:
@@ -202,3 +213,89 @@ def retencao(matriculas: list[Matricula], tentativas: list[Tentativa], agora: da
     de zero e pareceria queda."""
     semanas = [retencao_da_semana(s, matriculas, tentativas) for s in ultimas_semanas(agora)]
     return {"semanas": semanas, "ultima_completa": semanas[-2], "meta": META_RETENCAO}
+
+
+def _questoes_em_aberto(serie: list[Tentativa],
+                        questoes_abertas: dict[int, int | None]) -> dict[int, int]:
+    """Questão aberta sem acerto em que o aluno ainda pode enviar, com quantos
+    erros ele já tem nela. Quem gastou o teto não tem mais o que fazer ali."""
+    por_questao: dict[int, list[Tentativa]] = defaultdict(list)
+    for t in serie:
+        if t.origem == LISTA:
+            por_questao[t.item_id].append(t)
+    em_aberto = {}
+    for questao_id, teto in questoes_abertas.items():
+        feitas = por_questao.get(questao_id, [])
+        if any(t.resultado == ACERTO for t in feitas):
+            continue
+        if teto is not None and len(feitas) >= teto:
+            continue
+        em_aberto[questao_id] = sum(1 for t in feitas if t.resultado == ERRO)
+    return em_aberto
+
+
+def _cor(parado: timedelta, ultimo: Tentativa | None,
+         em_aberto: dict[int, int]) -> tuple[str | None, str | None]:
+    if parado > LIMITE_VERMELHO:
+        return VERMELHO, MOTIVO_SEM_ENVIO_LONGO
+    parou_no_erro = (
+        ultimo is not None and ultimo.origem == LISTA
+        and ultimo.resultado == ERRO and ultimo.item_id in em_aberto
+    )
+    if parado > LIMITE_AMARELO and parou_no_erro:
+        return VERMELHO, MOTIVO_PAROU_DEPOIS_DE_ERRAR
+    if parado >= LIMITE_AMARELO:
+        return AMARELO, MOTIVO_SEM_ENVIO
+    if any(erros >= ERROS_SEGUIDOS for erros in em_aberto.values()):
+        return AMARELO, MOTIVO_ERROS_SEGUIDOS
+    return None, None
+
+
+def saude(matriculas: list[Matricula], tentativas: list[Tentativa],
+          questoes_abertas: dict[int, int | None], agora: datetime) -> dict:
+    """Só entra em risco quem ainda tem questão aberta para resolver (RN09). A
+    trilha conta como envio, mas nunca vira motivo: o professor não vê a trilha."""
+    por_aluno: dict[int, list[Tentativa]] = defaultdict(list)
+    for t in _em_ordem(tentativas):
+        por_aluno[t.aluno].append(t)
+
+    listas: dict[str, list[dict]] = {VERMELHO: [], AMARELO: []}
+    for m in matriculas:
+        serie = por_aluno.get(m.aluno, [])
+        em_aberto = _questoes_em_aberto(serie, questoes_abertas)
+        if not em_aberto:
+            continue
+        ultimo = serie[-1] if serie else None
+        parado = agora - (ultimo.momento if ultimo else m.entrada)
+        cor, motivo = _cor(parado, ultimo, em_aberto)
+        if cor is None:
+            continue
+        listas[cor].append({
+            "student_id": m.aluno,
+            "nome": m.nome,
+            "motivo": motivo,
+            "dias_sem_envio": parado.days,
+            "ultimo_envio": ultimo.momento.isoformat() if ultimo else None,
+        })
+    for alunos in listas.values():
+        alunos.sort(key=lambda a: (-a["dias_sem_envio"], a["nome"]))
+    return {
+        "vermelho": listas[VERMELHO],
+        "amarelo": listas[AMARELO],
+        "taxa_vermelho": taxa(len(listas[VERMELHO]), len(matriculas)),
+        "meta": META_VERMELHO,
+    }
+
+
+def montar_funil(matriculas: list[Matricula], tentativas: list[Tentativa],
+                 questoes_abertas: dict[int, int | None], alunos_previstos: int | None,
+                 agora: datetime) -> dict:
+    corrigidos = erros_corrigidos(tentativas)
+    return {
+        "north_star": north_star(corrigidos, agora),
+        "aquisicao": aquisicao(matriculas, alunos_previstos),
+        "ativacao": ativacao(matriculas, tentativas, corrigidos),
+        "retencao": retencao(matriculas, tentativas, agora),
+        "saude": saude(matriculas, tentativas, questoes_abertas, agora),
+        "protecao": protecao(tentativas),
+    }

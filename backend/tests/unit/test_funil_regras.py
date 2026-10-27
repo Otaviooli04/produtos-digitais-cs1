@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 
 from app.services.funil_regras import (
     ACERTO, ERRO, FALHA, LISTA, TRILHA, Matricula, Tentativa, aquisicao, ativacao,
-    erros_corrigidos, north_star, protecao, resultado_da_lista, resultado_da_trilha,
-    retencao, retencao_da_semana, ultimas_semanas,
+    erros_corrigidos, montar_funil, north_star, protecao, resultado_da_lista,
+    resultado_da_trilha, retencao, retencao_da_semana, saude, ultimas_semanas,
 )
 
 # Quarta-feira. A semana atual começa em 2026-10-26.
@@ -222,3 +222,103 @@ class TestRetencao:
         assert r["semanas"][-1]["semana"] == "2026-10-26"
         assert r["ultima_completa"]["semana"] == "2026-10-19"
         assert r["meta"] == 50.0
+
+
+# Questões 10 e 11 abertas e sem teto de tentativas.
+ABERTAS = {10: None, 11: None}
+
+
+def _dias(n, **extra):
+    return AGORA - timedelta(days=n, **extra)
+
+
+def _saude(tentativas, matriculas=None, abertas=None):
+    matriculas = matriculas if matriculas is not None else [mat(1, _dias(30), nome="Ana")]
+    return saude(matriculas, tentativas, ABERTAS if abertas is None else abertas, AGORA)
+
+
+def _cores(s):
+    return ([(a["nome"], a["motivo"]) for a in s["vermelho"]],
+            [(a["nome"], a["motivo"]) for a in s["amarelo"]])
+
+
+class TestSaude:
+    def test_mais_de_14_dias_sem_envio_e_vermelho(self):
+        s = _saude([tent(ACERTO, _dias(15), item=11)])
+        assert _cores(s) == ([("Ana", "Mais de 14 dias sem envio")], [])
+        assert s["vermelho"][0]["dias_sem_envio"] == 15
+        assert s["vermelho"][0]["ultimo_envio"] == _dias(15).isoformat()
+
+    def test_exatamente_14_dias_ainda_e_amarelo(self):
+        s = _saude([tent(ACERTO, _dias(14), item=11)])
+        assert _cores(s) == ([], [("Ana", "7 a 14 dias sem envio")])
+
+    def test_exatamente_7_dias_ja_e_amarelo(self):
+        s = _saude([tent(ACERTO, _dias(7), item=11)])
+        assert _cores(s) == ([], [("Ana", "7 a 14 dias sem envio")])
+
+    def test_mais_de_7_dias_depois_de_errar_numa_questao_em_aberto_e_vermelho(self):
+        s = _saude([tent(ERRO, _dias(8), item=10)])
+        assert _cores(s) == ([("Ana", "Parou depois de errar")], [])
+
+    def test_exatamente_7_dias_depois_de_errar_e_amarelo(self):
+        s = _saude([tent(ERRO, _dias(7), item=10)])
+        assert _cores(s) == ([], [("Ana", "7 a 14 dias sem envio")])
+
+    def test_8_dias_depois_de_acertar_e_amarelo(self):
+        s = _saude([tent(ACERTO, _dias(8), item=11)])
+        assert _cores(s) == ([], [("Ana", "7 a 14 dias sem envio")])
+
+    def test_falha_tecnica_no_fim_nao_e_parar_depois_de_errar(self):
+        s = _saude([tent(FALHA, _dias(8), item=10)])
+        assert _cores(s) == ([], [("Ana", "7 a 14 dias sem envio")])
+
+    def test_cinco_erros_numa_questao_em_aberto_e_amarelo(self):
+        s = _saude([tent(ERRO, _dias(3, minutes=i), item=10) for i in range(5)])
+        assert _cores(s) == ([], [("Ana", "5 erros seguidos na mesma questão")])
+
+    def test_quatro_erros_e_6_dias_fica_fora(self):
+        s = _saude([tent(ERRO, _dias(6, minutes=i), item=10) for i in range(4)])
+        assert _cores(s) == ([], [])
+
+    def test_quem_nunca_enviou_conta_desde_a_matricula(self):
+        s = _saude([], matriculas=[mat(1, _dias(15), nome="Ana"), mat(2, _dias(8), nome="Bia")])
+        assert _cores(s) == ([("Ana", "Mais de 14 dias sem envio")], [("Bia", "7 a 14 dias sem envio")])
+        assert s["vermelho"][0]["ultimo_envio"] is None
+
+    def test_quem_resolveu_tudo_o_que_esta_aberto_fica_fora(self):
+        s = _saude([tent(ACERTO, _dias(30), item=10), tent(ACERTO, _dias(30), item=11)])
+        assert _cores(s) == ([], [])
+
+    def test_sem_questao_aberta_ninguem_fica_pendente(self):
+        s = _saude([], abertas={})
+        assert _cores(s) == ([], [])
+
+    def test_teto_de_tentativas_gasto_tira_a_questao(self):
+        tentativas = [tent(ERRO, _dias(20), item=10), tent(ERRO, _dias(20, minutes=-1), item=10)]
+        assert _cores(_saude(tentativas, abertas={10: 2})) == ([], [])
+        assert _cores(_saude(tentativas, abertas={10: 3}))[0] == [("Ana", "Mais de 14 dias sem envio")]
+
+    def test_trilha_conta_como_envio_mas_nao_vira_motivo(self):
+        tentativas = [tent(ERRO, _dias(20), item=10)]
+        tentativas += [tent(ERRO, _dias(1, minutes=i), item=7, origem=TRILHA) for i in range(5)]
+        assert _cores(_saude(tentativas)) == ([], [])
+
+    def test_ordem_por_dias_sem_envio_e_depois_por_nome(self):
+        matriculas = [mat(1, _dias(16), nome="Caio"), mat(2, _dias(20), nome="Bia"),
+                      mat(3, _dias(16), nome="Ana")]
+        s = _saude([], matriculas=matriculas)
+        assert [a["nome"] for a in s["vermelho"]] == ["Bia", "Ana", "Caio"]
+
+    def test_taxa_de_vermelho_sobre_os_matriculados(self):
+        matriculas = [mat(1, _dias(20), nome="Ana")] + [mat(i, _dias(1), nome=f"A{i}") for i in range(2, 5)]
+        s = _saude([], matriculas=matriculas)
+        assert s["taxa_vermelho"] == 25.0
+        assert s["meta"] == 15.0
+
+
+class TestMontarFunil:
+    def test_traz_os_seis_blocos(self):
+        funil = montar_funil([mat(1, _dias(30))], [], ABERTAS, 40, AGORA)
+        assert set(funil) == {"north_star", "aquisicao", "ativacao", "retencao", "saude", "protecao"}
+        assert funil["aquisicao"]["alunos_previstos"] == 40
