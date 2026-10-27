@@ -48,9 +48,13 @@ O que o sistema já consegue calcular hoje, sem trabalho novo:
 | Nº de tentativas por aluno | Pronta, em `/aluno/progresso` |
 | Queda nas tentativas até acertar | Pronta, `tentativas_por_questao_resolvida` |
 | Erros recorrentes eliminados | Aproximada pela tendência por categoria em `/aluno/erros-recorrentes` |
-| Taxa de ativação | Derivável de matrículas na turma versus alunos que submeteram, mas sem painel |
+| North Star, erros corrigidos por semana | Pronta, no bloco "Funil da turma" (`GET /turmas/{id}/funil`) e no total de todas as turmas pelo `backend/scripts/funil.py`. Junto, a proteção (tentativas até acertar e acerto de primeira) |
+| Taxa de ativação | Pronta, no bloco "Funil da turma": quem corrigiu o primeiro erro até 7 dias depois de entrar, com a meta de 60% |
+| Aquisição | Pronta, no bloco "Funil da turma": matriculados contra o tamanho da turma (`turmas.alunos_previstos`, que o professor preenche) e a taxa da primeira semana, com a meta de 80% |
+| Alunos em risco (vermelho e amarelo) | Pronta, no bloco "Funil da turma", só para quem tem questão em aberto (RN09) |
 | Esforço economizado do professor | Pronta, em `/exam/{id}/effort-report` |
-| DAU e WAU, retorno em 7 dias, retenção semanal | Não. O sistema registra submissão, não acesso, então não há como separar quem abriu de quem enviou |
+| Retenção semanal | Pronta pelos envios, no bloco "Funil da turma": quem enviou na semana e já tinha enviado antes, e quantos por conta própria (treino ou trilha), com a meta de 50% |
+| DAU e WAU, retorno medido pelo acesso | Não. O sistema registra envio, não acesso, então não há como separar quem abriu de quem enviou. É a parte 2 da volta "medir o funil" |
 | NPS | Não. Exige coleta dentro do produto |
 
 ## 4. O que falta, e o que cada item exige
