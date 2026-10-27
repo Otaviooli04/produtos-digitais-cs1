@@ -430,7 +430,7 @@ Criar `backend/tests/unit/test_funil_regras.py`:
 ```python
 """Regras do funil sobre registros montados à mão, sem banco."""
 import itertools
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.services.funil_regras import (
     ACERTO, ERRO, FALHA, LISTA, TRILHA, Tentativa, erros_corrigidos, north_star, protecao,
@@ -733,7 +733,7 @@ git commit -m "feat(funil): erros corrigidos por semana e metricas de protecao"
 
 - [ ] **Passo 1: escrever os testes que falham**
 
-Em `backend/tests/unit/test_funil_regras.py`, trocar o bloco de import de `app.services.funil_regras` por:
+Em `backend/tests/unit/test_funil_regras.py`, trocar `from datetime import datetime` por `from datetime import datetime, timedelta` e o bloco de import de `app.services.funil_regras` por:
 
 ```python
 from app.services.funil_regras import (
