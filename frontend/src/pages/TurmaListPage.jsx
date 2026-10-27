@@ -250,11 +250,13 @@ export default function TurmaListPage() {
             placeholder="Código"
             className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
-          <input
-            type="number" min={1} max={1000} value={editAlunos} onChange={e => setEditAlunos(e.target.value)}
-            placeholder="Alunos na turma (opcional)"
-            className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          />
+          <label className="block text-xs text-gray-500">
+            Alunos na turma (opcional)
+            <input
+              type="number" min={1} max={1000} value={editAlunos} onChange={e => setEditAlunos(e.target.value)}
+              className="mt-1 w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </label>
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={() => setEditTurma(null)}
               className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">

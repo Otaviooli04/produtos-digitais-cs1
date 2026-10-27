@@ -28,7 +28,7 @@ function EtapaCard({ titulo, valor, detalhe, meta, atingida }) {
     <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-1">
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{titulo}</p>
-        <Meta atingida={atingida}>{meta}</Meta>
+        {meta && <Meta atingida={atingida}>{meta}</Meta>}
       </div>
       <p className="text-2xl font-bold text-gray-900">{valor}</p>
       {detalhe && <p className="text-xs text-gray-500">{detalhe}</p>}
@@ -102,7 +102,7 @@ function Painel({ funil }) {
           detalhe={aquisicao.alunos_previstos
             ? `${pct(aquisicao.taxa_primeira_semana)} entraram na primeira semana`
             : 'Informe quantos alunos a turma tem para ver a taxa de entrada.'}
-          meta={`Meta ${aquisicao.meta}%`}
+          meta={aquisicao.alunos_previstos ? `Meta ${aquisicao.meta}%` : null}
           atingida={aquisicao.taxa_primeira_semana != null && aquisicao.taxa_primeira_semana >= aquisicao.meta}
         />
         <EtapaCard

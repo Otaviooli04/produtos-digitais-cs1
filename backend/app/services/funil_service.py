@@ -4,7 +4,7 @@ Este módulo só lê e converte em registros. As contas estão em `funil_regras`
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from app.models.orm import (
     Enrollment, Exam, Professor, Question, Student, Submission, TentativaDeTreino, Turma,
@@ -79,6 +79,7 @@ def _questoes_abertas(turma_id: int, db: Session, agora: datetime) -> dict[int, 
     linhas = (
         db.query(Question.id, Exam)
         .join(Exam, Exam.id == Question.exam_id)
+        .options(load_only(Exam.abre_em, Exam.fecha_em, Exam.max_tentativas))
         .filter(Exam.turma_id == turma_id, Exam.publicada.is_(True))
         .all()
     )
