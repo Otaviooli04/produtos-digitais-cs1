@@ -4,7 +4,7 @@ A leitura fica em `funil_service`. Aqui só entra o que já foi lido, por isso
 cada conta se testa com listas montadas à mão."""
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from app.services.calendario import semana_iso
 from app.services.student_activity_service import CATEGORIA_CORRETA
@@ -134,3 +134,71 @@ def protecao(tentativas: list[Tentativa]) -> dict:
         "acerto_de_primeira": taxa(sum(de_primeira), len(de_primeira)),
         "itens_com_acerto": len(ate_acertar),
     }
+
+
+def aquisicao(matriculas: list[Matricula], alunos_previstos: int | None) -> dict:
+    """A primeira matrícula da turma marca a divulgação do código, e a primeira
+    semana conta a partir dela."""
+    primeira_semana = 0
+    if matriculas:
+        divulgacao = min(m.entrada for m in matriculas)
+        primeira_semana = sum(1 for m in matriculas if m.entrada <= divulgacao + JANELA)
+    return {
+        "matriculados": len(matriculas),
+        "alunos_previstos": alunos_previstos,
+        "taxa_matriculados": taxa(len(matriculas), alunos_previstos),
+        "primeira_semana": primeira_semana,
+        "taxa_primeira_semana": taxa(primeira_semana, alunos_previstos),
+        "meta": META_AQUISICAO,
+    }
+
+
+def alunos_ativados(matriculas: list[Matricula],
+                    corrigidos: list[tuple[int, datetime]]) -> set[int]:
+    """Quem corrigiu um erro entre a própria matrícula e JANELA depois dela."""
+    entrada = {m.aluno: m.entrada for m in matriculas}
+    return {
+        aluno for aluno, momento in corrigidos
+        if aluno in entrada and entrada[aluno] <= momento <= entrada[aluno] + JANELA
+    }
+
+
+def ativacao(matriculas: list[Matricula], tentativas: list[Tentativa],
+             corrigidos: list[tuple[int, datetime]]) -> dict:
+    matriculados = {m.aluno for m in matriculas}
+    ativados = alunos_ativados(matriculas, corrigidos)
+    return {
+        "matriculados": len(matriculados),
+        "com_primeiro_envio": len({t.aluno for t in tentativas} & matriculados),
+        "ativados": len(ativados),
+        "taxa": taxa(len(ativados), len(matriculados)),
+        "meta": META_ATIVACAO,
+    }
+
+
+def retencao_da_semana(semana: str, matriculas: list[Matricula],
+                       tentativas: list[Tentativa]) -> dict:
+    """Quem enviou na semana e já tinha enviado antes dela. Por conta própria é
+    o mesmo, com o envio da semana em atividade de treino ou na trilha."""
+    inicio = datetime.combine(date.fromisoformat(semana), time.min)
+    fim = inicio + timedelta(weeks=1)
+    base = {m.aluno for m in matriculas if m.entrada < fim}
+    antes = {t.aluno for t in tentativas if t.momento < inicio}
+    na_semana = [t for t in tentativas if inicio <= t.momento < fim]
+    voltaram = {t.aluno for t in na_semana} & antes & base
+    proprios = {t.aluno for t in na_semana if t.por_conta_propria} & antes & base
+    return {
+        "semana": semana,
+        "base": len(base),
+        "voltaram": len(voltaram),
+        "por_conta_propria": len(proprios),
+        "taxa": taxa(len(voltaram), len(base)),
+        "taxa_por_conta_propria": taxa(len(proprios), len(base)),
+    }
+
+
+def retencao(matriculas: list[Matricula], tentativas: list[Tentativa], agora: datetime) -> dict:
+    """O cartão usa a última semana completa: a atual começa toda segunda perto
+    de zero e pareceria queda."""
+    semanas = [retencao_da_semana(s, matriculas, tentativas) for s in ultimas_semanas(agora)]
+    return {"semanas": semanas, "ultima_completa": semanas[-2], "meta": META_RETENCAO}
