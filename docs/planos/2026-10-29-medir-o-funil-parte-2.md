@@ -62,6 +62,8 @@
 
 As regras puras continuam separadas do serviço para os testes delas não montarem nada no banco. O `funil_service` só lê, filtra e converte.
 
+A documentação fica para o `fechamento`, como na parte 1: `docs/mapa-funcionalidades.md`, `HANDOFF.md` e o `CLAUDE.md`, cuja lista de migrações passa de 0001..0017 para 0001..0018. O plano geral local (`docs/produto/plano-implementacao.md`, fora do git) marca a parte 2 e passa o 0.2 para a migração 0019, e isso é feito do checkout principal, porque o worktree não edita arquivos de lá.
+
 ---
 
 ### Task 1: migração 0018 e modelos
@@ -262,7 +264,7 @@ Esperado: `0018 0017`.
 - [ ] **Passo 7: rodar a suíte inteira**
 
 Rodar: `cd backend && /home/otavio/produtos-digitais-cs1/backend/venv/bin/python -m pytest tests/ --ignore=tests/integration -q 2>&1 | tail -3`
-Esperado: tudo passando, 304 testes (301 da base mais 3).
+Esperado: tudo passando. A base medida na criação do worktree tinha 301 testes, então devem ser 304.
 
 - [ ] **Passo 8: commitar**
 
@@ -2064,13 +2066,17 @@ Fazer as mesmas quatro mudanças em `frontend/src/pages/aluno/AlunoLoginPage.jsx
 
 - [ ] **Passo 7: entrada digitada com origem**
 
-Em `frontend/src/pages/aluno/TurmasPage.jsx`, dentro de `handleSubmit` de `EntrarNaTurma`, trocar `await entrarNaTurma(codigo.trim())` por:
+Em `frontend/src/pages/aluno/TurmasPage.jsx`, dentro de `handleSubmit` de `EntrarNaTurma`, trocar a linha inteira
+
+```jsx
+      const { data } = await entrarNaTurma(codigo.trim())
+```
+
+por:
 
 ```jsx
       const { data } = await entrarNaTurma(codigo.trim(), 'codigo')
 ```
-
-(a linha original já começa com `const { data } =`, só a chamada muda).
 
 - [ ] **Passo 8: lint e build**
 
