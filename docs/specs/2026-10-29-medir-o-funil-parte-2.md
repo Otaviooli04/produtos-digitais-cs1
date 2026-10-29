@@ -201,7 +201,7 @@ FunilTurmaResponse
   1. Ao abrir, guarda o código. Guardar antes de qualquer coisa cobre o token vencido, em que o cliente do aluno manda direto para o login.
   2. Espera o `loading` do `AlunoAuthContext`.
   3. Sem login, vai para `/aluno/cadastro` com `replace`.
-  4. Com login, chama `entrarNaTurma(codigo, 'convite')`. Se der certo, apaga o código guardado e vai para `/aluno/turmas/{id}?via=convite` com `replace`. Se der 404, apaga o código guardado e mostra a mensagem de convite inválido com o link "Ir para minhas turmas".
+  4. Com login, chama `entrarNaTurma(codigo, 'convite')`. Se der certo, apaga o código guardado e vai para `/aluno/turmas/{id}?via=convite` com `replace`. Se der 404, apaga o código guardado e mostra a mensagem de convite inválido com o link "Ir para minhas turmas". Em qualquer outra falha, como rede fora ou erro do servidor, mantém o código guardado e mostra "Não foi possível entrar na turma agora." com o botão "Tentar de novo".
   5. Enquanto entra, mostra o logo e um spinner com "Entrando na turma...".
 - **`AlunoRegisterPage.jsx` e `AlunoLoginPage.jsx`:** leem o convite guardado. Com ele, mostram "Depois de entrar, você vai direto para a turma." acima do formulário e, quando dão certo, vão para `/aluno/convite/{código}` em vez de `/aluno`. Sem convite, nada muda.
 - **`TurmasPage.jsx`:** entra com `entrarNaTurma(codigo, 'codigo')`.
@@ -245,7 +245,7 @@ FunilTurmaResponse
   - aluno que corrigiu um erro em outra sessão conta só em `chegaram`
   - aluno que não corrigiu nada conta em `ainda_nao_chegaram`
   - mediana com quantidade ímpar e par, e nula sem ninguém
-  - erro corrigido antes da matrícula não conta
+  - erro corrigido antes da matrícula não conta, inclusive o de envio de lista religado pela matrícula institucional, que continua contando na North Star
 - Aquisição por origem: as três contagens, incluindo a origem nula, somando os matriculados.
 
 **Serviço de acesso (com banco)**
@@ -269,7 +269,7 @@ FunilTurmaResponse
 **Rotas**
 
 - `POST /aluno/acessos` com token de aluno devolve 204 e grava, sem token ou com token de professor devolve 401, e com `via` de 33 caracteres devolve 422
-- `POST /aluno/turmas/entrar` com `origem` "convite" grava `convite`, sem o campo grava `codigo`, entrar de novo com outra origem não muda a gravada, e origem fora da lista devolve 422
+- `POST /aluno/turmas/entrar` com `origem` "convite" grava `convite`, sem o campo grava `codigo`, entrar de novo com outra origem não muda a gravada, origem fora da lista devolve 422, e código inexistente com `origem` "convite" devolve 404 sem criar matrícula
 - `GET /turmas/{id}/funil` traz `aquisicao.por_origem`, os campos novos da semana e o bloco `sucesso`
 
 **Script**
