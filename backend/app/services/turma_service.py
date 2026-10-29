@@ -24,13 +24,20 @@ def gerar_codigo_acesso(db: Session) -> str:
             return codigo
 
 
-def create_turma(nome: str, codigo: str, db: Session, professor_id: int | None = None) -> Turma:
+# Padrão de `update_turma` para "o campo não veio no corpo", que é diferente de
+# None: None limpa o campo, _MANTER deixa como está.
+_MANTER = object()
+
+
+def create_turma(nome: str, codigo: str, db: Session, professor_id: int | None = None,
+                 alunos_previstos: int | None = None) -> Turma:
     turma = Turma(
         nome=nome,
         codigo=codigo,
         codigo_acesso=gerar_codigo_acesso(db),
         created_at=datetime.utcnow(),
         professor_id=professor_id,
+        alunos_previstos=alunos_previstos,
     )
     db.add(turma)
     db.commit()
@@ -38,9 +45,12 @@ def create_turma(nome: str, codigo: str, db: Session, professor_id: int | None =
     return turma
 
 
-def update_turma(turma: Turma, nome: str, codigo: str, db: Session) -> Turma:
+def update_turma(turma: Turma, nome: str, codigo: str, db: Session,
+                 alunos_previstos=_MANTER) -> Turma:
     turma.nome = nome
     turma.codigo = codigo
+    if alunos_previstos is not _MANTER:
+        turma.alunos_previstos = alunos_previstos
     db.commit()
     db.refresh(turma)
     return turma
@@ -66,6 +76,7 @@ def list_turmas(db: Session, professor_id: int | None = None) -> list:
             "nome": t.nome,
             "codigo": t.codigo,
             "codigo_acesso": t.codigo_acesso,
+            "alunos_previstos": t.alunos_previstos,
             "created_at": t.created_at.isoformat(),
             "exam_count": len(t.exams),
             "aluno_count": len(t.enrollments),
@@ -99,6 +110,7 @@ def get_turma_detail(turma_id: int, db: Session, professor_id: int | None = None
         "nome": turma.nome,
         "codigo": turma.codigo,
         "codigo_acesso": turma.codigo_acesso,
+        "alunos_previstos": turma.alunos_previstos,
         "created_at": turma.created_at.isoformat(),
         "aluno_count": len(turma.enrollments),
         "exams": exams,

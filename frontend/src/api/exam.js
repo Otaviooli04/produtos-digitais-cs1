@@ -49,11 +49,11 @@ export const bulkSubmit = (examId, file, format) => {
   return api.post(`/exam/${examId}/submissions/bulk`, form)
 }
 
-export const createTurma = (nome, codigo) =>
-  api.post('/turmas', { nome, codigo })
+export const createTurma = (nome, codigo, alunosPrevistos = null) =>
+  api.post('/turmas', { nome, codigo, alunos_previstos: alunosPrevistos })
 
-export const updateTurma = (id, nome, codigo) =>
-  api.put(`/turmas/${id}`, { nome, codigo })
+export const updateTurma = (id, nome, codigo, alunosPrevistos = null) =>
+  api.put(`/turmas/${id}`, { nome, codigo, alunos_previstos: alunosPrevistos })
 
 export const deleteTurma = (id) => api.delete(`/turmas/${id}`)
 
@@ -81,6 +81,8 @@ export const listTurmas = () => api.get('/turmas')
 export const getTurma = (id) => api.get(`/turmas/${id}`)
 
 export const getTurmaAnalytics = (id) => api.get(`/turmas/${id}/analytics`)
+
+export const getTurmaFunil = (id) => api.get(`/turmas/${id}/funil`)
 
 export const getQuestionSubmissions = (examId, questionNumber) =>
   api.get(`/exam/${examId}/questions/${questionNumber}/submissions`)

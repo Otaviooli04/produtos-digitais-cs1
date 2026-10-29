@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional, Literal
 
 
@@ -69,11 +69,13 @@ class TurmaDoAlunoResponse(BaseModel):
 class TurmaCreate(BaseModel):
     nome: str
     codigo: str
+    alunos_previstos: Optional[int] = Field(None, ge=1, le=1000)
 
 
 class TurmaUpdate(BaseModel):
     nome: str
     codigo: str
+    alunos_previstos: Optional[int] = Field(None, ge=1, le=1000)
 
 
 class ExamSummary(BaseModel):
@@ -92,6 +94,7 @@ class TurmaResponse(BaseModel):
     nome: str
     codigo: str
     codigo_acesso: Optional[str] = None
+    alunos_previstos: Optional[int] = None
     created_at: str
     exam_count: int
     aluno_count: int = 0
@@ -102,6 +105,7 @@ class TurmaDetailResponse(BaseModel):
     nome: str
     codigo: str
     codigo_acesso: Optional[str] = None
+    alunos_previstos: Optional[int] = None
     created_at: str
     aluno_count: int = 0
     exams: List[ExamSummary]
@@ -485,6 +489,83 @@ class TurmaAnalyticsResponse(BaseModel):
     provas: List[ExamAnalytics]
     top_erros: List[ErrorCount]
     trajetoria: List[TrajetoriaDeErro] = []
+
+
+# ── Funil da turma ───────────────────────────────────────────────────────────
+
+class SemanaNorthStar(BaseModel):
+    semana: str
+    erros_corrigidos: int
+
+
+class NorthStarFunil(BaseModel):
+    semana_atual: int
+    total: int
+    semanas: List[SemanaNorthStar]
+
+
+class AquisicaoFunil(BaseModel):
+    matriculados: int
+    alunos_previstos: Optional[int] = None
+    taxa_matriculados: Optional[float] = None
+    primeira_semana: int
+    taxa_primeira_semana: Optional[float] = None
+    meta: float
+
+
+class AtivacaoFunil(BaseModel):
+    matriculados: int
+    com_primeiro_envio: int
+    ativados: int
+    taxa: Optional[float] = None
+    meta: float
+
+
+class SemanaRetencao(BaseModel):
+    semana: str
+    base: int
+    voltaram: int
+    por_conta_propria: int
+    taxa: Optional[float] = None
+    taxa_por_conta_propria: Optional[float] = None
+
+
+class RetencaoFunil(BaseModel):
+    semanas: List[SemanaRetencao]
+    ultima_completa: SemanaRetencao
+    meta: float
+
+
+class AlunoEmRisco(BaseModel):
+    student_id: int
+    nome: str
+    motivo: str
+    dias_sem_envio: int
+    ultimo_envio: Optional[str] = None
+
+
+class SaudeFunil(BaseModel):
+    vermelho: List[AlunoEmRisco]
+    amarelo: List[AlunoEmRisco]
+    taxa_vermelho: Optional[float] = None
+    meta: float
+
+
+class ProtecaoFunil(BaseModel):
+    media_tentativas_ate_acertar: Optional[float] = None
+    acerto_de_primeira: Optional[float] = None
+    itens_com_acerto: int
+
+
+class FunilTurmaResponse(BaseModel):
+    turma_id: int
+    gerado_em: str
+    north_star: NorthStarFunil
+    aquisicao: AquisicaoFunil
+    ativacao: AtivacaoFunil
+    retencao: RetencaoFunil
+    saude: SaudeFunil
+    protecao: ProtecaoFunil
 
 
 # ── Aluno: atividades, tentativas e progresso ────────────────────────────────

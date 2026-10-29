@@ -390,7 +390,7 @@ Trilha direcionada com geração de exercícios, antifraude do modo prova, relat
 ### Perguntas de produto ainda em aberto (decisões a tomar com o novo Claude)
 - ~~Prova ou treino?~~ **Decidido:** os dois. Cada atividade declara seu `modo`, e a janela e o teto de tentativas controlam a avaliação. Falta o antifraude do modo prova.
 - O feedback ao aluno deve ser **imediato e completo** (hoje é assim) ou **progressivo** (dica → dica → solução, para não entregar a resposta)?
-- Métricas de sucesso do produto: retenção do aluno? nº de submissões até acertar? redução de erros recorrentes?
+- ~~Métricas de sucesso do produto?~~ **Decidido no Plano de Growth (25/10/2026):** a North Star é erros corrigidos por semana, acompanhada do funil de aquisição, ativação, retenção e alunos em risco. A parte calculada pelos envios está no bloco "Funil da turma" da página da turma e no `backend/scripts/funil.py`. Falta o registro de acesso (parte 2).
 
 > Estas perguntas são de **produto**, não de código. Traga-as para a discussão da disciplina antes de codar features grandes.
 
