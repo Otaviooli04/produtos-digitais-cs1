@@ -58,6 +58,10 @@ class TurmaEntrarRequest(BaseModel):
     codigo_acesso: str
 
 
+class AcessoRequest(BaseModel):
+    via: Optional[str] = Field(None, max_length=32)
+
+
 class TurmaDoAlunoResponse(BaseModel):
     id: int
     nome: str

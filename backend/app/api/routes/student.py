@@ -9,9 +9,10 @@ from app.auth.student_service import (
 from app.models.database import get_db
 from app.models.orm import Student
 from app.models.schemas import (
-    PasswordChange, StudentCreate, StudentLogin, StudentResponse, StudentTokenResponse,
-    StudentUpdate, TurmaDoAlunoResponse, TurmaEntrarRequest,
+    AcessoRequest, PasswordChange, StudentCreate, StudentLogin, StudentResponse,
+    StudentTokenResponse, StudentUpdate, TurmaDoAlunoResponse, TurmaEntrarRequest,
 )
+from app.services.acesso_service import registrar_acesso
 
 router = APIRouter(prefix="/aluno", tags=["aluno"])
 
@@ -88,6 +89,15 @@ def minhas_turmas(
     current: Student = Depends(get_current_student),
 ):
     return [_turma_to_response(e.turma) for e in current.enrollments]
+
+
+@router.post("/acessos", status_code=204)
+def registrar(
+    body: AcessoRequest,
+    db: Session = Depends(get_db),
+    current: Student = Depends(get_current_student),
+):
+    registrar_acesso(current.id, body.via, db)
 
 
 def _to_response(s: Student) -> StudentResponse:
