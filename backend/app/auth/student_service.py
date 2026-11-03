@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.service import hash_password, verify_password
@@ -74,7 +75,12 @@ def entrar_na_turma(student: Student, codigo_acesso: str, db: Session,
     ).first()
     if not ja_vinculado:
         db.add(Enrollment(student_id=student.id, turma_id=turma.id, origem=origem))
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            # Outra requisição do mesmo aluno criou a matrícula ao mesmo tempo.
+            db.rollback()
+            return turma
         vincular_submissoes_anteriores(student, db)
     return turma
 
