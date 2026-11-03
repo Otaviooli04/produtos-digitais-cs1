@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 
 from app.services.funil_regras import (
     ACERTO, ERRO, FALHA, LISTA, TRILHA, Matricula, Tentativa, aquisicao, ativacao,
-    erros_corrigidos, montar_funil, north_star, protecao, resultado_da_lista,
-    resultado_da_trilha, retencao, retencao_da_semana, saude, ultimas_semanas,
+    com_prova_marcada, erros_corrigidos, janela_da_prova, montar_funil, north_star,
+    por_origem, protecao, resultado_da_lista, resultado_da_trilha, retencao,
+    retencao_da_semana, saude, ultimas_semanas,
 )
 
 # Quarta-feira. A semana atual começa em 2026-10-26.
@@ -18,8 +19,8 @@ def tent(resultado, momento, aluno=1, item=10, origem=LISTA, por_conta_propria=F
                      ordem=next(_ids), resultado=resultado, por_conta_propria=por_conta_propria)
 
 
-def mat(aluno, entrada, nome="Aluno"):
-    return Matricula(aluno=aluno, nome=nome, entrada=entrada)
+def mat(aluno, entrada, nome="Aluno", origem=None):
+    return Matricula(aluno=aluno, nome=nome, entrada=entrada, origem=origem)
 
 
 def _por_semana(ns):
@@ -153,6 +154,51 @@ class TestAquisicao:
         assert a["matriculados"] == 0
         assert a["primeira_semana"] == 0
         assert a["taxa_matriculados"] == 0.0
+
+
+class TestPorOrigem:
+    def test_conta_as_tres_origens(self):
+        matriculas = [mat(1, DIA0, origem="convite"), mat(2, DIA0, origem="convite"),
+                      mat(3, DIA0, origem="codigo"), mat(4, DIA0)]
+        esperado = {"convite": 2, "codigo": 1, "sem_origem": 1}
+        assert por_origem(matriculas) == esperado
+        assert aquisicao(matriculas, None)["por_origem"] == esperado
+
+    def test_turma_vazia(self):
+        assert por_origem([]) == {"convite": 0, "codigo": 0, "sem_origem": 0}
+
+
+ABRE = datetime(2026, 10, 20, 8, 0)
+FECHA = datetime(2026, 10, 20, 10, 0)
+
+
+class TestProvaQuePuxa:
+    def test_com_as_duas_datas_puxa_de_tres_dias_antes_ate_o_fechamento(self):
+        janelas = [janela_da_prova(ABRE, FECHA)]
+        assert com_prova_marcada(ABRE - timedelta(days=3), janelas)
+        assert com_prova_marcada(FECHA, janelas)
+        assert not com_prova_marcada(ABRE - timedelta(days=3, seconds=1), janelas)
+        assert not com_prova_marcada(FECHA + timedelta(seconds=1), janelas)
+
+    def test_so_com_abertura_puxa_dali_em_diante(self):
+        janelas = [janela_da_prova(ABRE, None)]
+        assert not com_prova_marcada(ABRE - timedelta(days=4), janelas)
+        assert com_prova_marcada(ABRE + timedelta(days=60), janelas)
+
+    def test_so_com_fechamento_puxa_ate_ele(self):
+        janelas = [janela_da_prova(None, FECHA)]
+        assert com_prova_marcada(FECHA - timedelta(days=60), janelas)
+        assert not com_prova_marcada(FECHA + timedelta(seconds=1), janelas)
+
+    def test_sem_datas_nao_tem_janela(self):
+        assert janela_da_prova(None, None) is None
+        assert not com_prova_marcada(ABRE, [])
+
+    def test_basta_uma_prova_puxar(self):
+        outra = janela_da_prova(datetime(2026, 11, 10), datetime(2026, 11, 10, 2))
+        janelas = [janela_da_prova(ABRE, FECHA), outra]
+        assert com_prova_marcada(datetime(2026, 11, 8), janelas)
+        assert not com_prova_marcada(datetime(2026, 11, 1), janelas)
 
 
 class TestAtivacao:

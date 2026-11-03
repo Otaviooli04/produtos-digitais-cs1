@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
+from app.models.orm import Enrollment
 from app.services.calendario import semana_iso
 from app.services.student_activity_service import CATEGORIA_CORRETA
 
@@ -22,6 +23,8 @@ TRILHA = "trilha"
 
 SEMANAS = 8
 JANELA = timedelta(days=7)
+# A prova puxa o aluno desde 3 dias antes de abrir, a janela do aviso "Prova chegando".
+ANTECEDENCIA_DA_PROVA = timedelta(days=3)
 
 META_AQUISICAO = 80.0
 META_ATIVACAO = 60.0
@@ -61,6 +64,22 @@ class Matricula:
     aluno: int
     nome: str
     entrada: datetime
+    origem: str | None = None
+
+
+@dataclass(frozen=True)
+class Acesso:
+    """Uma abertura do app do aluno. `via` nula é abertura por conta própria."""
+    aluno: int
+    momento: datetime
+    via: str | None = None
+
+
+@dataclass(frozen=True)
+class JanelaDeProva:
+    """Intervalo fechado em que uma prova puxa o aluno. Lado nulo é sem limite."""
+    inicio: datetime | None
+    fim: datetime | None
 
 
 def resultado_da_lista(error_category: str | None) -> str:
@@ -147,6 +166,13 @@ def protecao(tentativas: list[Tentativa]) -> dict:
     }
 
 
+def por_origem(matriculas: list[Matricula]) -> dict:
+    contagem = Counter(m.origem for m in matriculas)
+    convite = contagem[Enrollment.ORIGEM_CONVITE]
+    codigo = contagem[Enrollment.ORIGEM_CODIGO]
+    return {"convite": convite, "codigo": codigo, "sem_origem": len(matriculas) - convite - codigo}
+
+
 def aquisicao(matriculas: list[Matricula], alunos_previstos: int | None) -> dict:
     """A primeira matrícula da turma marca a divulgação do código, e a primeira
     semana conta a partir dela."""
@@ -160,6 +186,7 @@ def aquisicao(matriculas: list[Matricula], alunos_previstos: int | None) -> dict
         "taxa_matriculados": taxa(len(matriculas), alunos_previstos),
         "primeira_semana": primeira_semana,
         "taxa_primeira_semana": taxa(primeira_semana, alunos_previstos),
+        "por_origem": por_origem(matriculas),
         "meta": META_AQUISICAO,
     }
 
@@ -185,6 +212,21 @@ def ativacao(matriculas: list[Matricula], tentativas: list[Tentativa],
         "taxa": taxa(len(ativados), len(matriculados)),
         "meta": META_ATIVACAO,
     }
+
+
+def janela_da_prova(abre_em: datetime | None, fecha_em: datetime | None) -> JanelaDeProva | None:
+    """Prova sem data não puxa ninguém."""
+    if abre_em is None and fecha_em is None:
+        return None
+    inicio = abre_em - ANTECEDENCIA_DA_PROVA if abre_em is not None else None
+    return JanelaDeProva(inicio=inicio, fim=fecha_em)
+
+
+def com_prova_marcada(momento: datetime, janelas: list[JanelaDeProva]) -> bool:
+    return any(
+        (j.inicio is None or j.inicio <= momento) and (j.fim is None or momento <= j.fim)
+        for j in janelas
+    )
 
 
 def retencao_da_semana(semana: str, matriculas: list[Matricula],
