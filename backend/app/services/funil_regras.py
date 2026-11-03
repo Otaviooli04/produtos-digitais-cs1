@@ -5,6 +5,7 @@ cada conta se testa com listas montadas à mão."""
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
+from statistics import median
 
 from app.models.orm import Enrollment
 from app.services.calendario import semana_iso
@@ -25,6 +26,8 @@ SEMANAS = 8
 JANELA = timedelta(days=7)
 # A prova puxa o aluno desde 3 dias antes de abrir, a janela do aviso "Prova chegando".
 ANTECEDENCIA_DA_PROVA = timedelta(days=3)
+# A mesma janela do registro de acesso: 30 minutos sem evento encerram a sessão.
+JANELA_DA_SESSAO = timedelta(minutes=30)
 
 META_AQUISICAO = 80.0
 META_ATIVACAO = 60.0
@@ -360,6 +363,49 @@ def saude(matriculas: list[Matricula], tentativas: list[Tentativa],
     }
 
 
+def fim_da_sessao(entrada: datetime, momentos: list[datetime]) -> datetime:
+    """Último instante da sessão que começa na matrícula. Ela segue enquanto cada
+    evento vem até JANELA_DA_SESSAO depois do anterior."""
+    fim = entrada
+    for momento in sorted(m for m in momentos if m >= entrada):
+        if momento - fim > JANELA_DA_SESSAO:
+            break
+        fim = momento
+    return fim
+
+
+def sucesso(matriculas: list[Matricula], tentativas: list[Tentativa], acessos: list[Acesso],
+            corrigidos: list[tuple[int, datetime]]) -> dict:
+    """RF16: o primeiro erro corrigido depois da matrícula, quanto tempo levou e se
+    veio ainda na sessão em que o aluno entrou na turma."""
+    entrada = {m.aluno: m.entrada for m in matriculas}
+    primeiro: dict[int, datetime] = {}
+    for aluno, momento in corrigidos:
+        if aluno in entrada and momento >= entrada[aluno]:
+            if aluno not in primeiro or momento < primeiro[aluno]:
+                primeiro[aluno] = momento
+
+    eventos: dict[int, list[datetime]] = defaultdict(list)
+    for t in tentativas:
+        eventos[t.aluno].append(t.momento)
+    for a in acessos:
+        eventos[a.aluno].append(a.momento)
+
+    minutos = []
+    na_sessao = 0
+    for aluno, momento in primeiro.items():
+        minutos.append((momento - entrada[aluno]).total_seconds() / 60)
+        if momento <= fim_da_sessao(entrada[aluno], eventos[aluno]):
+            na_sessao += 1
+    return {
+        "chegaram": len(primeiro),
+        "ainda_nao_chegaram": len(matriculas) - len(primeiro),
+        "mediana_minutos": round(median(minutos), 1) if minutos else None,
+        "na_sessao_da_matricula": na_sessao,
+        "taxa_na_sessao_da_matricula": taxa(na_sessao, len(matriculas)),
+    }
+
+
 def montar_funil(dados: DadosDaTurma, alunos_previstos: int | None, agora: datetime) -> dict:
     corrigidos = erros_corrigidos(dados.tentativas)
     return {
@@ -369,4 +415,5 @@ def montar_funil(dados: DadosDaTurma, alunos_previstos: int | None, agora: datet
         "retencao": retencao(dados.matriculas, dados.tentativas, dados.acessos, dados.janelas, agora),
         "saude": saude(dados.matriculas, dados.tentativas, dados.questoes_abertas, agora),
         "protecao": protecao(dados.tentativas),
+        "sucesso": sucesso(dados.matriculas, dados.tentativas, dados.acessos, corrigidos),
     }

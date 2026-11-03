@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 
 from app.services.funil_regras import (
     ACERTO, ERRO, FALHA, LISTA, TRILHA, Acesso, DadosDaTurma, Matricula, Tentativa,
-    aquisicao, ativacao, com_prova_marcada, erros_corrigidos, janela_da_prova,
-    montar_funil, north_star, por_origem, protecao, resultado_da_lista,
-    resultado_da_trilha, retencao, retencao_da_semana, saude, ultimas_semanas,
+    aquisicao, ativacao, com_prova_marcada, erros_corrigidos, fim_da_sessao,
+    janela_da_prova, montar_funil, north_star, por_origem, protecao, resultado_da_lista,
+    resultado_da_trilha, retencao, retencao_da_semana, saude, sucesso, ultimas_semanas,
 )
 
 # Quarta-feira. A semana atual começa em 2026-10-26.
@@ -427,9 +427,76 @@ class TestSaude:
         assert s["meta"] == 15.0
 
 
+class TestSessao:
+    def test_eventos_a_cada_30_minutos_continuam_a_sessao(self):
+        momentos = [DIA0 + timedelta(minutes=30), DIA0 + timedelta(minutes=60)]
+        assert fim_da_sessao(DIA0, momentos) == DIA0 + timedelta(minutes=60)
+
+    def test_intervalo_maior_que_30_minutos_encerra(self):
+        momentos = [DIA0 + timedelta(minutes=10), DIA0 + timedelta(minutes=40, seconds=1)]
+        assert fim_da_sessao(DIA0, momentos) == DIA0 + timedelta(minutes=10)
+
+    def test_sem_evento_termina_na_matricula(self):
+        assert fim_da_sessao(DIA0, []) == DIA0
+
+    def test_evento_de_antes_da_matricula_nao_entra(self):
+        assert fim_da_sessao(DIA0, [DIA0 - timedelta(minutes=5)]) == DIA0
+
+
+def _corrigiu(aluno, minutos):
+    """Erro um minuto depois da matrícula e acerto `minutos` depois dela."""
+    return [tent(ERRO, DIA0 + timedelta(minutes=1), aluno=aluno),
+            tent(ACERTO, DIA0 + timedelta(minutes=minutos), aluno=aluno)]
+
+
+class TestSucesso:
+    def test_na_sessao_da_matricula_em_outra_sessao_e_sem_chegar(self):
+        matriculas = [mat(1, DIA0), mat(2, DIA0), mat(3, DIA0)]
+        tentativas = _corrigiu(1, 20) + _corrigiu(2, 1440) + [tent(ERRO, DIA0 + timedelta(minutes=10), aluno=3)]
+        s = sucesso(matriculas, tentativas, [], erros_corrigidos(tentativas))
+        assert s["chegaram"] == 2
+        assert s["ainda_nao_chegaram"] == 1
+        assert s["na_sessao_da_matricula"] == 1
+        assert s["taxa_na_sessao_da_matricula"] == 33.3
+        assert s["mediana_minutos"] == 730.0
+
+    def test_mediana_com_quantidade_impar(self):
+        matriculas = [mat(1, DIA0), mat(2, DIA0), mat(3, DIA0)]
+        tentativas = _corrigiu(1, 10) + _corrigiu(2, 20) + _corrigiu(3, 90)
+        s = sucesso(matriculas, tentativas, [], erros_corrigidos(tentativas))
+        assert s["mediana_minutos"] == 20.0
+
+    def test_acesso_mantem_a_sessao_viva(self):
+        tentativas = [tent(ERRO, DIA0 + timedelta(minutes=5)), tent(ACERTO, DIA0 + timedelta(minutes=50))]
+        corrigidos = erros_corrigidos(tentativas)
+        sem_acesso = sucesso([mat(1, DIA0)], tentativas, [], corrigidos)
+        com_acesso = sucesso([mat(1, DIA0)], tentativas,
+                             [Acesso(aluno=1, momento=DIA0 + timedelta(minutes=30))], corrigidos)
+        assert sem_acesso["na_sessao_da_matricula"] == 0
+        assert com_acesso["na_sessao_da_matricula"] == 1
+
+    def test_ninguem_chegou(self):
+        s = sucesso([mat(1, DIA0)], [], [], [])
+        assert s["chegaram"] == 0
+        assert s["ainda_nao_chegaram"] == 1
+        assert s["mediana_minutos"] is None
+        assert s["taxa_na_sessao_da_matricula"] == 0.0
+
+    def test_turma_vazia_tem_taxa_nula(self):
+        assert sucesso([], [], [], [])["taxa_na_sessao_da_matricula"] is None
+
+    def test_correcao_antes_da_matricula_nao_conta(self):
+        tentativas = [tent(ERRO, DIA0 - timedelta(days=2)), tent(ACERTO, DIA0 - timedelta(days=1))]
+        s = sucesso([mat(1, DIA0)], tentativas, [], erros_corrigidos(tentativas))
+        assert s["chegaram"] == 0
+        assert s["ainda_nao_chegaram"] == 1
+
+
 class TestMontarFunil:
-    def test_traz_os_seis_blocos(self):
+    def test_traz_os_sete_blocos(self):
         dados = DadosDaTurma(matriculas=[mat(1, _dias(30))], tentativas=[], questoes_abertas=ABERTAS)
         funil = montar_funil(dados, 40, AGORA)
-        assert set(funil) == {"north_star", "aquisicao", "ativacao", "retencao", "saude", "protecao"}
+        assert set(funil) == {"north_star", "aquisicao", "ativacao", "retencao", "saude",
+                              "protecao", "sucesso"}
         assert funil["aquisicao"]["alunos_previstos"] == 40
+        assert funil["sucesso"]["ainda_nao_chegaram"] == 1
