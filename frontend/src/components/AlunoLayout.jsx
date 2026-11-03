@@ -1,4 +1,6 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Link, NavLink, Outlet, useNavigate, useSearchParams } from 'react-router-dom'
+import { registrarAcesso } from '../api/aluno'
 import { useAlunoAuth } from '../context/AlunoAuthContext'
 import Logo from './Logo'
 
@@ -10,6 +12,32 @@ const linkClass = ({ isActive }) =>
 export default function AlunoLayout() {
   const { aluno, logout } = useAlunoAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const via = searchParams.get('via')
+  const registrou = useRef(false)
+
+  // RF14: cada abertura do app vira um acesso. O servidor descarta o que vier
+  // perto demais de outro, então aqui não há controle de tempo. Tirar o `via`
+  // da URL não conta como abertura nova.
+  useEffect(() => {
+    if (registrou.current && !via) return
+    registrou.current = true
+    registrarAcesso(via)
+      .catch(() => {})
+      .finally(() => {
+        if (via) {
+          setSearchParams(params => { params.delete('via'); return params }, { replace: true })
+        }
+      })
+  }, [via, setSearchParams])
+
+  useEffect(() => {
+    const aoVoltar = () => {
+      if (document.visibilityState === 'visible') registrarAcesso().catch(() => {})
+    }
+    document.addEventListener('visibilitychange', aoVoltar)
+    return () => document.removeEventListener('visibilitychange', aoVoltar)
+  }, [])
 
   const handleLogout = () => {
     logout()

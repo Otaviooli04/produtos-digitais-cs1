@@ -14,10 +14,13 @@ export const updateAlunoMe = (nome, matricula) =>
 export const changeAlunoPassword = (senha_atual, senha_nova) =>
   alunoApi.put('/aluno/me/password', { senha_atual, senha_nova })
 
-export const entrarNaTurma = (codigoAcesso) =>
-  alunoApi.post('/aluno/turmas/entrar', { codigo_acesso: codigoAcesso })
+export const entrarNaTurma = (codigoAcesso, origem = 'codigo') =>
+  alunoApi.post('/aluno/turmas/entrar', { codigo_acesso: codigoAcesso, origem })
 
 export const listarMinhasTurmas = () => alunoApi.get('/aluno/turmas')
+
+export const registrarAcesso = (via = null) =>
+  alunoApi.post('/aluno/acessos', { via })
 
 export const listarAtividades = (turmaId = null) =>
   alunoApi.get('/aluno/atividades', { params: turmaId ? { turma_id: turmaId } : {} })

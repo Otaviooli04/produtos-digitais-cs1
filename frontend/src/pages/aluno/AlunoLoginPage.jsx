@@ -4,6 +4,7 @@ import { loginAluno } from '../../api/aluno'
 import { useAlunoAuth } from '../../context/AlunoAuthContext'
 import Logo from '../../components/Logo'
 import SeletorPerfil from '../../components/SeletorPerfil'
+import { lerConvite } from '../../utils/convitePendente'
 
 export default function AlunoLoginPage() {
   const { login } = useAlunoAuth()
@@ -12,6 +13,7 @@ export default function AlunoLoginPage() {
   const [senha, setSenha] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [convite] = useState(lerConvite)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -21,7 +23,7 @@ export default function AlunoLoginPage() {
     try {
       const { data } = await loginAluno(email.trim(), senha)
       login(data.access_token, data.aluno)
-      navigate('/aluno', { replace: true })
+      navigate(convite ? `/aluno/convite/${encodeURIComponent(convite)}` : '/aluno', { replace: true })
     } catch (err) {
       setError(err.response?.data?.detail || 'Erro ao entrar.')
     } finally {
@@ -42,6 +44,11 @@ export default function AlunoLoginPage() {
           <h1 className="text-lg font-semibold text-gray-900 mb-1">Entrar</h1>
           <p className="text-sm text-gray-400 mb-6">Suas atividades e seu progresso</p>
 
+          {convite && (
+            <div className="rounded-lg bg-purple-50 border border-purple-100 px-4 py-2.5 text-sm text-purple-700 mb-4">
+              Depois de entrar, você vai direto para a turma.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">E-mail</label>
