@@ -35,7 +35,7 @@ Duas funcionalidades do roadmap que não estavam nessa lista também entraram:
 | Mês | Entregou | Falta |
 |---|---|---|
 | **1 · Descoberta do Cliente** | O motor roda sobre submissões reais e serve de demonstração | Landing e roteiro de entrevistas, que são trabalho fora do código |
-| **2 · Turma virtual e conta do aluno** | Conta do aluno, entrada por código, lista de atividades e histórico de todas as tentativas | Nada |
+| **2 · Turma virtual e conta do aluno** | Conta do aluno, entrada por código ou convite com link, lista de atividades e histórico de todas as tentativas | Nada |
 | **3 · Treino direcionado** | Modo treino, painel de erros recorrentes e explicação individual | Trilha de exercícios e geração do conteúdo que ela consome |
 | **4 · Prova, piloto e preço** | Janela controlada e relatório de esforço economizado | Relatório de fim de lista, antifraude e instrumentação das métricas de negócio |
 
@@ -48,13 +48,13 @@ O que o sistema já consegue calcular hoje, sem trabalho novo:
 | Nº de tentativas por aluno | Pronta, em `/aluno/progresso` |
 | Queda nas tentativas até acertar | Pronta, `tentativas_por_questao_resolvida` |
 | Erros recorrentes eliminados | Aproximada pela tendência por categoria em `/aluno/erros-recorrentes` |
-| North Star, erros corrigidos por semana | Pronta, no bloco "Funil da turma" (`GET /turmas/{id}/funil`) e no total de todas as turmas pelo `backend/scripts/funil.py`. Junto, a proteção (tentativas até acertar e acerto de primeira) |
-| Taxa de ativação | Pronta, no bloco "Funil da turma": quem corrigiu o primeiro erro até 7 dias depois de entrar, com a meta de 60% |
-| Aquisição | Pronta, no bloco "Funil da turma": matriculados contra o tamanho da turma (`turmas.alunos_previstos`, que o professor preenche) e a taxa da primeira semana, com a meta de 80% |
+| North Star, erros corrigidos por semana | Pronta, no bloco "Funil da turma" (`GET /turmas/{id}/funil`) e no total de todas as turmas pelo `backend/scripts/funil.py`. Junto, a proteção (tentativas até acertar e acerto de primeira). A trilha conta numa turma só a partir da matrícula do aluno nela |
+| Taxa de ativação | Pronta, no bloco "Funil da turma": quem corrigiu o primeiro erro até 7 dias depois de entrar, com a meta de 60%. Ao lado, o momento de sucesso (RF16): a mediana do tempo da matrícula até o primeiro erro corrigido e quantos chegaram a ele na mesma sessão |
+| Aquisição | Pronta, no bloco "Funil da turma": matriculados contra o tamanho da turma (`turmas.alunos_previstos`, que o professor preenche) e a taxa da primeira semana, com a meta de 80%. Também a origem de cada matrícula, pelo convite com link ou pelo código digitado (`enrollments.origem`) |
 | Alunos em risco (vermelho e amarelo) | Pronta, no bloco "Funil da turma", só para quem tem questão em aberto (RN09) |
 | Esforço economizado do professor | Pronta, em `/exam/{id}/effort-report` |
-| Retenção semanal | Pronta pelos envios, no bloco "Funil da turma": quem enviou na semana e já tinha enviado antes, e quantos por conta própria (treino ou trilha), com a meta de 50% |
-| DAU e WAU, retorno medido pelo acesso | Não. O sistema registra envio, não acesso, então não há como separar quem abriu de quem enviou. É a parte 2 da volta "medir o funil" |
+| Retenção semanal | Pronta pelo acesso, no bloco "Funil da turma": quem abriu o app na semana e já tinha feito algo antes, com a meta de 50%. Ao lado, a retenção pelo envio e os sinais de hábito: voltou sem prova marcada, abriu sem aviso e enviou por conta própria (treino ou trilha) |
+| DAU e WAU, retorno medido pelo acesso | Parcial. Cada abertura do app do aluno vira um acesso (`POST /aluno/acessos`, tabela `acessos` da migração 0018), com descarte em 30 minutos e a origem `convite` quando vem do link. A retenção já usa o acesso. DAU e WAU como número ainda não aparecem em tela |
 | NPS | Não. Exige coleta dentro do produto |
 
 ## 4. O que falta, e o que cada item exige
@@ -69,10 +69,11 @@ O que o sistema já consegue calcular hoje, sem trabalho novo:
    únicas barreiras. O risco está declarado no próprio roadmap do Mês 4.
 3. **Relatório de fim de lista.** Fechamento por atividade para o aluno e para o
    professor, no mesmo espírito do relatório de esforço.
-4. **Instrumentação de uso.** Sem registro de acesso não há DAU, WAU nem retorno
-   em 7 dias, que são as métricas do Mês 2 e do Mês 3.
+4. **Instrumentação de uso.** O acesso já é registrado e a retenção semanal usa
+   ele. Falta mostrar DAU, WAU e o retorno em 7 dias, que são as métricas do Mês 2
+   e do Mês 3.
 5. **Acesso sem turma.** O segmento do autodidata está no documento de personas
-   como expansão, e hoje a única porta de entrada é o código da turma.
+   como expansão, e hoje a única porta de entrada é a turma, pelo código ou pelo convite com link.
 
 ## 5. Decisões de produto ainda em aberto
 

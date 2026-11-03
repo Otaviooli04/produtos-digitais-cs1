@@ -383,14 +383,15 @@ A disciplina de Produtos Digitais reposiciona o sistema: de **ferramenta de corr
 5. **Feedback individual via LLM.** `llm/student_explainer.py`: o aluno pede a explicação da própria tentativa, gerada uma vez e cacheada em `submissions.llm_explanation` (migração 0012). O prompt proíbe entregar a solução.
 6. **Frontend do aluno.** App próprio em `/aluno` (contexto e token separados do professor), em `frontend/src/pages/aluno/`.
 7. **Lado do professor.** Código de acesso visível na turma e configuração de disponibilidade da atividade. Relatório de esforço economizado em `/exam/{id}/effort-report`.
+8. **Medir o funil (outubro e novembro de 2026).** Bloco "Funil da turma" na página da turma (`GET /turmas/{id}/funil`) e `backend/scripts/funil.py` para a equipe, com a North Star (erros corrigidos por semana), aquisição, ativação, retenção, alunos em risco e proteção. A parte 2 registra cada abertura do app do aluno (tabela `acessos`), mede a retenção pelo acesso com os sinais de hábito e o momento de sucesso, grava a origem da matrícula e traz o convite com link (`/aluno/convite/:codigo`, botão "Copiar convite" do professor). Migrações 0017 e 0018.
 
 ### O que ainda falta
-Trilha direcionada com geração de exercícios, antifraude do modo prova, relatório de fim de lista, instrumentação de uso (DAU/WAU) e acesso sem turma. O mapa completo, ligando cada funcionalidade dos documentos da disciplina ao código, está em `docs/mapa-funcionalidades.md`.
+Trilha direcionada com geração de exercícios, antifraude do modo prova, relatório de fim de lista, DAU e WAU em tela (o acesso já é registrado) e acesso sem turma. O mapa completo, ligando cada funcionalidade dos documentos da disciplina ao código, está em `docs/mapa-funcionalidades.md`.
 
 ### Perguntas de produto ainda em aberto (decisões a tomar com o novo Claude)
 - ~~Prova ou treino?~~ **Decidido:** os dois. Cada atividade declara seu `modo`, e a janela e o teto de tentativas controlam a avaliação. Falta o antifraude do modo prova.
 - O feedback ao aluno deve ser **imediato e completo** (hoje é assim) ou **progressivo** (dica → dica → solução, para não entregar a resposta)?
-- ~~Métricas de sucesso do produto?~~ **Decidido no Plano de Growth (25/10/2026):** a North Star é erros corrigidos por semana, acompanhada do funil de aquisição, ativação, retenção e alunos em risco. A parte calculada pelos envios está no bloco "Funil da turma" da página da turma e no `backend/scripts/funil.py`. Falta o registro de acesso (parte 2).
+- ~~Métricas de sucesso do produto?~~ **Decidido no Plano de Growth (25/10/2026):** a North Star é erros corrigidos por semana, acompanhada do funil de aquisição, ativação, retenção e alunos em risco. Está no bloco "Funil da turma" da página da turma e no `backend/scripts/funil.py`, com a retenção pelo acesso desde a parte 2 (migração 0018).
 
 > Estas perguntas são de **produto**, não de código. Traga-as para a discussão da disciplina antes de codar features grandes.
 
