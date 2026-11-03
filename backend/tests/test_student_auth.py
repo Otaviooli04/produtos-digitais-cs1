@@ -102,6 +102,46 @@ class TestEntrarNaTurma:
             assert resp.status_code == 200
         assert db.query(Enrollment).filter_by(turma_id=turma.id).count() == 1
 
+    def test_convite_grava_a_origem(self, client, db, turma_com_codigo):
+        turma, _ = turma_com_codigo
+        token = _registrar(client).json()["access_token"]
+        resp = client.post("/aluno/turmas/entrar",
+                           json={"codigo_acesso": "ABC234", "origem": "convite"},
+                           headers=_auth(token))
+        assert resp.status_code == 200
+        assert db.query(Enrollment).filter_by(turma_id=turma.id).one().origem == "convite"
+
+    def test_sem_origem_grava_codigo(self, client, db, turma_com_codigo):
+        turma, _ = turma_com_codigo
+        token = _registrar(client).json()["access_token"]
+        client.post("/aluno/turmas/entrar", json={"codigo_acesso": "ABC234"}, headers=_auth(token))
+        assert db.query(Enrollment).filter_by(turma_id=turma.id).one().origem == "codigo"
+
+    def test_entrar_de_novo_nao_muda_a_origem(self, client, db, turma_com_codigo):
+        turma, _ = turma_com_codigo
+        token = _registrar(client).json()["access_token"]
+        client.post("/aluno/turmas/entrar", json={"codigo_acesso": "ABC234"}, headers=_auth(token))
+        resp = client.post("/aluno/turmas/entrar",
+                           json={"codigo_acesso": "ABC234", "origem": "convite"},
+                           headers=_auth(token))
+        assert resp.status_code == 200
+        assert db.query(Enrollment).filter_by(turma_id=turma.id).one().origem == "codigo"
+
+    def test_origem_fora_da_lista_da_422(self, client, turma_com_codigo):
+        token = _registrar(client).json()["access_token"]
+        resp = client.post("/aluno/turmas/entrar",
+                           json={"codigo_acesso": "ABC234", "origem": "whatsapp"},
+                           headers=_auth(token))
+        assert resp.status_code == 422
+
+    def test_convite_com_codigo_inexistente_da_404_sem_matricula(self, client, db, turma_com_codigo):
+        token = _registrar(client).json()["access_token"]
+        resp = client.post("/aluno/turmas/entrar",
+                           json={"codigo_acesso": "ZZZZZZ", "origem": "convite"},
+                           headers=_auth(token))
+        assert resp.status_code == 404
+        assert db.query(Enrollment).count() == 0
+
     def test_minhas_turmas(self, client, turma_com_codigo):
         token = _registrar(client).json()["access_token"]
         assert client.get("/aluno/turmas", headers=_auth(token)).json() == []

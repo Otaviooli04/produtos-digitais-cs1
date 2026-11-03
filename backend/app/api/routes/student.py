@@ -77,7 +77,7 @@ def entrar(
     current: Student = Depends(get_current_student),
 ):
     try:
-        turma = entrar_na_turma(current, body.codigo_acesso, db)
+        turma = entrar_na_turma(current, body.codigo_acesso, db, body.origem)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return _turma_to_response(turma)

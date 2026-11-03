@@ -56,6 +56,7 @@ class StudentUpdate(BaseModel):
 
 class TurmaEntrarRequest(BaseModel):
     codigo_acesso: str
+    origem: Literal["convite", "codigo"] = "codigo"
 
 
 class AcessoRequest(BaseModel):
