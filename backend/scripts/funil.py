@@ -42,7 +42,8 @@ def relatorio(db: Session, agora: datetime | None = None) -> str:
         f"  Matriculados: {total['matriculados']}",
         f"  Ativados: {total['ativados']} ({_pct(total['taxa_ativacao'])})",
         f"  Retenção na semana de {semana['semana']}: {semana['voltaram']} de {semana['base']} "
-        f"({_pct(semana['taxa'])})",
+        f"pelo acesso ({_pct(semana['taxa'])}), {semana['voltaram_por_envio']} pelo envio "
+        f"({_pct(semana['taxa_por_envio'])})",
         "",
         "Por turma",
     ]
@@ -50,10 +51,16 @@ def relatorio(db: Session, agora: datetime | None = None) -> str:
         linhas.append("  Nenhuma turma cadastrada.")
     for t in funil["por_turma"]:
         previstos = f" de {t['alunos_previstos']} previstos" if t["alunos_previstos"] else ""
+        origem = t["por_origem"]
         linhas.append(
             f"  {t['nome']} ({t['professor'] or 'sem professor'}): "
-            f"{t['matriculados']} matriculados{previstos}, "
-            f"ativação {_pct(t['taxa_ativacao'])}, retenção {_pct(t['taxa_retencao'])}, "
+            f"{t['matriculados']} matriculados{previstos} "
+            f"({origem['convite']} pelo convite, {origem['codigo']} pelo código e "
+            f"{origem['sem_origem']} sem origem), "
+            f"ativação {_pct(t['taxa_ativacao'])}, "
+            f"retenção {_pct(t['taxa_retencao'])} pelo acesso e "
+            f"{_pct(t['taxa_retencao_envio'])} pelo envio, "
+            f"{_pct(t['taxa_sucesso_na_sessao'])} chegaram ao momento de sucesso na mesma sessão, "
             f"erros corrigidos {t['north_star_semana']} na semana e {t['north_star_total']} no total, "
             f"{t['vermelhos']} em vermelho"
         )

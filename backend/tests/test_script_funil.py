@@ -12,6 +12,7 @@ def test_base_vazia_roda_sem_erro(db):
     assert "Nenhuma turma cadastrada." in texto
     assert "Matriculados: 0" in texto
     assert "Total desde o início: 0" in texto
+    assert "0 de 0 pelo acesso (sem dado), 0 pelo envio (sem dado)" in texto
 
 
 def test_turma_aparece_sem_nome_de_aluno(db, professor):
@@ -34,3 +35,7 @@ def test_turma_aparece_sem_nome_de_aluno(db, professor):
     assert "1 matriculados de 40 previstos" in texto
     assert "1 em vermelho" in texto
     assert "Beatriz" not in texto
+    assert "0 pelo convite, 0 pelo código e 1 sem origem" in texto
+    assert "retenção 0.0% pelo acesso e 0.0% pelo envio" in texto
+    assert "0.0% chegaram ao momento de sucesso na mesma sessão" in texto
+    assert "Retenção na semana de 2026-10-19: 0 de 1 pelo acesso (0.0%), 0 pelo envio (0.0%)" in texto
