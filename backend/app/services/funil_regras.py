@@ -246,8 +246,8 @@ def com_prova_marcada(momento: datetime, janelas: list[JanelaDeProva]) -> bool:
 def retencao_da_semana(semana: str, matriculas: list[Matricula], tentativas: list[Tentativa],
                        acessos: list[Acesso], janelas: list[JanelaDeProva]) -> dict:
     """Voltou quem abriu o app na semana e já tinha feito algo antes dela, acesso
-    ou envio. O envio antes conta para as semanas de antes da tabela de acessos
-    não aparecerem zeradas. Os sinais de hábito são recortes de quem voltou. Pelo
+    ou envio. O envio antes conta para as primeiras semanas com a tabela de
+    acessos não aparecerem zeradas. Os sinais de hábito são recortes de quem voltou. Pelo
     envio é a conta da parte 1."""
     inicio = datetime.combine(date.fromisoformat(semana), time.min)
     fim = inicio + timedelta(weeks=1)

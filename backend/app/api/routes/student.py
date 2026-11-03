@@ -92,7 +92,7 @@ def minhas_turmas(
 
 
 @router.post("/acessos", status_code=204)
-def registrar(
+def registrar_acesso_do_aluno(
     body: AcessoRequest,
     db: Session = Depends(get_db),
     current: Student = Depends(get_current_student),
