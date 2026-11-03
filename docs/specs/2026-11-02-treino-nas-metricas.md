@@ -92,7 +92,7 @@ Os erros recorrentes e a trilha usam o histórico inteiro do aluno, então os do
 **Ordem.** Ativos pelo total, do maior para o menor, e no empate pelo nome da categoria. Superados por `superado_em`, do mais recente para o mais antigo.
 
 **Progresso.**
-- Escopo da lista: as questões das atividades publicadas das turmas do aluno. Escopo da trilha: todos os exercícios não reportados dele. Os envios fora desses escopos não entram no progresso.
+- Escopo da lista: as questões das atividades publicadas das turmas do aluno. Escopo da trilha: todos os exercícios não reportados dele. Os envios fora desses escopos não entram no progresso. Os escopos diferem dos erros recorrentes de propósito, como hoje: o progresso mede o aluno contra a turma, e os erros recorrentes olham tudo o que ele já errou.
 - Item: o par origem e id, então a questão 5 e o exercício 5 são itens diferentes. Item resolvido: questão ou exercício com pelo menos um acerto.
 - Questões resolvidas e atividades concluídas: só a lista, como hoje.
 - Tentativas até acertar de um item resolvido: quantas tentativas válidas do item vieram até o primeiro acerto, contando o acerto. A média é sobre todos os itens resolvidos, lista e trilha, com uma casa decimal.
@@ -113,15 +113,15 @@ Nenhuma tabela, coluna ou migração. O serviço lê `submissions`, `questions`,
 **`app/services/historico_do_aluno.py` (novo).**
 - O registro `Envio` (dataclass congelada) e as constantes de resultado `ACERTO`, `ERRO` e `FALHA`.
 - A classificação: `CATEGORIA_CORRETA`, `CATEGORIA_FALHA_TECNICA`, `resultado_da_lista` e `resultado_da_trilha`. Elas saem de `funil_regras.py` e de `student_activity_service.py` e passam a morar aqui, porque o módulo novo não pode importar nenhum dos dois sem criar import circular. `funil_regras`, `funil_service`, `student_activity_service`, `treino_service` e `tests/unit/test_funil_regras.py` passam a importar daqui. A constante repetida em `treino_service.py` sai. O comportamento do funil não muda.
-- `ler_historico(student, db) -> list[Envio]`: duas consultas por `student_id`, uma em `submissions` e outra em `tentativas_de_treino` junto com `exercicios_gerados`, filtrando os reportados e os sem momento, e o resultado em ordem.
-- As regras puras, sobre `list[Envio]` e sem banco: o agrupamento dos erros por categoria com as contas, os superados com `superado_em`, a tendência e a ordem. Cada uma se testa com listas montadas à mão, como em `funil_regras`.
+- `ler_historico(student, db) -> list[Envio]`: duas consultas por `student_id`, uma em `submissions` e outra em `tentativas_de_treino` junto com `exercicios_gerados`, filtrando os reportados e os sem momento. A função ordena na montagem (momento, lista antes da trilha, id do registro), e o `Envio` não guarda o id. As regras puras recebem a lista já ordenada.
+- As regras puras, sobre `list[Envio]` e sem banco: o agrupamento dos erros por categoria com as contas, os superados com `superado_em`, a tendência, a ordem e as contas do progresso (itens resolvidos, tentativas até acertar, acertos de primeira, dias seguidos e evolução). Cada uma se testa com listas montadas à mão, como em `funil_regras`. O módulo só importa `app.models.orm` e `app.services.calendario` (`semana_iso`), que não importam nenhum serviço.
 
 **`app/services/student_activity_service.py`.**
 - `erros_recorrentes(student, db)` passa a ler o histórico. Os rótulos da lista continuam vindo do mapa de questões publicadas das turmas do aluno (`titulo_da_atividade` fica onde está).
 - `progresso(student, db)` passa a filtrar as atividades por `Exam.publicada` e a ler o histórico nos dois escopos da definição.
 
 **`app/services/treino_service.py`.**
-- `categorias_para_treinar(student, db)` devolve só os erros ativos, a partir do histórico. Os campos `exercicios_gerados`, `exercicios_resolvidos` e `tem_pendente` continuam como hoje.
+- `categorias_para_treinar(student, db)` devolve só os erros ativos, a partir do histórico. `ocorrencias` passa a ser o `total` do erro, somando lista e trilha. `o_que_fazer` é o do erro. Os campos `exercicios_gerados`, `exercicios_resolvidos` e `tem_pendente` continuam como hoje.
 - `trilha(student, db)` devolve também `superados`. A pré-geração ao abrir a trilha continua mirando o primeiro erro ativo, e não faz nada quando não há erro ativo.
 - `gerar_para_categoria(student, categoria, db)`:
   - Sem categoria e sem erro ativo, com algum superado: `TreinoIndisponivel("Você superou todos os erros que repetia. Resolva uma questão da sua turma e volte aqui.")`.
@@ -214,3 +214,4 @@ Nenhuma tabela, coluna ou migração. O serviço lê `submissions`, `questions`,
 9. **O progresso passa a filtrar por atividade publicada.** É a correção de um problema que já existia na função que esta volta reescreve, e a lista de atividades e os erros recorrentes já filtram assim.
 10. **Tentativas até acertar contam só as válidas.** Antes, o número da tentativa incluía as falhas técnicas. Agora segue a regra de proteção do funil.
 11. **Sem aviso na hora do acerto.** O 2.4 vem antes de qualquer recompensa nova.
+12. **Envio sem momento fica fora.** Hoje o total de tentativas do progresso conta envio com `submitted_at` nulo. Passa a não contar, como no funil. A coluna tem valor padrão, então na prática só o envio importado em lote, que já fica de fora por não ter `student_id`, chegaria assim.
