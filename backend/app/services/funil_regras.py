@@ -340,8 +340,8 @@ def saude(matriculas: list[Matricula], tentativas: list[Tentativa],
         if not em_aberto:
             continue
         ultimo = serie[-1] if serie else None
-        # A trilha não tem turma, então o último envio pode ser de antes da
-        # matrícula. Nesse caso o relógio começa na entrada.
+        # Um envio de lista religado pela matrícula institucional pode ser de
+        # antes da matrícula. Nesse caso o relógio começa na entrada.
         parado = agora - (max(ultimo.momento, m.entrada) if ultimo else m.entrada)
         cor, motivo = _cor(parado, ultimo, em_aberto)
         if cor is None:

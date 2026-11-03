@@ -509,12 +509,19 @@ class NorthStarFunil(BaseModel):
     semanas: List[SemanaNorthStar]
 
 
+class OrigemDasMatriculas(BaseModel):
+    convite: int
+    codigo: int
+    sem_origem: int
+
+
 class AquisicaoFunil(BaseModel):
     matriculados: int
     alunos_previstos: Optional[int] = None
     taxa_matriculados: Optional[float] = None
     primeira_semana: int
     taxa_primeira_semana: Optional[float] = None
+    por_origem: OrigemDasMatriculas
     meta: float
 
 
@@ -530,8 +537,14 @@ class SemanaRetencao(BaseModel):
     semana: str
     base: int
     voltaram: int
-    por_conta_propria: int
     taxa: Optional[float] = None
+    sem_prova_marcada: int
+    taxa_sem_prova_marcada: Optional[float] = None
+    sem_aviso: int
+    taxa_sem_aviso: Optional[float] = None
+    voltaram_por_envio: int
+    taxa_por_envio: Optional[float] = None
+    por_conta_propria: int
     taxa_por_conta_propria: Optional[float] = None
 
 
@@ -562,6 +575,14 @@ class ProtecaoFunil(BaseModel):
     itens_com_acerto: int
 
 
+class SucessoFunil(BaseModel):
+    chegaram: int
+    ainda_nao_chegaram: int
+    mediana_minutos: Optional[float] = None
+    na_sessao_da_matricula: int
+    taxa_na_sessao_da_matricula: Optional[float] = None
+
+
 class FunilTurmaResponse(BaseModel):
     turma_id: int
     gerado_em: str
@@ -571,6 +592,7 @@ class FunilTurmaResponse(BaseModel):
     retencao: RetencaoFunil
     saude: SaudeFunil
     protecao: ProtecaoFunil
+    sucesso: SucessoFunil
 
 
 # ── Aluno: atividades, tentativas e progresso ────────────────────────────────
