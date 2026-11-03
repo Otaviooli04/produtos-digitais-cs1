@@ -26,6 +26,7 @@ const QuestionPage = lazy(() => import('./pages/QuestionPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const AlunoLoginPage = lazy(() => import('./pages/aluno/AlunoLoginPage'))
 const AlunoRegisterPage = lazy(() => import('./pages/aluno/AlunoRegisterPage'))
+const ConvitePage = lazy(() => import('./pages/aluno/ConvitePage'))
 const TurmasPage = lazy(() => import('./pages/aluno/TurmasPage'))
 const TurmaPage = lazy(() => import('./pages/aluno/TurmaPage'))
 const AtividadePage = lazy(() => import('./pages/aluno/AtividadePage'))
@@ -56,6 +57,7 @@ export default function App() {
               {/* Aluno */}
               <Route path="aluno/login" element={<AlunoLoginPage />} />
               <Route path="aluno/cadastro" element={<AlunoRegisterPage />} />
+              <Route path="aluno/convite/:codigo" element={<ConvitePage />} />
               <Route element={<AlunoProtectedRoute />}>
                 <Route element={<AlunoLayout />}>
                   <Route path="aluno" element={<Navigate to="/aluno/turmas" replace />} />

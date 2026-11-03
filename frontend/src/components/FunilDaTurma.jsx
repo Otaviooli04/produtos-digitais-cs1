@@ -15,6 +15,23 @@ const rotuloSemana = (iso) => {
 const formatarData = (iso) =>
   new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 
+// Mediana do momento de sucesso em texto curto: "45 min", "2 h 15 min", "3 dias".
+const formatarDuracao = (minutos) => {
+  const total = Math.floor(minutos)
+  if (total < 60) return `${total} min`
+  if (total < 24 * 60) {
+    const horas = Math.floor(total / 60)
+    const resto = total % 60
+    return resto ? `${horas} h ${resto} min` : `${horas} h`
+  }
+  const dias = Math.floor(total / (24 * 60))
+  return `${dias} ${dias === 1 ? 'dia' : 'dias'}`
+}
+
+const textoSucesso = (sucesso) => (sucesso.chegaram === 0
+  ? 'Momento de sucesso: ninguém corrigiu um erro ainda.'
+  : `Momento de sucesso: mediana de ${formatarDuracao(sucesso.mediana_minutos)} depois da matrícula. ${pct(sucesso.taxa_na_sessao_da_matricula)} chegaram na mesma sessão.`)
+
 function Meta({ atingida, children }) {
   return (
     <span className={`text-xs font-medium ${atingida ? 'text-emerald-600' : 'text-gray-400'}`}>
@@ -23,7 +40,7 @@ function Meta({ atingida, children }) {
   )
 }
 
-function EtapaCard({ titulo, valor, detalhe, meta, atingida }) {
+function EtapaCard({ titulo, valor, detalhe, extra, meta, atingida }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-1">
       <div className="flex items-baseline justify-between gap-2">
@@ -32,6 +49,7 @@ function EtapaCard({ titulo, valor, detalhe, meta, atingida }) {
       </div>
       <p className="text-2xl font-bold text-gray-900">{valor}</p>
       {detalhe && <p className="text-xs text-gray-500">{detalhe}</p>}
+      {extra && <p className="text-xs text-gray-500">{extra}</p>}
     </div>
   )
 }
@@ -70,9 +88,13 @@ function AlunosEmRisco({ saude }) {
 }
 
 function Painel({ funil }) {
-  const { north_star: ns, aquisicao, ativacao, retencao, saude, protecao } = funil
+  const { north_star: ns, aquisicao, ativacao, retencao, saude, protecao, sucesso } = funil
   const semana = retencao.ultima_completa
   const media = protecao.media_tentativas_ate_acertar
+  const origem = aquisicao.por_origem
+  const textoOrigem = origem.convite + origem.codigo > 0
+    ? `${origem.convite} pelo convite, ${origem.codigo} pelo código.`
+    : null
   return (
     <>
       <div className="grid gap-4 lg:grid-cols-3">
@@ -100,8 +122,9 @@ function Painel({ funil }) {
             ? `${aquisicao.matriculados} de ${aquisicao.alunos_previstos}`
             : aquisicao.matriculados}
           detalhe={aquisicao.alunos_previstos
-            ? `${pct(aquisicao.taxa_primeira_semana)} entraram na primeira semana`
+            ? `${pct(aquisicao.taxa_primeira_semana)} entraram na primeira semana.`
             : 'Informe quantos alunos a turma tem para ver a taxa de entrada.'}
+          extra={textoOrigem}
           meta={aquisicao.alunos_previstos ? `Meta ${aquisicao.meta}%` : null}
           atingida={aquisicao.taxa_primeira_semana != null && aquisicao.taxa_primeira_semana >= aquisicao.meta}
         />
@@ -109,17 +132,22 @@ function Painel({ funil }) {
           titulo="Ativação"
           valor={pct(ativacao.taxa)}
           detalhe={`${ativacao.ativados} de ${ativacao.matriculados} corrigiram o primeiro erro na primeira semana. ${ativacao.com_primeiro_envio} já enviaram algo.`}
+          extra={textoSucesso(sucesso)}
           meta={`Meta ${ativacao.meta}%`}
           atingida={ativacao.taxa != null && ativacao.taxa >= ativacao.meta}
         />
         <EtapaCard
           titulo="Retenção"
           valor={pct(semana.taxa)}
-          detalhe={`${semana.voltaram} de ${semana.base} voltaram na semana de ${rotuloSemana(semana.semana)}. Por conta própria, ${pct(semana.taxa_por_conta_propria)}.`}
+          detalhe={`${semana.voltaram} de ${semana.base} abriram o app na semana de ${rotuloSemana(semana.semana)}. Pelo envio, ${pct(semana.taxa_por_envio)}.`}
           meta={`Meta ${retencao.meta}%`}
           atingida={semana.taxa != null && semana.taxa >= retencao.meta}
         />
       </div>
+
+      <p className="text-xs text-gray-500">
+        Hábito na semana de {rotuloSemana(semana.semana)}: {pct(semana.taxa_sem_prova_marcada)} voltaram sem prova marcada, {pct(semana.taxa_sem_aviso)} abriram sem aviso e {pct(semana.taxa_por_conta_propria)} enviaram no treino.
+      </p>
 
       <AlunosEmRisco saude={saude} />
 

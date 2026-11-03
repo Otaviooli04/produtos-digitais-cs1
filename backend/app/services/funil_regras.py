@@ -3,9 +3,11 @@
 A leitura fica em `funil_service`. Aqui só entra o que já foi lido, por isso
 cada conta se testa com listas montadas à mão."""
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
+from statistics import median
 
+from app.models.orm import Enrollment
 from app.services.calendario import semana_iso
 from app.services.student_activity_service import CATEGORIA_CORRETA
 
@@ -22,6 +24,10 @@ TRILHA = "trilha"
 
 SEMANAS = 8
 JANELA = timedelta(days=7)
+# A prova puxa o aluno desde 3 dias antes de abrir, a janela do aviso "Prova chegando".
+ANTECEDENCIA_DA_PROVA = timedelta(days=3)
+# A mesma janela do registro de acesso: 30 minutos sem evento encerram a sessão.
+JANELA_DA_SESSAO = timedelta(minutes=30)
 
 META_AQUISICAO = 80.0
 META_ATIVACAO = 60.0
@@ -61,6 +67,33 @@ class Matricula:
     aluno: int
     nome: str
     entrada: datetime
+    origem: str | None = None
+
+
+@dataclass(frozen=True)
+class Acesso:
+    """Uma abertura do app do aluno. `via` nula é abertura por conta própria."""
+    aluno: int
+    momento: datetime
+    via: str | None = None
+
+
+@dataclass(frozen=True)
+class JanelaDeProva:
+    """Intervalo fechado em que uma prova puxa o aluno. Lado nulo é sem limite."""
+    inicio: datetime | None
+    fim: datetime | None
+
+
+@dataclass
+class DadosDaTurma:
+    """O que o serviço leu de uma turma, com a trilha e os acessos já filtrados
+    pela matrícula."""
+    matriculas: list[Matricula]
+    tentativas: list[Tentativa]
+    questoes_abertas: dict[int, int | None]
+    acessos: list[Acesso] = field(default_factory=list)
+    janelas: list[JanelaDeProva] = field(default_factory=list)
 
 
 def resultado_da_lista(error_category: str | None) -> str:
@@ -147,6 +180,13 @@ def protecao(tentativas: list[Tentativa]) -> dict:
     }
 
 
+def por_origem(matriculas: list[Matricula]) -> dict:
+    contagem = Counter(m.origem for m in matriculas)
+    convite = contagem[Enrollment.ORIGEM_CONVITE]
+    codigo = contagem[Enrollment.ORIGEM_CODIGO]
+    return {"convite": convite, "codigo": codigo, "sem_origem": len(matriculas) - convite - codigo}
+
+
 def aquisicao(matriculas: list[Matricula], alunos_previstos: int | None) -> dict:
     """A primeira matrícula da turma marca a divulgação do código, e a primeira
     semana conta a partir dela."""
@@ -160,6 +200,7 @@ def aquisicao(matriculas: list[Matricula], alunos_previstos: int | None) -> dict
         "taxa_matriculados": taxa(len(matriculas), alunos_previstos),
         "primeira_semana": primeira_semana,
         "taxa_primeira_semana": taxa(primeira_semana, alunos_previstos),
+        "por_origem": por_origem(matriculas),
         "meta": META_AQUISICAO,
     }
 
@@ -187,31 +228,64 @@ def ativacao(matriculas: list[Matricula], tentativas: list[Tentativa],
     }
 
 
-def retencao_da_semana(semana: str, matriculas: list[Matricula],
-                       tentativas: list[Tentativa]) -> dict:
-    """Quem enviou na semana e já tinha enviado antes dela. Por conta própria é
-    o mesmo, com o envio da semana em atividade de treino ou na trilha."""
+def janela_da_prova(abre_em: datetime | None, fecha_em: datetime | None) -> JanelaDeProva | None:
+    """Prova sem data não puxa ninguém."""
+    if abre_em is None and fecha_em is None:
+        return None
+    inicio = abre_em - ANTECEDENCIA_DA_PROVA if abre_em is not None else None
+    return JanelaDeProva(inicio=inicio, fim=fecha_em)
+
+
+def com_prova_marcada(momento: datetime, janelas: list[JanelaDeProva]) -> bool:
+    return any(
+        (j.inicio is None or j.inicio <= momento) and (j.fim is None or momento <= j.fim)
+        for j in janelas
+    )
+
+
+def retencao_da_semana(semana: str, matriculas: list[Matricula], tentativas: list[Tentativa],
+                       acessos: list[Acesso], janelas: list[JanelaDeProva]) -> dict:
+    """Voltou quem abriu o app na semana e já tinha feito algo antes dela, acesso
+    ou envio. O envio antes conta para as primeiras semanas com a tabela de
+    acessos não aparecerem zeradas. Os sinais de hábito são recortes de quem voltou. Pelo
+    envio é a conta da parte 1."""
     inicio = datetime.combine(date.fromisoformat(semana), time.min)
     fim = inicio + timedelta(weeks=1)
     base = {m.aluno for m in matriculas if m.entrada < fim}
-    antes = {t.aluno for t in tentativas if t.momento < inicio}
-    na_semana = [t for t in tentativas if inicio <= t.momento < fim]
-    voltaram = {t.aluno for t in na_semana} & antes & base
-    proprios = {t.aluno for t in na_semana if t.por_conta_propria} & antes & base
+
+    enviaram_antes = {t.aluno for t in tentativas if t.momento < inicio}
+    envios_na_semana = [t for t in tentativas if inicio <= t.momento < fim]
+    por_envio = {t.aluno for t in envios_na_semana} & enviaram_antes & base
+    proprios = {t.aluno for t in envios_na_semana if t.por_conta_propria} & enviaram_antes & base
+
+    ativos_antes = enviaram_antes | {a.aluno for a in acessos if a.momento < inicio}
+    acessos_na_semana = [a for a in acessos if inicio <= a.momento < fim]
+    voltaram = {a.aluno for a in acessos_na_semana} & ativos_antes & base
+    sem_prova = {a.aluno for a in acessos_na_semana
+                 if not com_prova_marcada(a.momento, janelas)} & voltaram
+    sem_aviso = {a.aluno for a in acessos_na_semana if a.via is None} & voltaram
     return {
         "semana": semana,
         "base": len(base),
         "voltaram": len(voltaram),
-        "por_conta_propria": len(proprios),
         "taxa": taxa(len(voltaram), len(base)),
+        "sem_prova_marcada": len(sem_prova),
+        "taxa_sem_prova_marcada": taxa(len(sem_prova), len(base)),
+        "sem_aviso": len(sem_aviso),
+        "taxa_sem_aviso": taxa(len(sem_aviso), len(base)),
+        "voltaram_por_envio": len(por_envio),
+        "taxa_por_envio": taxa(len(por_envio), len(base)),
+        "por_conta_propria": len(proprios),
         "taxa_por_conta_propria": taxa(len(proprios), len(base)),
     }
 
 
-def retencao(matriculas: list[Matricula], tentativas: list[Tentativa], agora: datetime) -> dict:
+def retencao(matriculas: list[Matricula], tentativas: list[Tentativa], acessos: list[Acesso],
+             janelas: list[JanelaDeProva], agora: datetime) -> dict:
     """O cartão usa a última semana completa: a atual começa toda segunda perto
     de zero e pareceria queda."""
-    semanas = [retencao_da_semana(s, matriculas, tentativas) for s in ultimas_semanas(agora)]
+    semanas = [retencao_da_semana(s, matriculas, tentativas, acessos, janelas)
+               for s in ultimas_semanas(agora)]
     return {"semanas": semanas, "ultima_completa": semanas[-2], "meta": META_RETENCAO}
 
 
@@ -266,8 +340,8 @@ def saude(matriculas: list[Matricula], tentativas: list[Tentativa],
         if not em_aberto:
             continue
         ultimo = serie[-1] if serie else None
-        # A trilha não tem turma, então o último envio pode ser de antes da
-        # matrícula. Nesse caso o relógio começa na entrada.
+        # Um envio de lista religado pela matrícula institucional pode ser de
+        # antes da matrícula. Nesse caso o relógio começa na entrada.
         parado = agora - (max(ultimo.momento, m.entrada) if ultimo else m.entrada)
         cor, motivo = _cor(parado, ultimo, em_aberto)
         if cor is None:
@@ -289,15 +363,57 @@ def saude(matriculas: list[Matricula], tentativas: list[Tentativa],
     }
 
 
-def montar_funil(matriculas: list[Matricula], tentativas: list[Tentativa],
-                 questoes_abertas: dict[int, int | None], alunos_previstos: int | None,
-                 agora: datetime) -> dict:
-    corrigidos = erros_corrigidos(tentativas)
+def fim_da_sessao(entrada: datetime, momentos: list[datetime]) -> datetime:
+    """Último instante da sessão que começa na matrícula. Ela segue enquanto cada
+    evento vem até JANELA_DA_SESSAO depois do anterior."""
+    fim = entrada
+    for momento in sorted(m for m in momentos if m >= entrada):
+        if momento - fim > JANELA_DA_SESSAO:
+            break
+        fim = momento
+    return fim
+
+
+def sucesso(matriculas: list[Matricula], tentativas: list[Tentativa], acessos: list[Acesso],
+            corrigidos: list[tuple[int, datetime]]) -> dict:
+    """RF16: o primeiro erro corrigido depois da matrícula, quanto tempo levou e se
+    veio ainda na sessão em que o aluno entrou na turma."""
+    entrada = {m.aluno: m.entrada for m in matriculas}
+    primeiro: dict[int, datetime] = {}
+    for aluno, momento in corrigidos:
+        if aluno in entrada and momento >= entrada[aluno]:
+            if aluno not in primeiro or momento < primeiro[aluno]:
+                primeiro[aluno] = momento
+
+    eventos: dict[int, list[datetime]] = defaultdict(list)
+    for t in tentativas:
+        eventos[t.aluno].append(t.momento)
+    for a in acessos:
+        eventos[a.aluno].append(a.momento)
+
+    minutos = []
+    na_sessao = 0
+    for aluno, momento in primeiro.items():
+        minutos.append((momento - entrada[aluno]).total_seconds() / 60)
+        if momento <= fim_da_sessao(entrada[aluno], eventos[aluno]):
+            na_sessao += 1
+    return {
+        "chegaram": len(primeiro),
+        "ainda_nao_chegaram": len(matriculas) - len(primeiro),
+        "mediana_minutos": round(median(minutos), 1) if minutos else None,
+        "na_sessao_da_matricula": na_sessao,
+        "taxa_na_sessao_da_matricula": taxa(na_sessao, len(matriculas)),
+    }
+
+
+def montar_funil(dados: DadosDaTurma, alunos_previstos: int | None, agora: datetime) -> dict:
+    corrigidos = erros_corrigidos(dados.tentativas)
     return {
         "north_star": north_star(corrigidos, agora),
-        "aquisicao": aquisicao(matriculas, alunos_previstos),
-        "ativacao": ativacao(matriculas, tentativas, corrigidos),
-        "retencao": retencao(matriculas, tentativas, agora),
-        "saude": saude(matriculas, tentativas, questoes_abertas, agora),
-        "protecao": protecao(tentativas),
+        "aquisicao": aquisicao(dados.matriculas, alunos_previstos),
+        "ativacao": ativacao(dados.matriculas, dados.tentativas, corrigidos),
+        "retencao": retencao(dados.matriculas, dados.tentativas, dados.acessos, dados.janelas, agora),
+        "saude": saude(dados.matriculas, dados.tentativas, dados.questoes_abertas, agora),
+        "protecao": protecao(dados.tentativas),
+        "sucesso": sucesso(dados.matriculas, dados.tentativas, dados.acessos, corrigidos),
     }

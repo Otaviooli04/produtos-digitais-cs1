@@ -1,9 +1,11 @@
 """Auth do aluno: cadastro, login, entrada por código de turma e religação das
 submissões feitas antes da conta existir."""
 import pytest
+from sqlalchemy.orm import Session
 
 from app.auth.service import create_access_token
-from app.models.orm import Enrollment, Submission, Turma
+from app.models.orm import Enrollment, Student, Submission, Turma
+from tests.conftest import TestingSession
 
 CADASTRO = {
     "email": "Aluno@Teste.com",
@@ -101,6 +103,70 @@ class TestEntrarNaTurma:
             resp = client.post("/aluno/turmas/entrar", json={"codigo_acesso": "ABC234"}, headers=_auth(token))
             assert resp.status_code == 200
         assert db.query(Enrollment).filter_by(turma_id=turma.id).count() == 1
+
+    def test_entrada_simultanea_nao_derruba_a_rota(self, client, db, turma_com_codigo, monkeypatch):
+        turma, _ = turma_com_codigo
+        token = _registrar(client).json()["access_token"]
+        aluno_id = db.query(Student).one().id
+        commit_real = Session.commit
+        chamadas = []
+
+        def commit_com_concorrente(self):
+            if not chamadas:
+                chamadas.append(1)
+                # Outra requisição do mesmo aluno grava a matrícula primeiro.
+                outra = TestingSession()
+                outra.add(Enrollment(student_id=aluno_id, turma_id=turma.id, origem="convite"))
+                commit_real(outra)
+                outra.close()
+            return commit_real(self)
+
+        monkeypatch.setattr(Session, "commit", commit_com_concorrente)
+        resp = client.post("/aluno/turmas/entrar", json={"codigo_acesso": "ABC234"}, headers=_auth(token))
+        monkeypatch.undo()
+        assert resp.status_code == 200
+        assert resp.json()["id"] == turma.id
+        assert db.query(Enrollment).filter_by(turma_id=turma.id).count() == 1
+
+    def test_convite_grava_a_origem(self, client, db, turma_com_codigo):
+        turma, _ = turma_com_codigo
+        token = _registrar(client).json()["access_token"]
+        resp = client.post("/aluno/turmas/entrar",
+                           json={"codigo_acesso": "ABC234", "origem": "convite"},
+                           headers=_auth(token))
+        assert resp.status_code == 200
+        assert db.query(Enrollment).filter_by(turma_id=turma.id).one().origem == "convite"
+
+    def test_sem_origem_grava_codigo(self, client, db, turma_com_codigo):
+        turma, _ = turma_com_codigo
+        token = _registrar(client).json()["access_token"]
+        client.post("/aluno/turmas/entrar", json={"codigo_acesso": "ABC234"}, headers=_auth(token))
+        assert db.query(Enrollment).filter_by(turma_id=turma.id).one().origem == "codigo"
+
+    def test_entrar_de_novo_nao_muda_a_origem(self, client, db, turma_com_codigo):
+        turma, _ = turma_com_codigo
+        token = _registrar(client).json()["access_token"]
+        client.post("/aluno/turmas/entrar", json={"codigo_acesso": "ABC234"}, headers=_auth(token))
+        resp = client.post("/aluno/turmas/entrar",
+                           json={"codigo_acesso": "ABC234", "origem": "convite"},
+                           headers=_auth(token))
+        assert resp.status_code == 200
+        assert db.query(Enrollment).filter_by(turma_id=turma.id).one().origem == "codigo"
+
+    def test_origem_fora_da_lista_da_422(self, client, turma_com_codigo):
+        token = _registrar(client).json()["access_token"]
+        resp = client.post("/aluno/turmas/entrar",
+                           json={"codigo_acesso": "ABC234", "origem": "whatsapp"},
+                           headers=_auth(token))
+        assert resp.status_code == 422
+
+    def test_convite_com_codigo_inexistente_da_404_sem_matricula(self, client, db, turma_com_codigo):
+        token = _registrar(client).json()["access_token"]
+        resp = client.post("/aluno/turmas/entrar",
+                           json={"codigo_acesso": "ZZZZZZ", "origem": "convite"},
+                           headers=_auth(token))
+        assert resp.status_code == 404
+        assert db.query(Enrollment).count() == 0
 
     def test_minhas_turmas(self, client, turma_com_codigo):
         token = _registrar(client).json()["access_token"]

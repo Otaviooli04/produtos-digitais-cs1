@@ -16,7 +16,7 @@ function EntrarNaTurma({ aoEntrar }) {
     setSucesso('')
     setEntrando(true)
     try {
-      const { data } = await entrarNaTurma(codigo.trim())
+      const { data } = await entrarNaTurma(codigo.trim(), 'codigo')
       setSucesso(`Você entrou em ${data.nome}.`)
       setCodigo('')
       await aoEntrar()

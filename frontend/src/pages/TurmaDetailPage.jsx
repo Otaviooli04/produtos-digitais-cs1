@@ -54,6 +54,7 @@ export default function TurmaDetailPage() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('recent')
   const [copiado, setCopiado] = useState(false)
+  const [conviteCopiado, setConviteCopiado] = useState(false)
   const [recargaFunil, setRecargaFunil] = useState(0)
 
   const copiarCodigo = async () => {
@@ -64,6 +65,23 @@ export default function TurmaDetailPage() {
       setTimeout(() => setCopiado(false), 2000)
     } catch {
       setError('Não foi possível copiar o código.')
+    }
+  }
+
+  // RF06: mensagem pronta com o link que já leva o código da turma.
+  const copiarConvite = async () => {
+    if (!turma?.codigo_acesso) return
+    const link = `${window.location.origin}/aluno/convite/${turma.codigo_acesso}`
+    const mensagem =
+      `Nossa turma de ${turma.nome} vai usar o Analytics CS1 nas listas e no treino. ` +
+      `Para entrar, abra ${link} e crie sua conta. ` +
+      `Se preferir, use o código ${turma.codigo_acesso} na área do aluno.`
+    try {
+      await navigator.clipboard.writeText(mensagem)
+      setConviteCopiado(true)
+      setTimeout(() => setConviteCopiado(false), 2000)
+    } catch {
+      setError('Não foi possível copiar o convite.')
     }
   }
 
@@ -165,7 +183,7 @@ export default function TurmaDetailPage() {
             {turma.codigo_acesso || '—'}
           </p>
           <p className="text-xs text-gray-400 mt-1">
-            Passe este código aos alunos. {turma.aluno_count ?? 0} já {(turma.aluno_count ?? 0) === 1 ? 'entrou' : 'entraram'} com conta.
+            Passe o código ou o convite com link, que já leva o código. {turma.aluno_count ?? 0} já {(turma.aluno_count ?? 0) === 1 ? 'entrou' : 'entraram'} com conta.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -175,6 +193,13 @@ export default function TurmaDetailPage() {
             className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
           >
             {copiado ? 'Copiado' : 'Copiar código'}
+          </button>
+          <button
+            onClick={copiarConvite}
+            disabled={!turma.codigo_acesso}
+            className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          >
+            {conviteCopiado ? 'Copiado' : 'Copiar convite'}
           </button>
           <Link
             to="/aluno/login"

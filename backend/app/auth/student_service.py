@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.service import hash_password, verify_password
@@ -58,9 +59,11 @@ def authenticate_student(email: str, senha: str, db: Session) -> Student | None:
     return student
 
 
-def entrar_na_turma(student: Student, codigo_acesso: str, db: Session) -> Turma:
+def entrar_na_turma(student: Student, codigo_acesso: str, db: Session,
+                    origem: str = Enrollment.ORIGEM_CODIGO) -> Turma:
     """Vincula o aluno à turma pelo código de acesso. Idempotente: entrar de novo
-    na mesma turma devolve o vínculo existente em vez de duplicar."""
+    na mesma turma devolve o vínculo existente em vez de duplicar, e a origem
+    continua a da primeira entrada."""
     codigo = (codigo_acesso or "").strip().upper()
     turma = db.query(Turma).filter(Turma.codigo_acesso == codigo).first()
     if not turma:
@@ -71,8 +74,13 @@ def entrar_na_turma(student: Student, codigo_acesso: str, db: Session) -> Turma:
         Enrollment.turma_id == turma.id,
     ).first()
     if not ja_vinculado:
-        db.add(Enrollment(student_id=student.id, turma_id=turma.id))
-        db.commit()
+        db.add(Enrollment(student_id=student.id, turma_id=turma.id, origem=origem))
+        try:
+            db.commit()
+        except IntegrityError:
+            # Outra requisição do mesmo aluno criou a matrícula ao mesmo tempo.
+            db.rollback()
+            return turma
         vincular_submissoes_anteriores(student, db)
     return turma
 

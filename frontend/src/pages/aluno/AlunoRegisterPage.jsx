@@ -4,6 +4,7 @@ import { registerAluno } from '../../api/aluno'
 import { useAlunoAuth } from '../../context/AlunoAuthContext'
 import Logo from '../../components/Logo'
 import SeletorPerfil from '../../components/SeletorPerfil'
+import { lerConvite } from '../../utils/convitePendente'
 
 export default function AlunoRegisterPage() {
   const { login } = useAlunoAuth()
@@ -11,6 +12,7 @@ export default function AlunoRegisterPage() {
   const [form, setForm] = useState({ nome: '', email: '', matricula: '', senha: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [convite] = useState(lerConvite)
 
   const set = (campo) => (e) => setForm(f => ({ ...f, [campo]: e.target.value }))
 
@@ -22,7 +24,7 @@ export default function AlunoRegisterPage() {
       const { data } = await registerAluno(
         form.email.trim(), form.nome.trim(), form.matricula.trim(), form.senha)
       login(data.access_token, data.aluno)
-      navigate('/aluno', { replace: true })
+      navigate(convite ? `/aluno/convite/${encodeURIComponent(convite)}` : '/aluno', { replace: true })
     } catch (err) {
       setError(err.response?.data?.detail || 'Erro ao criar a conta.')
     } finally {
@@ -45,6 +47,11 @@ export default function AlunoRegisterPage() {
           <h1 className="text-lg font-semibold text-gray-900 mb-1">Criar conta</h1>
           <p className="text-sm text-gray-400 mb-6">Depois é só entrar na turma com o código do professor</p>
 
+          {convite && (
+            <div className="rounded-lg bg-purple-50 border border-purple-100 px-4 py-2.5 text-sm text-purple-700 mb-4">
+              Depois de entrar, você vai direto para a turma.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">Nome</label>

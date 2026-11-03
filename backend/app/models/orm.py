@@ -1,6 +1,7 @@
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON, Float, UniqueConstraint,
+    Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON, Float, Index,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from app.models.database import Base
@@ -32,6 +33,7 @@ class Student(Base):
 
     enrollments = relationship("Enrollment", back_populates="student", cascade="all, delete-orphan")
     submissions = relationship("Submission", back_populates="student")
+    acessos = relationship("Acesso", back_populates="student", cascade="all, delete-orphan")
 
 
 class Turma(Base):
@@ -56,19 +58,40 @@ class Turma(Base):
 
 
 class Enrollment(Base):
-    """Matrícula do aluno na turma (vínculo aluno↔turma)."""
+    """Matrícula do aluno na turma (vínculo aluno↔turma). `origem` diz como ele
+    entrou, pelo link do convite ou digitando o código. Nula nas de antes da 0018."""
     __tablename__ = "enrollments"
     __table_args__ = (
         UniqueConstraint("student_id", "turma_id", name="uq_enrollment_student_turma"),
     )
 
+    ORIGEM_CONVITE = "convite"
+    ORIGEM_CODIGO = "codigo"
+
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True)
     turma_id = Column(Integer, ForeignKey("turmas.id"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    origem = Column(String(16), nullable=True)
 
     student = relationship("Student", back_populates="enrollments")
     turma = relationship("Turma", back_populates="enrollments")
+
+
+class Acesso(Base):
+    """Abertura do app do aluno. `via` é a origem que veio no link (`?via=`), nula
+    quando ele abriu por conta própria. Não guarda IP, navegador nem página."""
+    __tablename__ = "acessos"
+    __table_args__ = (
+        Index("ix_acessos_student_id_momento", "student_id", "momento"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    momento = Column(DateTime, nullable=False, default=datetime.utcnow)
+    via = Column(String(32), nullable=True)
+
+    student = relationship("Student", back_populates="acessos")
 
 
 class Exam(Base):

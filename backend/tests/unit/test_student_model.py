@@ -2,7 +2,7 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.models.orm import Enrollment, Student, Submission, Turma
+from app.models.orm import Acesso, Enrollment, Student, Submission, Turma
 from app.services.turma_service import _ALFABETO_CODIGO, create_turma, delete_turma
 
 
@@ -77,3 +77,32 @@ def test_submissao_liga_aluno_e_numera_tentativa(db, exam_factory, submission_fa
     assert [s.attempt_number for s in tentativas] == [1, 2]
     assert tentativas[0].student.email == "aluno@teste.com"
     assert len(student.submissions) == 2
+
+
+def test_matricula_guarda_a_origem(db, professor, student):
+    turma = create_turma("Algoritmos", "COMP101", db, professor_id=professor.id)
+    db.add(Enrollment(student_id=student.id, turma_id=turma.id,
+                      origem=Enrollment.ORIGEM_CONVITE))
+    db.commit()
+    assert db.query(Enrollment).one().origem == "convite"
+    assert Enrollment.ORIGEM_CODIGO == "codigo"
+
+
+def test_matricula_sem_origem_fica_nula(db, professor, student):
+    turma = create_turma("Algoritmos", "COMP101", db, professor_id=professor.id)
+    db.add(Enrollment(student_id=student.id, turma_id=turma.id))
+    db.commit()
+    assert db.query(Enrollment).one().origem is None
+
+
+def test_acesso_tem_momento_e_sai_junto_com_o_aluno(db, student):
+    db.add(Acesso(student_id=student.id, via="convite"))
+    db.commit()
+    acesso = db.query(Acesso).one()
+    assert acesso.momento is not None
+    assert acesso.via == "convite"
+    assert student.acessos == [acesso]
+
+    db.delete(student)
+    db.commit()
+    assert db.query(Acesso).count() == 0
