@@ -22,13 +22,8 @@ export default function AlunoLayout() {
   useEffect(() => {
     if (registrou.current && !via) return
     registrou.current = true
-    registrarAcesso(via)
-      .catch(() => {})
-      .finally(() => {
-        if (via) {
-          setSearchParams(params => { params.delete('via'); return params }, { replace: true })
-        }
-      })
+    registrarAcesso(via).catch(() => {})
+    if (via) setSearchParams(params => { params.delete('via'); return params }, { replace: true })
   }, [via, setSearchParams])
 
   useEffect(() => {
