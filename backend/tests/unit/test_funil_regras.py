@@ -3,10 +3,10 @@ import itertools
 from datetime import datetime, timedelta
 
 from app.services.funil_regras import (
-    ACERTO, ERRO, FALHA, LISTA, TRILHA, Matricula, Tentativa, aquisicao, ativacao,
-    com_prova_marcada, erros_corrigidos, janela_da_prova, montar_funil, north_star,
-    por_origem, protecao, resultado_da_lista, resultado_da_trilha, retencao,
-    retencao_da_semana, saude, ultimas_semanas,
+    ACERTO, ERRO, FALHA, LISTA, TRILHA, Acesso, DadosDaTurma, Matricula, Tentativa,
+    aquisicao, ativacao, com_prova_marcada, erros_corrigidos, janela_da_prova,
+    montar_funil, north_star, por_origem, protecao, resultado_da_lista,
+    resultado_da_trilha, retencao, retencao_da_semana, saude, ultimas_semanas,
 )
 
 # Quarta-feira. A semana atual começa em 2026-10-26.
@@ -232,8 +232,17 @@ class TestAtivacao:
         assert a["com_primeiro_envio"] == 1
 
 
+SEMANA = "2026-10-19"
+ANTES = datetime(2026, 10, 14, 10)
+NA_SEMANA = datetime(2026, 10, 21, 10)
+
+
+def ac(aluno, momento, via=None):
+    return Acesso(aluno=aluno, momento=momento, via=via)
+
+
 class TestRetencao:
-    def test_voltou_e_por_conta_propria_na_semana(self):
+    def test_pelo_envio_e_por_conta_propria_na_semana(self):
         matriculas = [mat(1, DIA0), mat(2, DIA0), mat(3, DIA0), mat(4, datetime(2026, 10, 27))]
         tentativas = [
             tent(ERRO, datetime(2026, 10, 14), aluno=1),
@@ -244,29 +253,71 @@ class TestRetencao:
             tent(ERRO, datetime(2026, 10, 10), aluno=4),
             tent(ERRO, datetime(2026, 10, 22), aluno=4),
         ]
-        s = retencao_da_semana("2026-10-19", matriculas, tentativas)
+        s = retencao_da_semana(SEMANA, matriculas, tentativas, [], [])
         assert s["base"] == 3
-        assert s["voltaram"] == 2
+        assert s["voltaram_por_envio"] == 2
         assert s["por_conta_propria"] == 1
-        assert s["taxa"] == 66.7
+        assert s["taxa_por_envio"] == 66.7
         assert s["taxa_por_conta_propria"] == 33.3
+        assert s["voltaram"] == 0
 
     def test_por_conta_propria_tambem_pede_envio_antes(self):
         tentativas = [tent(ERRO, datetime(2026, 10, 20), por_conta_propria=True)]
-        s = retencao_da_semana("2026-10-19", [mat(1, DIA0)], tentativas)
-        assert s["voltaram"] == 0
+        s = retencao_da_semana(SEMANA, [mat(1, DIA0)], tentativas, [], [])
+        assert s["voltaram_por_envio"] == 0
         assert s["por_conta_propria"] == 0
 
-    def test_base_zero_da_taxa_nula(self):
-        s = retencao_da_semana("2026-10-19", [], [])
-        assert s["taxa"] is None
-        assert s["taxa_por_conta_propria"] is None
+    def test_voltou_pelo_acesso_com_acesso_antes(self):
+        s = retencao_da_semana(SEMANA, [mat(1, DIA0)], [], [ac(1, ANTES), ac(1, NA_SEMANA)], [])
+        assert s["voltaram"] == 1
+        assert s["taxa"] == 100.0
+        assert s["voltaram_por_envio"] == 0
+
+    def test_voltou_pelo_acesso_com_so_envio_antes(self):
+        s = retencao_da_semana(SEMANA, [mat(1, DIA0)], [tent(ERRO, ANTES)], [ac(1, NA_SEMANA)], [])
+        assert s["voltaram"] == 1
+
+    def test_acesso_sem_atividade_antes_nao_conta(self):
+        s = retencao_da_semana(SEMANA, [mat(1, DIA0)], [], [ac(1, NA_SEMANA)], [])
+        assert s["voltaram"] == 0
+
+    def test_envio_sem_acesso_conta_so_pelo_envio(self):
+        tentativas = [tent(ERRO, ANTES), tent(ERRO, NA_SEMANA)]
+        s = retencao_da_semana(SEMANA, [mat(1, DIA0)], tentativas, [], [])
+        assert s["voltaram"] == 0
+        assert s["voltaram_por_envio"] == 1
+
+    def test_sem_prova_marcada_so_com_acesso_fora_das_janelas(self):
+        janelas = [janela_da_prova(datetime(2026, 10, 23, 8), datetime(2026, 10, 23, 10))]
+        acessos = [
+            # aluno 1 só abriu dentro da janela da prova
+            ac(1, ANTES), ac(1, datetime(2026, 10, 21, 10)),
+            # aluno 2 abriu uma vez antes de a prova começar a puxar
+            ac(2, ANTES), ac(2, datetime(2026, 10, 19, 9)), ac(2, datetime(2026, 10, 22, 9)),
+        ]
+        s = retencao_da_semana(SEMANA, [mat(1, DIA0), mat(2, DIA0)], [], acessos, janelas)
+        assert s["voltaram"] == 2
+        assert s["sem_prova_marcada"] == 1
+        assert s["taxa_sem_prova_marcada"] == 50.0
+
+    def test_sem_aviso_so_com_acesso_sem_origem(self):
+        acessos = [ac(1, ANTES), ac(1, NA_SEMANA), ac(2, ANTES), ac(2, NA_SEMANA, via="convite")]
+        s = retencao_da_semana(SEMANA, [mat(1, DIA0), mat(2, DIA0)], [], acessos, [])
+        assert s["voltaram"] == 2
+        assert s["sem_aviso"] == 1
+        assert s["taxa_sem_aviso"] == 50.0
+
+    def test_base_zero_deixa_todas_as_taxas_nulas(self):
+        s = retencao_da_semana(SEMANA, [], [], [], [])
+        for chave in ("taxa", "taxa_sem_prova_marcada", "taxa_sem_aviso",
+                      "taxa_por_envio", "taxa_por_conta_propria"):
+            assert s[chave] is None
 
     def test_cartao_usa_a_ultima_semana_completa(self):
-        r = retencao([mat(1, DIA0)], [], AGORA)
+        r = retencao([mat(1, DIA0)], [], [], [], AGORA)
         assert len(r["semanas"]) == 8
         assert r["semanas"][-1]["semana"] == "2026-10-26"
-        assert r["ultima_completa"]["semana"] == "2026-10-19"
+        assert r["ultima_completa"]["semana"] == SEMANA
         assert r["meta"] == 50.0
 
 
@@ -378,6 +429,7 @@ class TestSaude:
 
 class TestMontarFunil:
     def test_traz_os_seis_blocos(self):
-        funil = montar_funil([mat(1, _dias(30))], [], ABERTAS, 40, AGORA)
+        dados = DadosDaTurma(matriculas=[mat(1, _dias(30))], tentativas=[], questoes_abertas=ABERTAS)
+        funil = montar_funil(dados, 40, AGORA)
         assert set(funil) == {"north_star", "aquisicao", "ativacao", "retencao", "saude", "protecao"}
         assert funil["aquisicao"]["alunos_previstos"] == 40

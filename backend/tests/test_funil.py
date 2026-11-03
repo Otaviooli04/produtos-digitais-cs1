@@ -150,7 +150,7 @@ class TestFunilDaTurma:
         assert funil["aquisicao"]["taxa_matriculados"] == 25.0
         ultima = funil["retencao"]["ultima_completa"]
         assert ultima["semana"] == "2026-10-19"
-        assert ultima["voltaram"] == 1
+        assert ultima["voltaram_por_envio"] == 1
         assert ultima["por_conta_propria"] == 1
 
 

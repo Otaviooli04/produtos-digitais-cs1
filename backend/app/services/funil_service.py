@@ -1,7 +1,6 @@
 """Funil da turma calculado na hora, com o que o banco já guarda.
 
 Este módulo só lê e converte em registros. As contas estão em `funil_regras`."""
-from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy.orm import Session, load_only
@@ -11,17 +10,10 @@ from app.models.orm import (
 )
 from app.services.calendario import situacao_da_atividade
 from app.services.funil_regras import (
-    LISTA, TRILHA, Matricula, Tentativa, alunos_ativados, erros_corrigidos, montar_funil,
-    north_star, resultado_da_lista, resultado_da_trilha, retencao_da_semana, taxa,
+    LISTA, TRILHA, DadosDaTurma, Matricula, Tentativa, alunos_ativados, erros_corrigidos,
+    montar_funil, north_star, resultado_da_lista, resultado_da_trilha, retencao_da_semana, taxa,
     ultimas_semanas,
 )
-
-
-@dataclass
-class _DadosDaTurma:
-    matriculas: list[Matricula]
-    tentativas: list[Tentativa]
-    questoes_abertas: dict[int, int | None]
 
 
 def _matriculas(turma_id: int, db: Session) -> list[Matricula]:
@@ -89,13 +81,14 @@ def _questoes_abertas(turma_id: int, db: Session, agora: datetime) -> dict[int, 
     }
 
 
-def _dados_da_turma(turma: Turma, db: Session, agora: datetime) -> _DadosDaTurma:
+def _dados_da_turma(turma: Turma, db: Session, agora: datetime) -> DadosDaTurma:
     matriculas = _matriculas(turma.id, db)
     alunos = [m.aluno for m in matriculas]
     tentativas: list[Tentativa] = []
     if alunos:
         tentativas = _tentativas_de_lista(turma.id, alunos, db) + _tentativas_de_trilha(alunos, db)
-    return _DadosDaTurma(matriculas, tentativas, _questoes_abertas(turma.id, db, agora))
+    return DadosDaTurma(matriculas=matriculas, tentativas=tentativas,
+                        questoes_abertas=_questoes_abertas(turma.id, db, agora))
 
 
 def funil_da_turma(turma: Turma, db: Session, agora: datetime | None = None) -> dict:
@@ -104,8 +97,7 @@ def funil_da_turma(turma: Turma, db: Session, agora: datetime | None = None) -> 
     return {
         "turma_id": turma.id,
         "gerado_em": agora.isoformat(),
-        **montar_funil(dados.matriculas, dados.tentativas, dados.questoes_abertas,
-                       turma.alunos_previstos, agora),
+        **montar_funil(dados, turma.alunos_previstos, agora),
     }
 
 
@@ -123,8 +115,7 @@ def funil_geral(db: Session, agora: datetime | None = None) -> dict:
     ativados: set[int] = set()
     for turma in turmas:
         dados = _dados_da_turma(turma, db, agora)
-        funil = montar_funil(dados.matriculas, dados.tentativas, dados.questoes_abertas,
-                             turma.alunos_previstos, agora)
+        funil = montar_funil(dados, turma.alunos_previstos, agora)
         todas.update(dados.tentativas)
         ativados |= alunos_ativados(dados.matriculas, erros_corrigidos(dados.tentativas))
         for m in dados.matriculas:
@@ -156,7 +147,7 @@ def funil_geral(db: Session, agora: datetime | None = None) -> dict:
             "ativados": len(ativados),
             "taxa_ativacao": taxa(len(ativados), len(matriculas)),
             "retencao_ultima_semana": retencao_da_semana(
-                ultimas_semanas(agora)[-2], matriculas, tentativas),
+                ultimas_semanas(agora)[-2], matriculas, tentativas, [], []),
         },
         "por_turma": por_turma,
     }
