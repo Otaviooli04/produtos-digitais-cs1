@@ -23,10 +23,9 @@ from sqlalchemy.orm import Session
 from app.engine.evaluators.code_evaluator import evaluate_code
 from app.llm.exercise_generator import GERACOES_POR_DIA, ExercicioInvalido, gerar_exercicio
 from app.models.orm import ExercicioGerado, Student, Submission, TentativaDeTreino
+from app.services.historico_do_aluno import CATEGORIA_CORRETA
 
 logger = logging.getLogger(__name__)
-
-CATEGORIA_CORRETA = "Correto"
 
 # Quantos casos precisam bater com a solução de referência para o exercício
 # valer. Abaixo disso ele é descartado em vez de chegar torto ao aluno.

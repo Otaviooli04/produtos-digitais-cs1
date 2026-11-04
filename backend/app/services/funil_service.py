@@ -11,9 +11,12 @@ from app.models.orm import (
 )
 from app.services.calendario import situacao_da_atividade
 from app.services.funil_regras import (
-    LISTA, TRILHA, Acesso, DadosDaTurma, JanelaDeProva, Matricula, Tentativa,
+    Acesso, DadosDaTurma, JanelaDeProva, Matricula, Tentativa,
     alunos_ativados, erros_corrigidos, janela_da_prova, montar_funil, north_star,
-    resultado_da_lista, resultado_da_trilha, retencao_da_semana, taxa, ultimas_semanas,
+    retencao_da_semana, taxa, ultimas_semanas,
+)
+from app.services.historico_do_aluno import (
+    LISTA, TRILHA, resultado_da_lista, resultado_da_trilha,
 )
 
 # Os sinais de hábito ficam fora do total: a prova é de uma turma e o total junta

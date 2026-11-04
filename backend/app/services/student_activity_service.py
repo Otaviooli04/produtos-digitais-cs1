@@ -17,10 +17,10 @@ from sqlalchemy.orm import Session
 from app.engine.evaluators.code_evaluator import evaluate_code
 from app.models.orm import Exam, Question, Student, Submission
 from app.services.calendario import semana_iso, situacao_da_atividade
+from app.services.historico_do_aluno import CATEGORIA_CORRETA
 
 logger = logging.getLogger(__name__)
 
-CATEGORIA_CORRETA = "Correto"
 # Quantas submissões contam como "recentes" ao medir a tendência de um erro.
 JANELA_RECENTE = 10
 
