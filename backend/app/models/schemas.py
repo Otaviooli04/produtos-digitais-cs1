@@ -705,6 +705,8 @@ class ProgressoResponse(BaseModel):
     total_questoes: int
     questoes_resolvidas: int
     total_tentativas: int
+    tentativas_no_treino: int = 0
+    exercicios_resolvidos: int = 0
     tentativas_por_questao_resolvida: Optional[float] = None
     acertos_de_primeira: int
     dias_seguidos: int

@@ -300,6 +300,73 @@ class TestProgresso:
         assert data["total_tentativas"] == 0
         assert data["tentativas_por_questao_resolvida"] is None
         assert data["dias_seguidos"] == 0
+        assert data["tentativas_no_treino"] == 0
+        assert data["exercicios_resolvidos"] == 0
+
+    def test_atividade_nao_publicada_fica_fora_do_total(self, client, db, token, prova):
+        prova.publicada = False
+        db.commit()
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["total_atividades"] == 0
+        assert data["total_questoes"] == 0
+
+    def test_treino_entra_no_esforco_e_nao_nas_questoes(
+        self, client, db, token, prova, tentativa_factory,
+    ):
+        aluno_id = _aluno_id(client, token)
+        tentativa_factory(aluno_id, "1", "Correto",
+                          quando=datetime.utcnow() - timedelta(seconds=30))
+        _treino(db, aluno_id, "Laço Infinito",
+                [(False, "Laço Infinito"), (False, "Laço Infinito"), (True, "Correto")])
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["questoes_resolvidas"] == 1
+        assert data["total_questoes"] == 2
+        assert data["total_tentativas"] == 4
+        assert data["tentativas_no_treino"] == 3
+        assert data["exercicios_resolvidos"] == 1
+        # Q1 de primeira e o treino na 3ª → média 2,0.
+        assert data["tentativas_por_questao_resolvida"] == 2.0
+        assert data["acertos_de_primeira"] == 1
+        assert data["dias_seguidos"] == 1
+        assert sum(p["tentativas"] for p in data["evolucao"]) == 4
+        assert sum(p["resolvidas"] for p in data["evolucao"]) == 2
+
+    def test_falha_tecnica_nao_conta_como_tentativa_ate_acertar(
+        self, client, token, prova, tentativa_factory,
+    ):
+        aluno_id = _aluno_id(client, token)
+        tentativa_factory(aluno_id, "1", "Erro Desconhecido")
+        tentativa_factory(aluno_id, "1", "Correto")
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["total_tentativas"] == 2
+        assert data["tentativas_por_questao_resolvida"] == 1.0
+        assert data["acertos_de_primeira"] == 1
+
+    def test_treino_de_outro_aluno_nao_entra(self, client, db, token, prova):
+        from app.models.orm import Student
+
+        outro = Student(email="outro@aluno.com", nome="Outro", senha_hash="x")
+        db.add(outro)
+        db.commit()
+        _treino(db, outro.id, "Laço Infinito", [(False, "Laço Infinito"), (True, "Correto")])
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["total_tentativas"] == 0
+        assert data["tentativas_no_treino"] == 0
+        assert data["exercicios_resolvidos"] == 0
+
+    def test_tentativa_de_exercicio_reportado_nao_conta(self, client, db, token, prova):
+        aluno_id = _aluno_id(client, token)
+        _treino(db, aluno_id, "Laço Infinito", [(True, "Correto")], reportado=True)
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["total_tentativas"] == 0
+        assert data["tentativas_no_treino"] == 0
+        assert data["exercicios_resolvidos"] == 0
+        assert data["dias_seguidos"] == 0
 
 
 class TestErrosRecorrentes:
