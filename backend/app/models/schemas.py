@@ -805,6 +805,7 @@ class ExercicioDetalhe(ExercicioResumo):
 
 class TrilhaResponse(BaseModel):
     categorias: List[CategoriaParaTreinar] = []
+    superados: List[ErroSuperado] = []
     exercicios: List[ExercicioResumo] = []
     geracoes_restantes_hoje: int = 0
 

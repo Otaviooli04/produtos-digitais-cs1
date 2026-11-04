@@ -22,8 +22,8 @@ from sqlalchemy.orm import Session
 
 from app.engine.evaluators.code_evaluator import evaluate_code
 from app.llm.exercise_generator import GERACOES_POR_DIA, ExercicioInvalido, gerar_exercicio
-from app.models.orm import ExercicioGerado, Student, Submission, TentativaDeTreino
-from app.services.historico_do_aluno import CATEGORIA_CORRETA
+from app.models.orm import ExercicioGerado, Student, TentativaDeTreino
+from app.services.historico_do_aluno import Erro, erros_do_aluno, ler_historico, superados
 
 logger = logging.getLogger(__name__)
 
@@ -38,22 +38,19 @@ class TreinoIndisponivel(RuntimeError):
 
 # ── o que treinar ────────────────────────────────────────────────────────────
 
+def _erros(student: Student, db: Session) -> list[Erro]:
+    """Os erros do aluno, ativos e superados, do mesmo histórico do painel de
+    erros recorrentes: listas e trilha juntas. Sem chamada de LLM."""
+    return erros_do_aluno(ler_historico(student, db))
+
+
 def categorias_para_treinar(student: Student, db: Session) -> list[dict]:
-    """As categorias que o aluno mais erra, da mais frequente para a menos.
+    """Os erros ativos do aluno, do mais frequente para o menos. O que ele já
+    superou treinando sai daqui e vai para os superados da trilha."""
+    return _categorias([e for e in _erros(student, db) if e.ativo], student, db)
 
-    Sai das submissões reais dele, então é a mesma fonte do painel de erros
-    recorrentes. Sem chamada de LLM."""
-    submissoes = (
-        db.query(Submission)
-        .filter(Submission.student_id == student.id)
-        .order_by(Submission.submitted_at, Submission.id)
-        .all()
-    )
-    por_categoria: dict[str, list[Submission]] = defaultdict(list)
-    for s in submissoes:
-        if s.error_category and s.error_category != CATEGORIA_CORRETA:
-            por_categoria[s.error_category].append(s)
 
+def _categorias(erros: list[Erro], student: Student, db: Session) -> list[dict]:
     gerados = (
         db.query(ExercicioGerado)
         .filter(ExercicioGerado.student_id == student.id,
@@ -65,22 +62,22 @@ def categorias_para_treinar(student: Student, db: Session) -> list[dict]:
         por_cat_gerados[e.error_category].append(e)
 
     categorias = []
-    for categoria, ocorrencias in por_categoria.items():
-        exercicios = por_cat_gerados.get(categoria, [])
+    for erro in erros:
+        exercicios = por_cat_gerados.get(erro.categoria, [])
         categorias.append({
-            "error_category": categoria,
-            "ocorrencias": len(ocorrencias),
-            "o_que_fazer": ocorrencias[-1].actionable_feedback or "",
+            "error_category": erro.categoria,
+            "ocorrencias": erro.total,
+            "o_que_fazer": erro.o_que_fazer,
             "exercicios_gerados": len(exercicios),
             "exercicios_resolvidos": sum(1 for e in exercicios if e.resolvido),
             "tem_pendente": any(not e.resolvido for e in exercicios),
         })
-    categorias.sort(key=lambda c: -c["ocorrencias"])
     return categorias
 
 
 def trilha(student: Student, db: Session) -> dict:
-    categorias = categorias_para_treinar(student, db)
+    erros = _erros(student, db)
+    categorias = _categorias([e for e in erros if e.ativo], student, db)
     # Aquece a categoria que ele mais erra, que é a que o botão grande oferece.
     # Sem exercício pendente ali, o primeiro clique esperaria o Gemini.
     if categorias and not categorias[0]["tem_pendente"]:
@@ -95,6 +92,7 @@ def trilha(student: Student, db: Session) -> dict:
     )
     return {
         "categorias": categorias,
+        "superados": superados(erros),
         "exercicios": [_exercicio_resumo(e) for e in exercicios],
         "geracoes_restantes_hoje": _restantes_hoje(student, db),
     }
@@ -119,28 +117,36 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
     Antes de gastar uma chamada de LLM, devolve o exercício pendente que já
     existe naquela categoria: treinar o que está aberto vale mais do que
     acumular exercício novo, e é de graça."""
-    categorias = categorias_para_treinar(student, db)
-    if not categorias:
+    erros = _erros(student, db)
+    if not erros:
         raise TreinoIndisponivel(
             "Você ainda não tem erros suficientes para a trilha. "
             "Resolva alguma questão da sua turma e volte aqui.")
 
     if categoria:
-        alvo = next((c for c in categorias if c["error_category"] == categoria), None)
+        # Pode ser um erro já superado: é o "Treinar de novo" da trilha.
+        alvo = next((e for e in erros if e.categoria == categoria), None)
         if not alvo:
             raise TreinoIndisponivel("Você não tem erros nessa categoria.")
     else:
+        ativos = [e for e in erros if e.ativo]
+        if not ativos:
+            raise TreinoIndisponivel(
+                "Você superou todos os erros que repetia. "
+                "Resolva uma questão da sua turma e volte aqui.")
         # Sem categoria pedida, vale o que já está pronto: a lista vem ordenada
         # pelo que ele mais erra, e entregar na hora um exercício da categoria
         # certa vale mais do que fazer o aluno esperar uma geração de outra.
         # A regra era a inversa antes de existir pré-geração, e nesse arranjo
         # ela passava por cima do exercício que já estava esperando.
-        alvo = next((c for c in categorias if c["tem_pendente"]), categorias[0])
+        categorias = _categorias(ativos, student, db)
+        pronta = next((c for c in categorias if c["tem_pendente"]), categorias[0])
+        alvo = next(e for e in ativos if e.categoria == pronta["error_category"])
 
     pendente = (
         db.query(ExercicioGerado)
         .filter(ExercicioGerado.student_id == student.id,
-                ExercicioGerado.error_category == alvo["error_category"],
+                ExercicioGerado.error_category == alvo.categoria,
                 ExercicioGerado.resolvido.is_(False),
                 ExercicioGerado.reportado.is_(False))
         .order_by(ExercicioGerado.created_at.desc())
@@ -155,7 +161,7 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
             "Treinar nos que já estão aqui continua liberado.")
 
     try:
-        exercicio = _gerar_e_salvar(student, alvo["error_category"], alvo["o_que_fazer"], db)
+        exercicio = _gerar_e_salvar(student, alvo.categoria, alvo.o_que_fazer, db)
     except ExercicioInvalido as e:
         raise TreinoIndisponivel(
             "Não consegui montar um exercício bom agora. Tente de novo.") from e
@@ -280,8 +286,7 @@ def preparar_proximo(student_id: int, categoria: str) -> None:
             if pendente or _restantes_hoje(student, db) <= 0:
                 return
             diagnostico = next(
-                (c["o_que_fazer"] for c in categorias_para_treinar(student, db)
-                 if c["error_category"] == categoria), "")
+                (e.o_que_fazer for e in _erros(student, db) if e.categoria == categoria), "")
             _gerar_e_salvar(student, categoria, diagnostico, db)
         finally:
             with _trava:
@@ -344,10 +349,13 @@ def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict
     db.commit()
     db.refresh(tentativa)
 
-    # Acabou de resolver: o próximo daquela categoria já começa a ser preparado,
-    # então quando ele voltar à trilha não há espera.
+    # Acabou de resolver: o erro do exercício passa a superado, então o próximo
+    # a ficar pronto é o do primeiro erro que continua ativo. Assim, quando ele
+    # voltar à trilha, não há espera.
     if acertou:
-        preparar_proximo(student.id, exercicio.error_category)
+        proximo = next((e.categoria for e in _erros(student, db) if e.ativo), None)
+        if proximo:
+            preparar_proximo(student.id, proximo)
 
     return {
         "tentativa": _tentativa_dict(tentativa),
