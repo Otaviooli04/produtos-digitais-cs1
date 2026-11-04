@@ -7,7 +7,9 @@ sobre registros simples e se testam com listas montadas à mão. A classificaç�
 de cada envio também mora aqui, e o funil da turma usa a mesma."""
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
+
+from app.services.calendario import semana_iso
 
 CATEGORIA_CORRETA = "Correto"
 # O que as heurísticas devolvem quando a execução falha por fora do código do
@@ -182,3 +184,51 @@ def _sentido(recentes: int, anteriores: int, janela_recente: int, janela_anterio
     if taxa_recente >= taxa_anterior * 1.2:
         return "piorando"
     return "estavel"
+
+
+# ── progresso ────────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class Resolucao:
+    """O primeiro acerto de um item e quantas tentativas válidas ele levou,
+    contando o próprio acerto."""
+    item: tuple[str, int]
+    momento: datetime
+    tentativas: int
+
+
+def resolucoes(envios: list[Envio]) -> list[Resolucao]:
+    """Um registro por item resolvido. A falha técnica não conta como tentativa,
+    e o que vem depois do primeiro acerto não muda nada."""
+    validas: Counter[tuple[str, int]] = Counter()
+    resolvidos: dict[tuple[str, int], Resolucao] = {}
+    for e in envios:
+        if e.item in resolvidos or e.resultado == FALHA:
+            continue
+        validas[e.item] += 1
+        if e.resultado == ACERTO:
+            resolvidos[e.item] = Resolucao(e.item, e.momento, validas[e.item])
+    return list(resolvidos.values())
+
+
+def dias_seguidos(envios: list[Envio], hoje: date) -> int:
+    """Sequência de dias consecutivos com pelo menos um envio, terminando hoje ou
+    ontem (quem enviou ontem ainda não perdeu a sequência)."""
+    dias = {e.momento.date() for e in envios}
+    referencia = hoje if hoje in dias else hoje - timedelta(days=1)
+    sequencia = 0
+    while referencia in dias:
+        sequencia += 1
+        referencia -= timedelta(days=1)
+    return sequencia
+
+
+def evolucao(envios: list[Envio], resolvidas: list[Resolucao]) -> list[dict]:
+    """Série semanal de tentativas e de itens resolvidos pela primeira vez. Só
+    aparecem as semanas com alguma tentativa."""
+    tentativas = Counter(semana_iso(e.momento) for e in envios)
+    primeiras = Counter(semana_iso(r.momento) for r in resolvidas)
+    return [
+        {"periodo": semana, "tentativas": tentativas[semana], "resolvidas": primeiras[semana]}
+        for semana in sorted(tentativas)
+    ]

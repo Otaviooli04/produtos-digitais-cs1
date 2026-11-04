@@ -1,9 +1,10 @@
 """Regras do histórico do aluno sobre registros montados à mão, sem banco."""
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from app.services.historico_do_aluno import (
-    ACERTO, ERRO, FALHA, LISTA, TRILHA, Envio, Tendencia, erros_do_aluno,
-    resultado_da_lista, resultado_da_trilha, rotulos, superados, tendencias,
+    ACERTO, ERRO, FALHA, LISTA, TRILHA, Envio, Tendencia, dias_seguidos, erros_do_aluno,
+    evolucao, resolucoes, resultado_da_lista, resultado_da_trilha, rotulos, superados,
+    tendencias,
 )
 
 # Quarta-feira, 28/10/2026, ao meio-dia.
@@ -133,3 +134,62 @@ class TestTendencia:
         t = tendencias(antigos + falhas)
         assert t[LACO] == Tendencia(recentes=10, anteriores=0, sentido="estavel")
         assert "Erro Desconhecido" not in t
+
+
+HOJE = date(2026, 10, 28)
+
+
+def no_dia(dia):
+    return Envio(origem=LISTA, item_id=1, momento=datetime(2026, 10, dia, 10, 0),
+                 categoria=OFF, resultado=ERRO)
+
+
+class TestResolucoes:
+    def test_conta_so_as_tentativas_validas_ate_o_primeiro_acerto(self):
+        envios = [
+            lista(0), lista(1, FALHA, categoria="Erro Desconhecido"),
+            lista(2, ACERTO), lista(3), lista(4, ACERTO),
+        ]
+        (r,) = resolucoes(envios)
+        assert r.item == (LISTA, 1)
+        assert r.tentativas == 2
+        assert r.momento == T0 + timedelta(minutes=2)
+
+    def test_falha_antes_do_acerto_ainda_e_acerto_de_primeira(self):
+        (r,) = resolucoes([lista(0, FALHA, categoria="Erro Desconhecido"), lista(1, ACERTO)])
+        assert r.tentativas == 1
+
+    def test_item_sem_acerto_nao_esta_resolvido(self):
+        assert resolucoes([lista(0), trilha(1, resultado=ERRO)]) == []
+
+    def test_questao_e_exercicio_com_o_mesmo_id_sao_itens_diferentes(self):
+        rs = resolucoes([lista(0, ACERTO, item=5), trilha(1, item=5)])
+        assert sorted(r.item for r in rs) == [(LISTA, 5), (TRILHA, 5)]
+
+
+class TestDiasSeguidos:
+    def test_sequencia_terminando_hoje(self):
+        assert dias_seguidos([no_dia(26), no_dia(27), no_dia(28)], HOJE) == 3
+
+    def test_quem_enviou_ontem_mantem_a_sequencia(self):
+        assert dias_seguidos([no_dia(26), no_dia(27)], HOJE) == 2
+
+    def test_buraco_zera(self):
+        assert dias_seguidos([no_dia(25)], HOJE) == 0
+        assert dias_seguidos([], HOJE) == 0
+
+
+class TestEvolucao:
+    def test_tentativas_e_primeiros_acertos_por_semana(self):
+        envios = [
+            Envio(origem=LISTA, item_id=1, momento=datetime(2026, 10, 14, 10),
+                  categoria=OFF, resultado=ERRO),
+            Envio(origem=TRILHA, item_id=100, momento=datetime(2026, 10, 27, 10),
+                  categoria="Correto", resultado=ACERTO, alvo=OFF),
+            Envio(origem=LISTA, item_id=1, momento=datetime(2026, 10, 28, 10),
+                  categoria="Correto", resultado=ACERTO),
+        ]
+        assert evolucao(envios, resolucoes(envios)) == [
+            {"periodo": "2026-10-12", "tentativas": 1, "resolvidas": 0},
+            {"periodo": "2026-10-26", "tentativas": 2, "resolvidas": 2},
+        ]
