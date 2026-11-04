@@ -9,6 +9,9 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
+from sqlalchemy.orm import Session
+
+from app.models.orm import ExercicioGerado, Student, Submission, TentativaDeTreino
 from app.services.calendario import semana_iso
 
 CATEGORIA_CORRETA = "Correto"
@@ -232,3 +235,52 @@ def evolucao(envios: list[Envio], resolvidas: list[Resolucao]) -> list[dict]:
         {"periodo": semana, "tentativas": tentativas[semana], "resolvidas": primeiras[semana]}
         for semana in sorted(tentativas)
     ]
+
+
+# ── leitura ──────────────────────────────────────────────────────────────────
+
+def ler_historico(student: Student, db: Session) -> list[Envio]:
+    """Os envios das listas e as tentativas da trilha do aluno, em ordem de
+    tempo. No empate, a lista vem antes da trilha e depois vale o id.
+
+    Tentativa de exercício reportado fica de fora: o aluno disse que o
+    exercício estava errado, e ele deixa de contar. Envio sem momento também,
+    como no funil."""
+    linhas: list[tuple[datetime, int, int, Envio]] = []
+
+    envios_da_lista = (
+        db.query(Submission.id, Submission.question_id, Submission.submitted_at,
+                 Submission.error_category, Submission.actionable_feedback)
+        .filter(Submission.student_id == student.id, Submission.submitted_at.isnot(None))
+        .all()
+    )
+    for id_, questao_id, momento, categoria, o_que_fazer in envios_da_lista:
+        linhas.append((momento, 0, id_, Envio(
+            origem=LISTA, item_id=questao_id, momento=momento,
+            categoria=categoria or "", resultado=resultado_da_lista(categoria),
+            o_que_fazer=o_que_fazer or "",
+        )))
+
+    tentativas_da_trilha = (
+        db.query(TentativaDeTreino.id, TentativaDeTreino.submitted_at,
+                 TentativaDeTreino.all_tests_passed, TentativaDeTreino.error_category,
+                 TentativaDeTreino.actionable_feedback,
+                 ExercicioGerado.id.label("exercicio_id"),
+                 ExercicioGerado.error_category.label("alvo"),
+                 ExercicioGerado.titulo)
+        .join(ExercicioGerado, ExercicioGerado.id == TentativaDeTreino.exercicio_id)
+        .filter(TentativaDeTreino.student_id == student.id,
+                TentativaDeTreino.submitted_at.isnot(None),
+                ExercicioGerado.reportado.is_(False))
+        .all()
+    )
+    for (id_, momento, passou, categoria, o_que_fazer,
+         exercicio_id, alvo, titulo) in tentativas_da_trilha:
+        linhas.append((momento, 1, id_, Envio(
+            origem=TRILHA, item_id=exercicio_id, momento=momento,
+            categoria=categoria or "", resultado=resultado_da_trilha(passou, categoria),
+            o_que_fazer=o_que_fazer or "", alvo=alvo, titulo=titulo,
+        )))
+
+    linhas.sort(key=lambda linha: linha[:3])
+    return [linha[3] for linha in linhas]
