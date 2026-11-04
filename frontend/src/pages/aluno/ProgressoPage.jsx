@@ -3,6 +3,7 @@ import { getErrosRecorrentes, getProgresso } from '../../api/aluno'
 import Badge from '../../components/Badge'
 import BarList from '../../components/BarList'
 import Spinner from '../../components/Spinner'
+import { dataCurta } from '../../utils/datas'
 import { shortError } from '../../utils/errorLabels'
 
 const TENDENCIA = {
@@ -46,6 +47,10 @@ export default function ProgressoPage() {
   }
 
   const semSubmissao = progresso.total_tentativas === 0
+  const superados = erros.superados ?? []
+  const noTreino = progresso.tentativas_no_treino > 0
+    ? `, ${progresso.tentativas_no_treino} no treino`
+    : ''
 
   return (
     <div className="space-y-8">
@@ -72,24 +77,26 @@ export default function ProgressoPage() {
             <Kpi
               label="Tentativas até acertar"
               value={progresso.tentativas_por_questao_resolvida ?? '—'}
-              sub="média nas questões que você resolveu"
+              sub="média nas questões e treinos que você resolveu"
             />
             <Kpi
               label="Acertos de primeira"
               value={progresso.acertos_de_primeira}
-              sub="questões resolvidas no primeiro envio"
+              sub="questões e treinos resolvidos no primeiro envio"
             />
             <Kpi
               label="Dias seguidos"
               value={progresso.dias_seguidos}
-              sub={`${progresso.total_tentativas} tentativas no total`}
+              sub={`${progresso.total_tentativas} tentativas no total${noTreino}`}
             />
           </div>
 
           {progresso.evolucao.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <h2 className="text-sm font-semibold text-gray-900 mb-1">Semana a semana</h2>
-              <p className="text-xs text-gray-400 mb-4">Tentativas enviadas e questões resolvidas pela primeira vez.</p>
+              <p className="text-xs text-gray-400 mb-4">
+                Tentativas enviadas e o que você resolveu pela primeira vez, nas listas e no treino.
+              </p>
               <BarList
                 items={progresso.evolucao.map(p => ({
                   label: semanaLabel(p.periodo),
@@ -106,12 +113,14 @@ export default function ProgressoPage() {
       <div>
         <h2 className="text-sm font-semibold text-gray-900 mb-1">Erros que se repetem</h2>
         <p className="text-xs text-gray-400 mb-3">
-          {erros.total_com_erro} de {erros.total_submissoes} tentativas tiveram algum erro.
+          {erros.total_com_erro} de {erros.total_submissoes} tentativas tiveram algum erro, somando listas e treino.
         </p>
 
         {erros.erros.length === 0 ? (
           <div className="bg-white rounded-xl border border-dashed border-gray-200 p-8 text-center">
-            <p className="text-sm text-gray-500">Nenhum erro registrado ainda.</p>
+            <p className="text-sm text-gray-500">
+              {superados.length > 0 ? 'Nenhum erro se repetindo agora.' : 'Nenhum erro registrado ainda.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -127,7 +136,7 @@ export default function ProgressoPage() {
                       <Badge color={tendencia.color}>{tendencia.label}</Badge>
                     </div>
                     <span className="text-xs text-gray-400">
-                      {e.total}× · {e.recentes} nas últimas tentativas
+                      {e.total}×{e.no_treino > 0 ? ` · ${e.no_treino} no treino` : ''} · {e.recentes} nas últimas tentativas
                     </span>
                   </div>
 
@@ -146,6 +155,28 @@ export default function ProgressoPage() {
           </div>
         )}
       </div>
+
+      {superados.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900 mb-1">Erros que você superou</h2>
+          <p className="text-xs text-gray-400 mb-3">
+            Você acertou um treino feito para eles depois da última vez que apareceram. Se um voltar, ele sobe para a lista de cima.
+          </p>
+          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+            {superados.map(s => (
+              <div key={s.error_category} className="flex flex-wrap items-center gap-2 px-5 py-3">
+                <span className="text-sm text-gray-900" title={s.error_category}>
+                  {shortError(s.error_category)}
+                </span>
+                <Badge color="green">superado</Badge>
+                <span className="ml-auto text-xs text-gray-400">
+                  em {dataCurta(s.superado_em)} · apareceu {s.total}×
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
