@@ -26,6 +26,7 @@
 - O módulo `historico_do_aluno.py` só importa `app.models.orm` e `app.services.calendario`, para não criar import circular.
 - Dentro do worktree, git pelo caminho completo `/usr/bin/git`, um comando por chamada. O gancho do rtk transforma `git` em `rtk git`, e a trava do worktree recusa.
 - Testes: `cd backend && /home/otavio/produtos-digitais-cs1/backend/venv/bin/python -m pytest <alvo> -q`. Nunca `rtk pytest`. Base: 353 testes passando.
+- Pastas: o pytest roda de `backend/`, e o `git add` e o `ruff` rodam da raiz do worktree, com os caminhos começando em `backend/` ou `frontend/`. Depois de um `cd backend`, voltar para a raiz antes de commitar.
 
 ---
 
@@ -82,8 +83,8 @@
 | T3 | 8 testes. Tentativas até acertar = 2 (erro, falha ignorada, acerto), falha antes do acerto = 1, semanas 2026-10-12 e 2026-10-26 (28/10/2026 é quarta). 367 + 8 = 375 | bate |
 | T4 | 5 testes contra o banco. Ordem lista 0, trilha 10, lista 20, empate lista antes da trilha, reportado fora, sem momento fora, outro aluno fora. 375 + 5 = 380 | bate |
 | T5 | 5 testes novos. `Laço` com total 2 e `no_treino` 1, rótulos `["Trilha · Soma dos pares", "prova.pdf · Q1"]` (`exam_factory` cria `prova.pdf` sem título), superado com total 2, falha fora dos totais. Os 3 testes antigos de erros recorrentes continuam valendo (5 válidas e 4 erros no primeiro). 380 + 5 = 385 | bate |
-| T6 | 3 testes novos e 2 asserções novas em `test_sem_submissao`. Média (1 + 3) / 2 = 2.0, 4 tentativas, 3 no treino. Os testes antigos continuam (1.5 em `test_contadores`). 385 + 3 = 388 | bate |
-| T7 | 7 testes em `TestSuperados`, 2 em `TestRotaDaTrilha`, 1 novo em `TestPreGeracao` e `test_resolver_prepara_o_proximo` reescrito com outro nome (o erro resolvido vira superado, então o próximo é `Tudo no Main`). 388 + 10 = 398 | bate |
+| T6 | 5 testes novos e 2 asserções novas em `test_sem_submissao`. Média (1 + 3) / 2 = 2.0, 4 tentativas, 3 no treino. Treino de outro aluno e exercício reportado ficam fora (0 tentativas). Os testes antigos continuam (1.5 em `test_contadores`). 385 + 5 = 390 | bate |
+| T7 | 8 testes em `TestSuperados`, 3 em `TestRotaDaTrilha`, 1 novo em `TestPreGeracao` e `test_resolver_prepara_o_proximo` reescrito com outro nome (o erro resolvido vira superado, então o próximo é `Tudo no Main`). O pendente do erro superado é reaberto sem chamar o Gemini, e o acerto de outro aluno não supera nada. `_treinou` grava a tentativa 1 s depois da fixture para não empatar. 390 + 12 = 402 | bate |
 | T8 | front sem suíte: lint sem erro novo e build | bate |
 | T9 | front sem suíte: lint sem erro novo e build | bate |
 
@@ -1317,12 +1318,35 @@ por:
         assert data["total_tentativas"] == 2
         assert data["tentativas_por_questao_resolvida"] == 1.0
         assert data["acertos_de_primeira"] == 1
+
+    def test_treino_de_outro_aluno_nao_entra(self, client, db, token, prova):
+        from app.models.orm import Student
+
+        outro = Student(email="outro@aluno.com", nome="Outro", senha_hash="x")
+        db.add(outro)
+        db.commit()
+        _treino(db, outro.id, "Laço Infinito", [(False, "Laço Infinito"), (True, "Correto")])
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["total_tentativas"] == 0
+        assert data["tentativas_no_treino"] == 0
+        assert data["exercicios_resolvidos"] == 0
+
+    def test_tentativa_de_exercicio_reportado_nao_conta(self, client, db, token, prova):
+        aluno_id = _aluno_id(client, token)
+        _treino(db, aluno_id, "Laço Infinito", [(True, "Correto")], reportado=True)
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["total_tentativas"] == 0
+        assert data["tentativas_no_treino"] == 0
+        assert data["exercicios_resolvidos"] == 0
+        assert data["dias_seguidos"] == 0
 ```
 
 - [ ] **Passo 2: rodar e ver falhar**
 
 Rodar: `cd backend && /home/otavio/produtos-digitais-cs1/backend/venv/bin/python -m pytest tests/test_student_activity.py -k Progresso -q`
-Esperado: FALHA em `test_sem_submissao` (`KeyError: 'tentativas_no_treino'`), `test_atividade_nao_publicada_fica_fora_do_total`, `test_treino_entra_no_esforco_e_nao_nas_questoes` e `test_falha_tecnica_nao_conta_como_tentativa_ate_acertar`
+Esperado: FALHA em `test_sem_submissao` (`KeyError: 'tentativas_no_treino'`), `test_atividade_nao_publicada_fica_fora_do_total`, `test_treino_entra_no_esforco_e_nao_nas_questoes`, `test_falha_tecnica_nao_conta_como_tentativa_ate_acertar`, `test_treino_de_outro_aluno_nao_entra` e `test_tentativa_de_exercicio_reportado_nao_conta` (os dois últimos pelo mesmo `KeyError`)
 
 - [ ] **Passo 3: reescrever o progresso**
 
@@ -1462,7 +1486,8 @@ def pre_geracoes(monkeypatch):
 
 
 def _treinou(db, aluno, categoria, passou=True, reportado=False):
-    """Um exercício da trilha para `categoria` com uma tentativa, gravada agora."""
+    """Um exercício da trilha para `categoria` com uma tentativa, gravada um
+    segundo depois dos envios da fixture `erros_do_aluno`, para não empatar."""
     exercicio = ExercicioGerado(
         student_id=aluno.id, error_category=categoria, titulo="Soma",
         enunciado="Some os n primeiros inteiros.",
@@ -1473,7 +1498,7 @@ def _treinou(db, aluno, categoria, passou=True, reportado=False):
     db.add(TentativaDeTreino(
         exercicio_id=exercicio.id, student_id=aluno.id, code="int main(){}",
         all_tests_passed=passou, error_category="Correto" if passou else categoria,
-        submitted_at=datetime.utcnow()))
+        submitted_at=datetime.utcnow() + timedelta(seconds=1)))
     db.commit()
     return exercicio
 
@@ -1502,7 +1527,7 @@ class TestSuperados:
         assert t["superados"][0]["total"] == 3
 
     def test_sem_erro_ativo_gerar_sem_categoria_avisa_que_superou(
-        self, db, aluno, erros_do_aluno, pre_geracoes
+        self, db, aluno, erros_do_aluno, gemini_ok, pre_geracoes
     ):
         from app.services.treino_service import TreinoIndisponivel, gerar_para_categoria
 
@@ -1513,6 +1538,7 @@ class TestSuperados:
             gerar_para_categoria(aluno, None, db)
         assert str(e.value) == ("Você superou todos os erros que repetia. "
                                 "Resolva uma questão da sua turma e volte aqui.")
+        assert gemini_ok == []
 
     def test_treinar_de_novo_um_erro_superado(
         self, db, aluno, erros_do_aluno, gemini_ok, pre_geracoes
@@ -1524,6 +1550,25 @@ class TestSuperados:
         exercicio = gerar_para_categoria(aluno, "Acesso Fora dos Limites: Off-by-One", db)
         assert exercicio["error_category"] == "Acesso Fora dos Limites: Off-by-One"
         assert gemini_ok[0][1] == "troque <= por <"
+
+    def test_treinar_de_novo_reabre_o_pendente_do_erro_superado(
+        self, db, aluno, erros_do_aluno, gemini_ok, pre_geracoes
+    ):
+        from app.services.treino_service import gerar_para_categoria
+
+        _treinou(db, aluno, "Acesso Fora dos Limites: Off-by-One")
+        pendente = ExercicioGerado(
+            student_id=aluno.id, error_category="Acesso Fora dos Limites: Off-by-One",
+            titulo="Soma", enunciado="Some os n primeiros inteiros.",
+            casos_teste=[{"input": "3", "expected_output": "6"}],
+            created_at=datetime.utcnow())
+        db.add(pendente)
+        db.commit()
+
+        exercicio = gerar_para_categoria(aluno, "Acesso Fora dos Limites: Off-by-One", db)
+        assert exercicio["id"] == pendente.id
+        assert exercicio["reaproveitado"] is True
+        assert gemini_ok == []
 
     def test_categoria_que_o_aluno_nunca_errou(self, db, aluno, erros_do_aluno):
         from app.services.treino_service import TreinoIndisponivel, gerar_para_categoria
@@ -1571,13 +1616,29 @@ class TestRotaDaTrilha:
         assert data["superados"][0]["error_category"] == "Acesso Fora dos Limites: Off-by-One"
         assert data["superados"][0]["superado_em"]
 
-    def test_gerar_com_tudo_superado_da_409(self, client, db, aluno, erros_do_aluno, pre_geracoes):
+    def test_gerar_com_tudo_superado_da_409(
+        self, client, db, aluno, erros_do_aluno, gemini_ok, pre_geracoes
+    ):
         _treinou(db, aluno, "Acesso Fora dos Limites: Off-by-One")
         _treinou(db, aluno, "Tudo no Main")
 
         resp = client.post("/aluno/treino/gerar", json={}, headers=_auth(_token(client)))
         assert resp.status_code == 409
         assert resp.json()["detail"].startswith("Você superou todos os erros")
+
+    def test_treino_de_outro_aluno_nao_aparece(
+        self, client, db, aluno, erros_do_aluno, pre_geracoes
+    ):
+        outro = Student(email="outro@aluno.com", nome="Outro", senha_hash="x")
+        db.add(outro)
+        db.commit()
+        _treinou(db, outro, "Acesso Fora dos Limites: Off-by-One")
+
+        data = client.get("/aluno/treino", headers=_auth(_token(client))).json()
+        assert [c["error_category"] for c in data["categorias"]] == [
+            "Acesso Fora dos Limites: Off-by-One", "Tudo no Main"]
+        assert data["superados"] == []
+        assert data["exercicios"] == []
 ```
 
 Na classe `TestPreGeracao`, trocar o teste `test_resolver_prepara_o_proximo` inteiro (do `def test_resolver_prepara_o_proximo(` até o `assert pendentes == 1, "o proximo tinha que estar pronto"`) por:
@@ -1625,7 +1686,7 @@ Na classe `TestPreGeracao`, trocar o teste `test_resolver_prepara_o_proximo` int
 - [ ] **Passo 2: rodar e ver falhar**
 
 Rodar: `cd backend && /home/otavio/produtos-digitais-cs1/backend/venv/bin/python -m pytest tests/test_treino.py -q`
-Esperado: FALHA nos testes de `TestSuperados` (menos `test_categoria_que_o_aluno_nunca_errou`), de `TestRotaDaTrilha` e em `test_resolver_prepara_o_proximo_erro_ativo` (`pre_geracoes == ["Acesso Fora dos Limites: Off-by-One"]`)
+Esperado: FALHA em `test_erro_superado_sai_das_categorias_e_vai_para_superados`, `test_sem_erro_ativo_gerar_sem_categoria_avisa_que_superou`, `test_erro_do_treino_soma_nas_ocorrencias`, `test_falha_tecnica_nao_vira_categoria`, nos 3 de `TestRotaDaTrilha`, em `test_resolver_prepara_o_proximo_erro_ativo` (`pre_geracoes == ["Acesso Fora dos Limites: Off-by-One"]`) e em `test_resolver_o_ultimo_erro_ativo_nao_prepara_nada` (`pre_geracoes == ["Tudo no Main"]`). Os outros 4 de `TestSuperados` já passam e ficam de guarda: os dois do "Treinar de novo", a categoria nunca errada e o reportado. O `gemini_ok` nos testes de tudo superado impede que esta fase chame o Gemini de verdade
 
 - [ ] **Passo 3: reescrever a trilha**
 
@@ -1846,7 +1907,7 @@ Esperado: nada novo
 - [ ] **Passo 5: rodar a suíte inteira e commitar**
 
 Rodar: `cd backend && /home/otavio/produtos-digitais-cs1/backend/venv/bin/python -m pytest tests/ --ignore=tests/integration -q 2>&1 | tail -3`
-Esperado: 398 passando
+Esperado: 402 passando
 
 ```bash
 /usr/bin/git add backend/app/services/treino_service.py backend/app/models/schemas.py backend/tests/test_treino.py
