@@ -721,12 +721,20 @@ class ErroRecorrente(BaseModel):
     questoes: List[str] = []
     ultima_ocorrencia: str
     o_que_fazer: str = ""
+    no_treino: int = 0
+
+
+class ErroSuperado(BaseModel):
+    error_category: str
+    total: int
+    superado_em: str  # ISO, como ultima_ocorrencia
 
 
 class ErrosRecorrentesResponse(BaseModel):
     total_submissoes: int
     total_com_erro: int
     erros: List[ErroRecorrente] = []
+    superados: List[ErroSuperado] = []
 
 
 class EffortReportQuestion(BaseModel):

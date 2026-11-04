@@ -17,12 +17,12 @@ from sqlalchemy.orm import Session
 from app.engine.evaluators.code_evaluator import evaluate_code
 from app.models.orm import Exam, Question, Student, Submission
 from app.services.calendario import semana_iso, situacao_da_atividade
-from app.services.historico_do_aluno import CATEGORIA_CORRETA
+from app.services.historico_do_aluno import (
+    CATEGORIA_CORRETA, ERRO, FALHA, erros_do_aluno, ler_historico, rotulos, superados,
+    tendencias,
+)
 
 logger = logging.getLogger(__name__)
-
-# Quantas submissões contam como "recentes" ao medir a tendência de um erro.
-JANELA_RECENTE = 10
 
 
 class AtividadeIndisponivel(Exception):
@@ -457,6 +457,7 @@ def _evolucao(mapa: dict[int, list[Submission]], questoes: list[Question]) -> li
 
 def erros_recorrentes(student: Student, db: Session) -> dict:
     """O padrão que o aluno repete, que é justamente o que ele não enxerga sozinho.
+    Junta as listas e a trilha, e separa o que ele já superou treinando.
     Determinístico: sai das categorias das heurísticas, sem chamada de LLM."""
     turma_ids = _turma_ids(student)
     exams = db.query(Exam).filter(
@@ -467,62 +468,26 @@ def erros_recorrentes(student: Student, db: Session) -> dict:
         for e in exams for q in e.questions
     }
 
-    todas = (
-        db.query(Submission)
-        .filter(Submission.student_id == student.id)
-        .order_by(Submission.submitted_at, Submission.id)
-        .all()
-    )
-    com_erro = [
-        s for s in todas
-        if s.error_category and s.error_category != CATEGORIA_CORRETA
-    ]
-    recentes_ids = {s.id for s in todas[-JANELA_RECENTE:]}
+    envios = ler_historico(student, db)
+    erros = erros_do_aluno(envios)
+    tendencia = tendencias(envios)
 
-    por_categoria: dict[str, list[Submission]] = defaultdict(list)
-    for s in com_erro:
-        por_categoria[s.error_category].append(s)
-
-    erros = []
-    for categoria, ocorrencias in por_categoria.items():
-        recentes = sum(1 for s in ocorrencias if s.id in recentes_ids)
-        anteriores = len(ocorrencias) - recentes
-        ultima = ocorrencias[-1]
-        questoes = []
-        for s in reversed(ocorrencias):
-            rotulo = rotulo_questao.get(s.question_id)
-            if rotulo and rotulo not in questoes:
-                questoes.append(rotulo)
-        erros.append({
-            "error_category": categoria,
-            "total": len(ocorrencias),
-            "recentes": recentes,
-            "anteriores": anteriores,
-            "tendencia": _tendencia(recentes, anteriores, len(todas)),
-            "questoes": questoes[:5],
-            "ultima_ocorrencia": _iso(ultima.submitted_at) or "",
-            "o_que_fazer": ultima.actionable_feedback or "",
-        })
-
-    erros.sort(key=lambda e: (-e["total"], e["error_category"]))
     return {
-        "total_submissoes": len(todas),
-        "total_com_erro": len(com_erro),
-        "erros": erros,
+        "total_submissoes": sum(1 for e in envios if e.resultado != FALHA),
+        "total_com_erro": sum(1 for e in envios if e.resultado == ERRO),
+        "erros": [
+            {
+                "error_category": erro.categoria,
+                "total": erro.total,
+                "no_treino": erro.no_treino,
+                "recentes": tendencia[erro.categoria].recentes,
+                "anteriores": tendencia[erro.categoria].anteriores,
+                "tendencia": tendencia[erro.categoria].sentido,
+                "questoes": rotulos(erro, rotulo_questao),
+                "ultima_ocorrencia": _iso(erro.ultima_ocorrencia) or "",
+                "o_que_fazer": erro.o_que_fazer,
+            }
+            for erro in erros if erro.ativo
+        ],
+        "superados": superados(erros),
     }
-
-
-def _tendencia(recentes: int, anteriores: int, total_submissoes: int) -> str:
-    """Compara a frequência do erro nas últimas submissões com a frequência dele
-    no resto do histórico. Sem histórico anterior suficiente não há tendência."""
-    janela_recente = min(JANELA_RECENTE, total_submissoes)
-    janela_anterior = total_submissoes - janela_recente
-    if janela_anterior == 0 or janela_recente == 0:
-        return "estavel"
-    taxa_recente = recentes / janela_recente
-    taxa_anterior = anteriores / janela_anterior
-    if taxa_recente <= taxa_anterior * 0.8:
-        return "melhorando"
-    if taxa_recente >= taxa_anterior * 1.2:
-        return "piorando"
-    return "estavel"
