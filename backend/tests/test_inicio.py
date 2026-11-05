@@ -10,7 +10,7 @@ import pytest
 from app.auth.service import create_access_token
 from app.auth.student_service import create_student_token
 from app.models.orm import (
-    Enrollment, Exam, Novidade, Question, QuestionCluster, Student, Submission,
+    Enrollment, Exam, ExercicioGerado, Novidade, Question, QuestionCluster, Student, Submission,
 )
 from app.services.historico_do_aluno import ACERTO, ERRO, FALHA, LISTA, TRILHA, Envio
 from app.services.inicio_service import (
@@ -277,14 +277,31 @@ class TestRotas:
             resposta_em=AGORA))
         db.add(Novidade(student_id=aluno.id, tipo="retorno", question_id=questao.id,
                         grupo_chave="cat:Saída Incorreta", chegou_em=AGORA))
+        questao_dela = _errou(db, prova, colega, numero="2", cluster_id=0)
+        db.add(QuestionCluster(
+            question_id=questao_dela.id, cluster_label=0, chave="cat:Saída Incorreta", size=1,
+            dominant_error="Saída Incorreta", resposta_professor="Outra dica.",
+            resposta_em=AGORA))
+        db.add(Novidade(student_id=colega.id, tipo="retorno", question_id=questao_dela.id,
+                        grupo_chave="cat:Saída Incorreta", chegou_em=AGORA))
+        for dono, titulo in ((aluno, "Exercício da Ana"), (colega, "Exercício da Bia")):
+            exercicio = ExercicioGerado(
+                student_id=dono.id, error_category="Saída Incorreta", titulo=titulo,
+                enunciado="Faça algo.")
+            db.add(exercicio)
+            db.flush()
+            db.add(Novidade(student_id=dono.id, tipo="exercicio", exercicio_id=exercicio.id,
+                            chegou_em=AGORA))
         db.commit()
 
         meu = client.get("/aluno/inicio", headers=_auth(create_student_token(aluno.id))).json()
         dela = client.get("/aluno/inicio",
                           headers=_auth(create_student_token(colega.id))).json()
-        assert [n["titulo"] for n in meu["novidades"]] == ["Questão 1 · Lista 3"]
-        assert dela["novidades"] == []
+        assert sorted(n["titulo"] for n in meu["novidades"]) == [
+            "Exercício da Ana", "Questão 1 · Lista 3"]
+        assert sorted(n["titulo"] for n in dela["novidades"]) == [
+            "Exercício da Bia", "Questão 2 · Lista 3"]
         assert client.get("/aluno/novidades/contagem",
-                          headers=_auth(create_student_token(aluno.id))).json() == {"total": 1}
+                          headers=_auth(create_student_token(aluno.id))).json() == {"total": 2}
         assert client.get("/aluno/novidades/contagem",
-                          headers=_auth(create_student_token(colega.id))).json() == {"total": 0}
+                          headers=_auth(create_student_token(colega.id))).json() == {"total": 2}
