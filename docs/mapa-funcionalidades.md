@@ -28,7 +28,7 @@ Duas funcionalidades do roadmap que não estavam nessa lista também entraram:
 | Funcionalidade | Mês | Estado | Onde está |
 |---|---|---|---|
 | Início com novidades, continuar e prazos (RF20, RF26, experimento 1 do Plano de Growth) | 3 | Pronta | `services/novidades_service.py` (tabela `novidades` da migração 0019, com `chegou_em` e `vista_em`), `services/inicio_service.py`, `GET /aluno/inicio`, `GET /aluno/novidades/contagem`, `pages/aluno/InicioPage.jsx` e a bolinha no `AlunoLayout`. A resposta do professor ao grupo e o exercício pré-gerado viram novidade, e abrir a questão ou o exercício marca como visto |
-| Explicação individual da tentativa | 3 | Pronta | `llm/student_explainer.py`, cache em `submissions.llm_explanation`, migração 0012 |
+| Dica em etapas e explicação da tentativa (RF28, experimento 2) | 3 | Pronta | `llm/student_explainer.py`, `POST /aluno/tentativas/{id}/ajuda`, `components/AjudaEmEtapas.jsx`, colunas `llm_explanation`, `llm_pistas`, `nivel_de_ajuda` e `ajuda_pedida_em` (migrações 0012 e 0021). Pista geral, pista que aponta a parte e explicação, uma de cada vez. Bloqueada na prova enquanto a questão aceita envio |
 | Relatório de esforço economizado | 4 | Pronta | `services/effort_report_service.py`, card em `ResultsPage.jsx` |
 
 ## 2. Roadmap mês a mês
@@ -79,8 +79,7 @@ O que o sistema já consegue calcular hoje, sem trabalho novo:
 
 ## 5. Decisões de produto ainda em aberto
 
-- **Feedback imediato ou progressivo.** Hoje é imediato e completo. A alternativa
-  discutida, dica antes de solução, muda a tela de resultado do aluno.
+- ~~**Feedback imediato ou progressivo.**~~ Decidido em novembro de 2026: progressivo, com a dica em etapas (item 2.3).
 - **Métrica de sucesso definitiva.** O sistema já mede tentativas até acertar, que
   é a candidata mais forte, mas isso não foi fechado.
 - **Nome oficial do produto.** A pasta de entrega usa "Turma Digital com Apoio de

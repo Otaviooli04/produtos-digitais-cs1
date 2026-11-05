@@ -47,8 +47,8 @@ export const getProgresso = () => alunoApi.get('/aluno/progresso')
 
 export const getErrosRecorrentes = () => alunoApi.get('/aluno/erros-recorrentes')
 
-export const explicarTentativa = (submissionId) =>
-  alunoApi.post(`/aluno/tentativas/${submissionId}/explicacao`)
+export const pedirAjuda = (submissionId, nivel) =>
+  alunoApi.post(`/aluno/tentativas/${submissionId}/ajuda`, { nivel })
 
 // ── trilha de treino ─────────────────────────────────────────────────────────
 

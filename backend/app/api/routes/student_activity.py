@@ -6,13 +6,13 @@ from app.models.database import get_db
 from app.models.orm import Student
 from app.models.schemas import (
     AlunoSubmissaoRequest, AlunoSubmissaoResponse, AtividadeDetalhe, AtividadeResumo,
-    ContagemNovidadesResponse, ErrosRecorrentesResponse, ExplicacaoResponse,
+    ContagemNovidadesResponse, ErrosRecorrentesResponse, AjudaRequest, AjudaResponse,
     HistoricoQuestaoResponse, InicioResponse, ProgressoResponse,
 )
 from app.services.inicio_service import painel
 from app.services.novidades_service import contar
 from app.services.student_activity_service import (
-    AtividadeIndisponivel, detalhe_atividade, erros_recorrentes, explicar_tentativa,
+    AtividadeIndisponivel, detalhe_atividade, erros_recorrentes, pedir_ajuda,
     historico_questao, listar_atividades, progresso, submeter,
 )
 
@@ -83,14 +83,15 @@ def get_tentativas(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/tentativas/{submission_id}/explicacao", response_model=ExplicacaoResponse)
-def post_explicacao(
+@router.post("/tentativas/{submission_id}/ajuda", response_model=AjudaResponse)
+def post_ajuda(
     submission_id: int,
+    body: AjudaRequest,
     db: Session = Depends(get_db),
     current: Student = Depends(get_current_student),
 ):
     try:
-        return explicar_tentativa(current, submission_id, db)
+        return pedir_ajuda(current, submission_id, body.nivel, db)
     except AtividadeIndisponivel as e:
         raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:

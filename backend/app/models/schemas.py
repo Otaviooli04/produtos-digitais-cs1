@@ -674,6 +674,11 @@ class TentativaResponse(BaseModel):
     tests_passed: int = 0
     tests_total: int = 0
     explicacao: Optional[str] = None
+    # Dica em etapas: só as pistas que o aluno já abriu, a explicação só no nível
+    # 3, e se a prova ainda bloqueia a ajuda desta questão.
+    pistas: List[str] = []
+    nivel_de_ajuda: int = 0
+    ajuda_bloqueada: bool = False
     test_results: List[TestResult] = []
     # Retorno que o professor escreveu para o grupo desta tentativa. Vem só na
     # tentativa mais recente da questão, para não repetir o mesmo texto em cinco.
@@ -681,9 +686,15 @@ class TentativaResponse(BaseModel):
     resposta_do_professor_em: Optional[str] = None
 
 
-class ExplicacaoResponse(BaseModel):
-    explicacao: str
-    gerada_agora: bool
+class AjudaRequest(BaseModel):
+    nivel: int = Field(ge=1, le=3)
+
+
+class AjudaResponse(BaseModel):
+    nivel: int
+    pistas: List[str] = []
+    explicacao: Optional[str] = None
+    nivel_maximo: int
 
 
 class AvancoDaTentativa(BaseModel):
