@@ -29,7 +29,13 @@ FALHA = "Não foi possível gerar a dica agora. Tente de novo."
 
 _BLOCO_DE_CODIGO = re.compile(r"```.*?```", re.S)
 _LINHA_DE_CODIGO = re.compile(
-    r"(;\s*$|\{\s*$|^\s*#include|^\s*int\s+main|^\s*(for|while|if)\s*\(|^\s*(printf|scanf)\s*\()")
+    r"(;\s*$|\{\s*$|^\s*#include|^\s*int\s+main|^\s*(for|while|if)\s*\(|^\s*(printf|scanf)\s*\()"
+    r"|\b\w+\s*\([^()]*\)\s*;"
+    r"|\b\w+(\[[^\]]*\])?\s*[-+*/%]?=\s*[^=;]+;"
+    r'|"[^"]*%[-+ 0#]*\d*(\.\d+)?[dfsciu][^"]*"'
+    r"|`[^`]*[;{}=][^`]*`"
+    r"|^\s*\}\s*$",
+    re.M)
 
 
 def generate_student_help(
@@ -103,6 +109,8 @@ def sem_solucao(texto: str, padrao: str) -> str:
 
 
 def montar_prompt(statement, code, error_category, pedagogical_diagnosis, test_results) -> str:
+    statement = neutralizar_marcadores(statement)
+    code = neutralizar_marcadores(code)
     falhas = _falhas_resumidas(test_results or [])
     return f"""
 Você é um monitor de uma disciplina introdutória de programação em C. Um aluno
@@ -142,6 +150,13 @@ Regras obrigatórias:
 Responda APENAS com um JSON no formato
 {{"pistas": ["<pista geral>", "<pista que aponta a parte>"], "explicacao": "<texto>"}}.
 """
+
+
+def neutralizar_marcadores(texto: str) -> str:
+    """Quebra o marcador de fechamento dentro do texto do aluno, para ele não
+    encerrar o bloco de dado e escrever instruções fora dele."""
+    return (texto or "").replace("CODIGO_DO_ALUNO>>>", "CODIGO_DO_ALUNO> >>").replace(
+        "ENUNCIADO>>>", "ENUNCIADO> >>")
 
 
 def _falhas_resumidas(test_results: list[dict]) -> str:
