@@ -13,6 +13,13 @@ export const SITUACAO = {
 
 export const modoLabel = (modo) => MODO_LABEL[modo] ?? 'Prova'
 
+// Título com o tipo na frente, sem repetir quando o professor já escreveu
+// "Prova 1" ou "Lista 2" no título.
+export const comTipo = (modo, titulo) => {
+  const tipo = modoLabel(modo)
+  return titulo.toLowerCase().startsWith(tipo.toLowerCase()) ? titulo : `${tipo} · ${titulo}`
+}
+
 export const situacaoInfo = (situacao) => SITUACAO[situacao] ?? SITUACAO.aberta
 
 // O backend guarda datas em UTC sem fuso na string. Sem o 'Z' o JS interpretaria

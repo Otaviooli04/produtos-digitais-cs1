@@ -1,4 +1,5 @@
 import { shortError } from '../utils/errorLabels'
+import { comTipo } from '../utils/atividade'
 
 const TENDENCIA = {
   caindo: { rotulo: 'caindo', classe: 'text-green-700 bg-green-50 border-green-200', seta: '↓' },
@@ -22,9 +23,9 @@ export default function TrajetoriaDeErros({ trajetoria }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <h2 className="text-sm font-semibold text-gray-700">De uma prova para a outra</h2>
+      <h2 className="text-sm font-semibold text-gray-700">De uma atividade para a outra</h2>
       <p className="text-xs text-gray-400 mt-0.5 mb-4">
-        Dificuldades que apareceram em mais de uma avaliação, pela fatia que ocupam
+        Dificuldades que apareceram em mais de uma prova ou lista, pela fatia que ocupam
         dos envios com erro de cada uma.
       </p>
 
@@ -41,20 +42,20 @@ export default function TrajetoriaDeErros({ trajetoria }) {
                   {info.seta} {info.rotulo}
                 </span>
                 <span className="ml-auto text-xs text-gray-400 shrink-0">
-                  {t.provas} avaliações
+                  {t.provas} atividades
                 </span>
               </div>
 
               <div className="flex items-end gap-1.5">
                 {t.pontos.map((p) => (
-                  <div key={p.exam_id} className="flex-1 min-w-0" title={`${p.titulo}: ${p.proporcao}% dos envios com erro`}>
+                  <div key={p.exam_id} className="flex-1 min-w-0" title={`${comTipo(p.modo, p.titulo)}: ${p.proporcao}% dos envios com erro`}>
                     <div className="h-16 flex items-end">
                       <div
                         className="w-full rounded-t bg-purple-300"
                         style={{ height: `${Math.max(4, p.proporcao)}%` }}
                       />
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-1 truncate">{p.titulo}</p>
+                    <p className="text-[10px] text-gray-500 mt-1 truncate">{comTipo(p.modo, p.titulo)}</p>
                     <p className="text-[10px] text-gray-400">{p.proporcao}%</p>
                   </div>
                 ))}

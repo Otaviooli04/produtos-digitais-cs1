@@ -463,6 +463,7 @@ class ExamAnalytics(BaseModel):
     id: int
     filename: str
     titulo: Optional[str] = None
+    modo: str = "prova"
     created_at: str
     pass_rate: Optional[float]
     total_submissoes: int
@@ -473,6 +474,7 @@ class ExamAnalytics(BaseModel):
 class PontoDaTrajetoria(BaseModel):
     exam_id: int
     titulo: str
+    modo: str = "prova"
     ocorrencias: int
     alunos: int
     proporcao: float  # dos envios com erro daquela prova
@@ -503,10 +505,17 @@ class SemanaNorthStar(BaseModel):
     erros_corrigidos: int
 
 
+class CorrigidosPorTipo(BaseModel):
+    provas: int = 0
+    listas: int = 0
+    trilha: int = 0
+
+
 class NorthStarFunil(BaseModel):
     semana_atual: int
     total: int
     semanas: List[SemanaNorthStar]
+    por_tipo: CorrigidosPorTipo = CorrigidosPorTipo()
 
 
 class OrigemDasMatriculas(BaseModel):
@@ -708,6 +717,14 @@ class EvolucaoPonto(BaseModel):
     resolvidas: int
 
 
+class ProgressoPorModo(BaseModel):
+    modo: str
+    total_atividades: int = 0
+    atividades_concluidas: int = 0
+    total_questoes: int = 0
+    questoes_resolvidas: int = 0
+
+
 class ProgressoResponse(BaseModel):
     total_atividades: int
     atividades_concluidas: int
@@ -721,6 +738,7 @@ class ProgressoResponse(BaseModel):
     dias_seguidos: int
     ultima_submissao: Optional[str] = None
     evolucao: List[EvolucaoPonto] = []
+    por_modo: List[ProgressoPorModo] = []
 
 
 class ErroRecorrente(BaseModel):

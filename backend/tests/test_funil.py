@@ -160,6 +160,26 @@ class TestFunilDaTurma:
         assert ultima["por_conta_propria"] == 1
 
 
+class TestNorthStarPorTipo:
+    def test_separa_provas_listas_e_trilha(self, db, professor):
+        turma = _turma(db, professor)
+        prova = _atividade(db, turma, modo="prova")
+        lista = _atividade(db, turma, modo="treino")
+        ana = _aluno(db, "ana@teste.com", "Ana", [turma])
+        for questao in (prova, lista):
+            _envio(db, ana, questao, ERRO_COMUM, AGORA - timedelta(days=1))
+            _envio(db, ana, questao, "Correto", AGORA - timedelta(hours=2))
+        exercicio = _treino(db, ana, False, AGORA - timedelta(days=1))
+        _treino(db, ana, True, AGORA - timedelta(hours=1), exercicio=exercicio)
+        acertou_de_primeira = _atividade(db, turma, modo="treino")
+        _envio(db, ana, acertou_de_primeira, "Correto", AGORA - timedelta(hours=1))
+
+        north_star = funil_da_turma(turma, db, agora=AGORA)["north_star"]
+
+        assert north_star["total"] == 3
+        assert north_star["por_tipo"] == {"provas": 1, "listas": 1, "trilha": 1}
+
+
 class TestFiltroPelaMatricula:
     def test_trilha_de_antes_da_matricula_fica_fora_da_turma(self, db, professor):
         turma = _turma(db, professor)

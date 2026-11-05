@@ -9,7 +9,7 @@ from statistics import median
 
 from app.models.orm import Enrollment
 from app.services.calendario import semana_iso
-from app.services.historico_do_aluno import ACERTO, ERRO, FALHA, LISTA
+from app.services.historico_do_aluno import ACERTO, ERRO, FALHA, LISTA, TRILHA
 
 SEMANAS = 8
 JANELA = timedelta(days=7)
@@ -120,6 +120,30 @@ def erros_corrigidos(tentativas: list[Tentativa]) -> list[tuple[int, datetime]]:
                     corrigidos.append((t.aluno, t.momento))
                 break
     return corrigidos
+
+
+def tipo_do_item(t: Tentativa) -> str:
+    """Prova, lista ou trilha. Lista é a atividade da turma em modo treino, a
+    mesma que a retenção já conta como envio por conta própria."""
+    if t.origem == TRILHA:
+        return "trilha"
+    return "listas" if t.por_conta_propria else "provas"
+
+
+def corrigidos_por_tipo(tentativas: list[Tentativa]) -> dict:
+    """A North Star repartida por onde o erro foi corrigido, com a mesma regra
+    de `erros_corrigidos`: um por item, no primeiro acerto depois de um erro."""
+    contagem = {"provas": 0, "listas": 0, "trilha": 0}
+    for serie in _por_item(tentativas).values():
+        errou = False
+        for t in serie:
+            if t.resultado == ERRO:
+                errou = True
+            elif t.resultado == ACERTO:
+                if errou:
+                    contagem[tipo_do_item(t)] += 1
+                break
+    return contagem
 
 
 def north_star(corrigidos: list[tuple[int, datetime]], agora: datetime) -> dict:
@@ -382,7 +406,8 @@ def sucesso(matriculas: list[Matricula], tentativas: list[Tentativa], acessos: l
 def montar_funil(dados: DadosDaTurma, alunos_previstos: int | None, agora: datetime) -> dict:
     corrigidos = erros_corrigidos(dados.tentativas)
     return {
-        "north_star": north_star(corrigidos, agora),
+        "north_star": {**north_star(corrigidos, agora),
+                       "por_tipo": corrigidos_por_tipo(dados.tentativas)},
         "aquisicao": aquisicao(dados.matriculas, alunos_previstos),
         "ativacao": ativacao(dados.matriculas, dados.tentativas, corrigidos),
         "retencao": retencao(dados.matriculas, dados.tentativas, dados.acessos, dados.janelas, agora),

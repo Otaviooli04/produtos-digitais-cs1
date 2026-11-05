@@ -300,6 +300,23 @@ class TestProgresso:
         assert data["tentativas_por_questao_resolvida"] == 1.5
         assert data["acertos_de_primeira"] == 1
         assert data["dias_seguidos"] == 1
+        assert data["por_modo"] == [
+            {"modo": "prova", "total_atividades": 1, "atividades_concluidas": 1,
+             "total_questoes": 2, "questoes_resolvidas": 2},
+            {"modo": "treino", "total_atividades": 0, "atividades_concluidas": 0,
+             "total_questoes": 0, "questoes_resolvidas": 0},
+        ]
+
+    def test_lista_conta_separada_da_prova(self, client, db, token, prova, tentativa_factory):
+        prova.modo = "treino"
+        db.commit()
+        aluno_id = _aluno_id(client, token)
+        tentativa_factory(aluno_id, "1", "Correto")
+
+        por_modo = client.get("/aluno/progresso", headers=_auth(token)).json()["por_modo"]
+        assert por_modo[0]["total_questoes"] == 0
+        assert por_modo[1] == {"modo": "treino", "total_atividades": 1, "atividades_concluidas": 0,
+                               "total_questoes": 2, "questoes_resolvidas": 1}
 
     def test_evolucao_por_semana(self, client, token, prova, tentativa_factory):
         aluno_id = _aluno_id(client, token)

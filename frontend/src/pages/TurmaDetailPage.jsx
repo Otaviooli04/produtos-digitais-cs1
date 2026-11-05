@@ -8,13 +8,19 @@ import Badge from '../components/Badge'
 import BarList from '../components/BarList'
 import TrajetoriaDeErros from '../components/TrajetoriaDeErros'
 import FunilDaTurma from '../components/FunilDaTurma'
-import { modoLabel } from '../utils/atividade'
+import { comTipo, modoLabel } from '../utils/atividade'
 import { shortError } from '../utils/errorLabels'
 
 const GRUPOS_DE_ATIVIDADE = [
   { modo: 'prova', titulo: 'Provas', vazio: 'Nenhuma prova nesta turma.' },
   { modo: 'treino', titulo: 'Listas', vazio: 'Nenhuma lista nesta turma.' },
 ]
+
+const contagemPorModo = (exams) => {
+  const listas = exams.filter(e => e.modo === 'treino').length
+  const provas = exams.length - listas
+  return `${provas} prova${provas !== 1 ? 's' : ''} e ${listas} lista${listas !== 1 ? 's' : ''}`
+}
 
 const SORT_OPTIONS = [
   { value: 'recent', label: 'Mais recentes' },
@@ -140,8 +146,16 @@ export default function TurmaDetailPage() {
       return sort === 'oldest' ? da - db : db - da
     })
 
+  const mediaDoModo = (modo) => {
+    const taxas = (analytics?.provas ?? [])
+      .filter(p => (p.modo || 'prova') === modo && p.pass_rate != null)
+      .map(p => p.pass_rate)
+    return taxas.length ? `${(taxas.reduce((a, b) => a + b, 0) / taxas.length).toFixed(1)}%` : '—'
+  }
+  const aproveitamentoPorModo = `provas ${mediaDoModo('prova')} · listas ${mediaDoModo('treino')}`
+
   const evolucaoData = (analytics?.provas ?? []).map(p => ({
-    name: p.titulo || p.filename.replace(/\.[^.]+$/, ''),
+    name: comTipo(p.modo, p.titulo || p.filename.replace(/\.[^.]+$/, '')),
     taxa: p.pass_rate ?? 0,
   }))
 
@@ -227,7 +241,7 @@ export default function TurmaDetailPage() {
           <KpiCard
             label="Aproveitamento médio"
             value={analytics.aproveitamento_medio != null ? `${analytics.aproveitamento_medio}%` : null}
-            sub="taxa de aprovação por atividade"
+            sub={aproveitamentoPorModo}
           />
           <KpiCard
             label="Total de submissões"
@@ -236,7 +250,7 @@ export default function TurmaDetailPage() {
           <KpiCard
             label="Atividades"
             value={turma.exams.length}
-            sub={`${turma.exams.filter(e => e.modo === 'treino').length} lista(s) e ${turma.exams.filter(e => e.modo !== 'treino').length} prova(s)`}
+            sub={contagemPorModo(turma.exams)}
           />
         </div>
       )}

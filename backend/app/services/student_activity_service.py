@@ -399,6 +399,20 @@ def progresso(student: Student, db: Session) -> dict:
         if e.questions and all(q.id in questoes_resolvidas for q in e.questions)
     )
 
+    por_modo = []
+    for modo in (Exam.MODO_PROVA, Exam.MODO_TREINO):
+        do_modo = [e for e in exams if (e.modo or Exam.MODO_PROVA) == modo]
+        ids = {q.id for e in do_modo for q in e.questions}
+        por_modo.append({
+            "modo": modo,
+            "total_atividades": len(do_modo),
+            "atividades_concluidas": sum(
+                1 for e in do_modo
+                if e.questions and all(q.id in questoes_resolvidas for q in e.questions)),
+            "total_questoes": len(ids),
+            "questoes_resolvidas": len(ids & questoes_resolvidas),
+        })
+
     return {
         "total_atividades": len(exams),
         "atividades_concluidas": concluidas,
@@ -415,6 +429,7 @@ def progresso(student: Student, db: Session) -> dict:
         "dias_seguidos": dias_seguidos(envios, datetime.utcnow().date()),
         "ultima_submissao": _iso(envios[-1].momento) if envios else None,
         "evolucao": evolucao(envios, resolvidas),
+        "por_modo": por_modo,
     }
 
 
