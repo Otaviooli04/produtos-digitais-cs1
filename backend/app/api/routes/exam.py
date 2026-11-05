@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_professor
 from app.auth.ownership import get_exam_or_404, get_question_or_404
+from app.core.limite import ENVIO_EM_LOTE, INSIGHTS, UPLOAD_DE_PROVA, por_professor
 from app.engine.error_locator import parse_compile_error_lines
 from app.llm.feedback_generator import generate_cluster_insights
 from app.ml.cluster import cluster_question
-from app.core.limite import ENVIO_EM_LOTE, INSIGHTS, UPLOAD_DE_PROVA, por_professor
 from app.models.database import get_db
 from app.models.orm import Exam, Professor, Question, QuestionCluster, TestCase as TestCaseORM
 from app.models.schemas import (

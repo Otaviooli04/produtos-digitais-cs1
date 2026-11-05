@@ -174,3 +174,33 @@ def test_rotas_que_disparam_docker_ou_gemini_tem_limite():
     }
     assert protegidas <= com_limite
 
+
+def test_varredura_roda_no_maximo_uma_vez_por_minuto(monkeypatch):
+    relogio = Relogio()
+    lim = Limitador(relogio=relogio, varrer_acima_de=1)
+    chamadas = []
+    original = lim._varrer
+    monkeypatch.setattr(lim, "_varrer", lambda agora: (chamadas.append(agora), original(agora)))
+    for chave in "abcde":
+        lim.espera(chave, REGRA)
+    assert len(chamadas) == 1
+    relogio.agora += 60
+    lim.espera("f", REGRA)
+    assert len(chamadas) == 2
+
+
+def test_teto_descarta_a_chave_mais_antiga():
+    lim = Limitador(relogio=Relogio(), teto=3)
+    for chave in ("a", "b", "c", "d"):
+        lim.espera(chave, REGRA)
+    assert lim.chaves() == 3
+    for _ in range(3):
+        lim.espera("a", REGRA)
+    assert lim.espera("d", REGRA) == 0
+
+
+def test_email_enorme_vira_chave_curta(db, cliente):
+    from app.core.limite import limitador
+    cliente.post("/aluno/login", json={"email": "x" * 100_000 + "@teste.local", "senha": "errada123"})
+    assert all(len(k) < 400 for k in limitador._pedidos)
+
