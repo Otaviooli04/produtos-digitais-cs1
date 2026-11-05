@@ -3,11 +3,12 @@ import itertools
 from datetime import datetime, timedelta
 
 from app.services.funil_regras import (
-    ACERTO, ERRO, FALHA, LISTA, TRILHA, Acesso, DadosDaTurma, Matricula, Tentativa,
+    Acesso, DadosDaTurma, Matricula, Tentativa,
     aquisicao, ativacao, com_prova_marcada, erros_corrigidos, fim_da_sessao,
-    janela_da_prova, montar_funil, north_star, por_origem, protecao, resultado_da_lista,
-    resultado_da_trilha, retencao, retencao_da_semana, saude, sucesso, ultimas_semanas,
+    janela_da_prova, montar_funil, north_star, por_origem, protecao,
+    retencao, retencao_da_semana, saude, sucesso, ultimas_semanas,
 )
+from app.services.historico_do_aluno import ACERTO, ERRO, FALHA, LISTA, TRILHA
 
 # Quarta-feira. A semana atual começa em 2026-10-26.
 AGORA = datetime(2026, 10, 28, 12, 0)
@@ -25,21 +26,6 @@ def mat(aluno, entrada, nome="Aluno", origem=None):
 
 def _por_semana(ns):
     return {s["semana"]: s["erros_corrigidos"] for s in ns["semanas"]}
-
-
-class TestResultado:
-    def test_lista(self):
-        assert resultado_da_lista("Correto") == ACERTO
-        assert resultado_da_lista("Erro Desconhecido") == FALHA
-        assert resultado_da_lista("") == FALHA
-        assert resultado_da_lista(None) == FALHA
-        assert resultado_da_lista("Violação de Estrutura") == ERRO
-
-    def test_trilha(self):
-        assert resultado_da_trilha(True, "") == ACERTO
-        assert resultado_da_trilha(False, "Erro Desconhecido") == FALHA
-        assert resultado_da_trilha(None, "") == FALHA
-        assert resultado_da_trilha(False, "Violação de Estrutura") == ERRO
 
 
 class TestSemanas:

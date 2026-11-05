@@ -10,19 +10,19 @@ Duas regras sustentam este módulo:
 """
 import logging
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
 from app.engine.evaluators.code_evaluator import evaluate_code
 from app.models.orm import Exam, Question, Student, Submission
-from app.services.calendario import semana_iso, situacao_da_atividade
+from app.services.calendario import situacao_da_atividade
+from app.services.historico_do_aluno import (
+    CATEGORIA_CORRETA, ERRO, FALHA, LISTA, TRILHA, dias_seguidos, erros_do_aluno, evolucao,
+    ler_historico, resolucoes, rotulos, superados, tendencias,
+)
 
 logger = logging.getLogger(__name__)
-
-CATEGORIA_CORRETA = "Correto"
-# Quantas submissões contam como "recentes" ao medir a tendência de um erro.
-JANELA_RECENTE = 10
 
 
 class AtividadeIndisponivel(Exception):
@@ -368,95 +368,53 @@ def explicar_tentativa(student: Student, submission_id: int, db: Session) -> dic
 # ── progresso ────────────────────────────────────────────────────────────────
 
 def progresso(student: Student, db: Session) -> dict:
+    """Os números do aluno contra a turma, com o treino somado no esforço.
+
+    Questões resolvidas e atividades concluídas são só da turma, porque o total
+    é o da turma. Tentativas, acertos de primeira, dias seguidos e a evolução
+    juntam as questões e os exercícios da trilha."""
     turma_ids = _turma_ids(student)
-    exams = (
-        db.query(Exam).filter(Exam.turma_id.in_(turma_ids)).all() if turma_ids else []
-    )
+    exams = db.query(Exam).filter(
+        Exam.turma_id.in_(turma_ids), Exam.publicada.is_(True)
+    ).all() if turma_ids else []
     questoes = [q for e in exams for q in e.questions]
-    mapa = _tentativas_por_questao(student, db, [q.id for q in questoes])
+    ids_das_questoes = {q.id for q in questoes}
 
-    todas = [s for lista in mapa.values() for s in lista]
-    resolvidas = [q for q in questoes if _resolvida(mapa.get(q.id, []))]
-
-    tentativas_ate_acertar = []
-    acertos_de_primeira = 0
-    for q in resolvidas:
-        primeira_correta = next(
-            s for s in mapa[q.id] if s.error_category == CATEGORIA_CORRETA)
-        n = primeira_correta.attempt_number or 1
-        tentativas_ate_acertar.append(n)
-        if n == 1:
-            acertos_de_primeira += 1
-
+    envios = [
+        e for e in ler_historico(student, db)
+        if e.origem == TRILHA or e.item_id in ids_das_questoes
+    ]
+    resolvidas = resolucoes(envios)
+    questoes_resolvidas = {r.item[1] for r in resolvidas if r.item[0] == LISTA}
     concluidas = sum(
         1 for e in exams
-        if e.questions and all(_resolvida(mapa.get(q.id, [])) for q in e.questions)
+        if e.questions and all(q.id in questoes_resolvidas for q in e.questions)
     )
-    ultima = max((s.submitted_at for s in todas if s.submitted_at), default=None)
 
     return {
         "total_atividades": len(exams),
         "atividades_concluidas": concluidas,
         "total_questoes": len(questoes),
-        "questoes_resolvidas": len(resolvidas),
-        "total_tentativas": len(todas),
+        "questoes_resolvidas": len(questoes_resolvidas),
+        "total_tentativas": len(envios),
+        "tentativas_no_treino": sum(1 for e in envios if e.origem == TRILHA),
+        "exercicios_resolvidos": sum(1 for r in resolvidas if r.item[0] == TRILHA),
         "tentativas_por_questao_resolvida": (
-            round(sum(tentativas_ate_acertar) / len(tentativas_ate_acertar), 1)
-            if tentativas_ate_acertar else None
+            round(sum(r.tentativas for r in resolvidas) / len(resolvidas), 1)
+            if resolvidas else None
         ),
-        "acertos_de_primeira": acertos_de_primeira,
-        "dias_seguidos": _dias_seguidos(todas),
-        "ultima_submissao": _iso(ultima),
-        "evolucao": _evolucao(mapa, questoes),
+        "acertos_de_primeira": sum(1 for r in resolvidas if r.tentativas == 1),
+        "dias_seguidos": dias_seguidos(envios, datetime.utcnow().date()),
+        "ultima_submissao": _iso(envios[-1].momento) if envios else None,
+        "evolucao": evolucao(envios, resolvidas),
     }
-
-
-def _dias_seguidos(submissoes: list[Submission]) -> int:
-    """Sequência de dias consecutivos com pelo menos uma submissão, terminando
-    hoje ou ontem (quem submeteu ontem ainda não perdeu a sequência)."""
-    dias = {s.submitted_at.date() for s in submissoes if s.submitted_at}
-    if not dias:
-        return 0
-    hoje = datetime.utcnow().date()
-    referencia = hoje if hoje in dias else hoje - timedelta(days=1)
-    if referencia not in dias:
-        return 0
-    sequencia = 0
-    while referencia in dias:
-        sequencia += 1
-        referencia -= timedelta(days=1)
-    return sequencia
-
-
-def _evolucao(mapa: dict[int, list[Submission]], questoes: list[Question]) -> list[dict]:
-    """Série semanal de tentativas e de questões resolvidas pela primeira vez."""
-    tentativas_por_semana: dict[str, int] = defaultdict(int)
-    resolvidas_por_semana: dict[str, int] = defaultdict(int)
-
-    for q in questoes:
-        for sub in mapa.get(q.id, []):
-            if not sub.submitted_at:
-                continue
-            tentativas_por_semana[semana_iso(sub.submitted_at)] += 1
-        primeira_correta = next(
-            (s for s in mapa.get(q.id, []) if s.error_category == CATEGORIA_CORRETA), None)
-        if primeira_correta and primeira_correta.submitted_at:
-            resolvidas_por_semana[semana_iso(primeira_correta.submitted_at)] += 1
-
-    return [
-        {
-            "periodo": semana,
-            "tentativas": tentativas_por_semana[semana],
-            "resolvidas": resolvidas_por_semana.get(semana, 0),
-        }
-        for semana in sorted(tentativas_por_semana)
-    ]
 
 
 # ── erros recorrentes ────────────────────────────────────────────────────────
 
 def erros_recorrentes(student: Student, db: Session) -> dict:
     """O padrão que o aluno repete, que é justamente o que ele não enxerga sozinho.
+    Junta as listas e a trilha, e separa o que ele já superou treinando.
     Determinístico: sai das categorias das heurísticas, sem chamada de LLM."""
     turma_ids = _turma_ids(student)
     exams = db.query(Exam).filter(
@@ -467,62 +425,26 @@ def erros_recorrentes(student: Student, db: Session) -> dict:
         for e in exams for q in e.questions
     }
 
-    todas = (
-        db.query(Submission)
-        .filter(Submission.student_id == student.id)
-        .order_by(Submission.submitted_at, Submission.id)
-        .all()
-    )
-    com_erro = [
-        s for s in todas
-        if s.error_category and s.error_category != CATEGORIA_CORRETA
-    ]
-    recentes_ids = {s.id for s in todas[-JANELA_RECENTE:]}
+    envios = ler_historico(student, db)
+    erros = erros_do_aluno(envios)
+    tendencia = tendencias(envios)
 
-    por_categoria: dict[str, list[Submission]] = defaultdict(list)
-    for s in com_erro:
-        por_categoria[s.error_category].append(s)
-
-    erros = []
-    for categoria, ocorrencias in por_categoria.items():
-        recentes = sum(1 for s in ocorrencias if s.id in recentes_ids)
-        anteriores = len(ocorrencias) - recentes
-        ultima = ocorrencias[-1]
-        questoes = []
-        for s in reversed(ocorrencias):
-            rotulo = rotulo_questao.get(s.question_id)
-            if rotulo and rotulo not in questoes:
-                questoes.append(rotulo)
-        erros.append({
-            "error_category": categoria,
-            "total": len(ocorrencias),
-            "recentes": recentes,
-            "anteriores": anteriores,
-            "tendencia": _tendencia(recentes, anteriores, len(todas)),
-            "questoes": questoes[:5],
-            "ultima_ocorrencia": _iso(ultima.submitted_at) or "",
-            "o_que_fazer": ultima.actionable_feedback or "",
-        })
-
-    erros.sort(key=lambda e: (-e["total"], e["error_category"]))
     return {
-        "total_submissoes": len(todas),
-        "total_com_erro": len(com_erro),
-        "erros": erros,
+        "total_submissoes": sum(1 for e in envios if e.resultado != FALHA),
+        "total_com_erro": sum(1 for e in envios if e.resultado == ERRO),
+        "erros": [
+            {
+                "error_category": erro.categoria,
+                "total": erro.total,
+                "no_treino": erro.no_treino,
+                "recentes": tendencia[erro.categoria].recentes,
+                "anteriores": tendencia[erro.categoria].anteriores,
+                "tendencia": tendencia[erro.categoria].sentido,
+                "questoes": rotulos(erro, rotulo_questao),
+                "ultima_ocorrencia": _iso(erro.ultima_ocorrencia) or "",
+                "o_que_fazer": erro.o_que_fazer,
+            }
+            for erro in erros if erro.ativo
+        ],
+        "superados": superados(erros),
     }
-
-
-def _tendencia(recentes: int, anteriores: int, total_submissoes: int) -> str:
-    """Compara a frequência do erro nas últimas submissões com a frequência dele
-    no resto do histórico. Sem histórico anterior suficiente não há tendência."""
-    janela_recente = min(JANELA_RECENTE, total_submissoes)
-    janela_anterior = total_submissoes - janela_recente
-    if janela_anterior == 0 or janela_recente == 0:
-        return "estavel"
-    taxa_recente = recentes / janela_recente
-    taxa_anterior = anteriores / janela_anterior
-    if taxa_recente <= taxa_anterior * 0.8:
-        return "melhorando"
-    if taxa_recente >= taxa_anterior * 1.2:
-        return "piorando"
-    return "estavel"

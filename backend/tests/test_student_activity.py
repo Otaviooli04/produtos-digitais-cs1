@@ -98,6 +98,29 @@ def _aluno_id(client, token):
     return client.get("/aluno/me", headers=_auth(token)).json()["id"]
 
 
+def _treino(db, aluno_id, alvo, tentativas, quando=None, titulo="Soma dos pares",
+            reportado=False):
+    """Um exercício da trilha feito para `alvo`, com as tentativas dadas como
+    (passou, categoria), um segundo uma da outra a partir de `quando`."""
+    from app.models.orm import ExercicioGerado, TentativaDeTreino
+
+    quando = quando or datetime.utcnow()
+    exercicio = ExercicioGerado(student_id=aluno_id, error_category=alvo, titulo=titulo,
+                                enunciado="Some os pares.", casos_teste=[],
+                                reportado=reportado)
+    db.add(exercicio)
+    db.flush()
+    for i, (passou, categoria) in enumerate(tentativas):
+        db.add(TentativaDeTreino(
+            exercicio_id=exercicio.id, student_id=aluno_id, code="int main(){}",
+            all_tests_passed=passou, error_category=categoria,
+            actionable_feedback="treine assim", attempt_number=i + 1,
+            submitted_at=quando + timedelta(seconds=i),
+        ))
+    db.commit()
+    return exercicio
+
+
 class TestListaDeAtividades:
     def test_sem_turma_nao_ve_atividade(self, client, prova):
         tok = client.post("/aluno/register", json=CADASTRO).json()["access_token"]
@@ -277,6 +300,75 @@ class TestProgresso:
         assert data["total_tentativas"] == 0
         assert data["tentativas_por_questao_resolvida"] is None
         assert data["dias_seguidos"] == 0
+        assert data["tentativas_no_treino"] == 0
+        assert data["exercicios_resolvidos"] == 0
+
+    def test_atividade_nao_publicada_fica_fora_do_total(self, client, db, token, prova):
+        prova.publicada = False
+        db.commit()
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["total_atividades"] == 0
+        assert data["total_questoes"] == 0
+
+    def test_treino_entra_no_esforco_e_nao_nas_questoes(
+        self, client, db, token, prova, tentativa_factory,
+    ):
+        aluno_id = _aluno_id(client, token)
+        # Meio-dia de hoje: perto da meia-noite UTC os envios cairiam em dias diferentes.
+        agora = datetime.utcnow().replace(hour=12, minute=0, second=0, microsecond=0)
+        tentativa_factory(aluno_id, "1", "Correto", quando=agora - timedelta(seconds=30))
+        _treino(db, aluno_id, "Laço Infinito",
+                [(False, "Laço Infinito"), (False, "Laço Infinito"), (True, "Correto")],
+                quando=agora)
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["questoes_resolvidas"] == 1
+        assert data["total_questoes"] == 2
+        assert data["total_tentativas"] == 4
+        assert data["tentativas_no_treino"] == 3
+        assert data["exercicios_resolvidos"] == 1
+        # Q1 de primeira e o treino na 3ª → média 2,0.
+        assert data["tentativas_por_questao_resolvida"] == 2.0
+        assert data["acertos_de_primeira"] == 1
+        assert data["dias_seguidos"] == 1
+        assert sum(p["tentativas"] for p in data["evolucao"]) == 4
+        assert sum(p["resolvidas"] for p in data["evolucao"]) == 2
+
+    def test_falha_tecnica_nao_conta_como_tentativa_ate_acertar(
+        self, client, token, prova, tentativa_factory,
+    ):
+        aluno_id = _aluno_id(client, token)
+        tentativa_factory(aluno_id, "1", "Erro Desconhecido")
+        tentativa_factory(aluno_id, "1", "Correto")
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["total_tentativas"] == 2
+        assert data["tentativas_por_questao_resolvida"] == 1.0
+        assert data["acertos_de_primeira"] == 1
+
+    def test_treino_de_outro_aluno_nao_entra(self, client, db, token, prova):
+        from app.models.orm import Student
+
+        outro = Student(email="outro@aluno.com", nome="Outro", senha_hash="x")
+        db.add(outro)
+        db.commit()
+        _treino(db, outro.id, "Laço Infinito", [(False, "Laço Infinito"), (True, "Correto")])
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["total_tentativas"] == 0
+        assert data["tentativas_no_treino"] == 0
+        assert data["exercicios_resolvidos"] == 0
+
+    def test_tentativa_de_exercicio_reportado_nao_conta(self, client, db, token, prova):
+        aluno_id = _aluno_id(client, token)
+        _treino(db, aluno_id, "Laço Infinito", [(True, "Correto")], reportado=True)
+
+        data = client.get("/aluno/progresso", headers=_auth(token)).json()
+        assert data["total_tentativas"] == 0
+        assert data["tentativas_no_treino"] == 0
+        assert data["exercicios_resolvidos"] == 0
+        assert data["dias_seguidos"] == 0
 
 
 class TestErrosRecorrentes:
@@ -316,6 +408,65 @@ class TestErrosRecorrentes:
         assert erros["Laço Infinito"]["tendencia"] == "melhorando"
         assert erros["Laço Infinito"]["recentes"] == 0
         assert erros["Saída Incorreta"]["tendencia"] == "piorando"
+
+    def test_treino_soma_e_aparece_no_rotulo(self, client, db, token, prova, tentativa_factory):
+        aluno_id = _aluno_id(client, token)
+        tentativa_factory(aluno_id, "1", "Laço Infinito",
+                          quando=datetime.utcnow() - timedelta(hours=1))
+        _treino(db, aluno_id, "Saída Incorreta", [(False, "Laço Infinito")])
+
+        data = client.get("/aluno/erros-recorrentes", headers=_auth(token)).json()
+        (laco,) = data["erros"]
+        assert laco["error_category"] == "Laço Infinito"
+        assert laco["total"] == 2
+        assert laco["no_treino"] == 1
+        assert laco["questoes"] == ["Trilha · Soma dos pares", "prova.pdf · Q1"]
+        assert laco["o_que_fazer"] == "treine assim"
+        assert data["total_submissoes"] == 2
+        assert data["total_com_erro"] == 2
+
+    def test_erro_superado_sai_dos_ativos(self, client, db, token, prova, tentativa_factory):
+        aluno_id = _aluno_id(client, token)
+        antes = datetime.utcnow() - timedelta(hours=1)
+        tentativa_factory(aluno_id, "1", "Laço Infinito", quando=antes)
+        tentativa_factory(aluno_id, "2", "Saída Incorreta", quando=antes)
+        _treino(db, aluno_id, "Laço Infinito", [(False, "Laço Infinito"), (True, "Correto")])
+
+        data = client.get("/aluno/erros-recorrentes", headers=_auth(token)).json()
+        assert [e["error_category"] for e in data["erros"]] == ["Saída Incorreta"]
+        (superado,) = data["superados"]
+        assert superado["error_category"] == "Laço Infinito"
+        assert superado["total"] == 2
+        assert superado["superado_em"]
+
+    def test_falha_tecnica_fica_fora_das_contas(self, client, token, prova, tentativa_factory):
+        aluno_id = _aluno_id(client, token)
+        tentativa_factory(aluno_id, "1", "Erro Desconhecido")
+        tentativa_factory(aluno_id, "1", "Laço Infinito")
+
+        data = client.get("/aluno/erros-recorrentes", headers=_auth(token)).json()
+        assert [e["error_category"] for e in data["erros"]] == ["Laço Infinito"]
+        assert data["total_submissoes"] == 1
+        assert data["total_com_erro"] == 1
+
+    def test_treino_de_outro_aluno_nao_entra(self, client, db, token, prova):
+        from app.models.orm import Student
+
+        outro = Student(email="outro@aluno.com", nome="Outro", senha_hash="x")
+        db.add(outro)
+        db.commit()
+        _treino(db, outro.id, "Laço Infinito", [(False, "Laço Infinito")])
+
+        data = client.get("/aluno/erros-recorrentes", headers=_auth(token)).json()
+        assert data["erros"] == []
+        assert data["total_submissoes"] == 0
+
+    def test_tentativa_de_exercicio_reportado_nao_conta(self, client, db, token, prova):
+        aluno_id = _aluno_id(client, token)
+        _treino(db, aluno_id, "Laço Infinito", [(False, "Laço Infinito")], reportado=True)
+
+        data = client.get("/aluno/erros-recorrentes", headers=_auth(token)).json()
+        assert data["erros"] == []
 
 
 class TestExplicacaoIndividual:

@@ -105,6 +105,39 @@ def sem_thread(monkeypatch, db):
     monkeypatch.setattr("app.services.treino_service._em_segundo_plano", sincrono)
 
 
+@pytest.fixture()
+def pre_geracoes(monkeypatch):
+    """Anota as pré-gerações pedidas em vez de dispará-las."""
+    pedidas = []
+    monkeypatch.setattr("app.services.treino_service.preparar_proximo",
+                        lambda student_id, categoria: pedidas.append(categoria))
+    return pedidas
+
+
+def _treinou(db, aluno, categoria, passou=True, reportado=False):
+    """Um exercício da trilha para `categoria` com uma tentativa, gravada um
+    segundo depois dos envios da fixture `erros_do_aluno`, para não empatar."""
+    exercicio = ExercicioGerado(
+        student_id=aluno.id, error_category=categoria, titulo="Soma",
+        enunciado="Some os n primeiros inteiros.",
+        casos_teste=[{"input": "3", "expected_output": "6"}],
+        resolvido=passou, reportado=reportado, created_at=datetime.utcnow())
+    db.add(exercicio)
+    db.flush()
+    db.add(TentativaDeTreino(
+        exercicio_id=exercicio.id, student_id=aluno.id, code="int main(){}",
+        all_tests_passed=passou, error_category="Correto" if passou else categoria,
+        submitted_at=datetime.utcnow() + timedelta(seconds=1)))
+    db.commit()
+    return exercicio
+
+
+def _token(client):
+    resp = client.post("/aluno/login",
+                       json={"email": CADASTRO["email"], "senha": CADASTRO["senha"]})
+    return resp.json()["access_token"]
+
+
 class TestOQueEntraNaTrilha:
     def test_categorias_saem_dos_erros_reais_do_aluno(self, db, aluno, erros_do_aluno):
         from app.services.treino_service import categorias_para_treinar
@@ -133,6 +166,135 @@ class TestOQueEntraNaTrilha:
         with pytest.raises(TreinoIndisponivel) as e:
             gerar_para_categoria(aluno, None, db)
         assert "ainda não tem erros" in str(e.value)
+
+
+class TestSuperados:
+    def test_erro_superado_sai_das_categorias_e_vai_para_superados(
+        self, db, aluno, erros_do_aluno, pre_geracoes
+    ):
+        from app.services.treino_service import trilha
+
+        _treinou(db, aluno, "Acesso Fora dos Limites: Off-by-One")
+
+        t = trilha(aluno, db)
+        assert [c["error_category"] for c in t["categorias"]] == ["Tudo no Main"]
+        assert [s["error_category"] for s in t["superados"]] == [
+            "Acesso Fora dos Limites: Off-by-One"]
+        assert t["superados"][0]["total"] == 3
+
+    def test_sem_erro_ativo_gerar_sem_categoria_avisa_que_superou(
+        self, db, aluno, erros_do_aluno, gemini_ok, pre_geracoes
+    ):
+        from app.services.treino_service import TreinoIndisponivel, gerar_para_categoria
+
+        _treinou(db, aluno, "Acesso Fora dos Limites: Off-by-One")
+        _treinou(db, aluno, "Tudo no Main")
+
+        with pytest.raises(TreinoIndisponivel) as e:
+            gerar_para_categoria(aluno, None, db)
+        assert str(e.value) == ("Você superou todos os erros que repetia. "
+                                "Resolva uma questão da sua turma e volte aqui.")
+        assert gemini_ok == []
+
+    def test_treinar_de_novo_um_erro_superado(
+        self, db, aluno, erros_do_aluno, gemini_ok, pre_geracoes
+    ):
+        from app.services.treino_service import gerar_para_categoria
+
+        _treinou(db, aluno, "Acesso Fora dos Limites: Off-by-One")
+
+        exercicio = gerar_para_categoria(aluno, "Acesso Fora dos Limites: Off-by-One", db)
+        assert exercicio["error_category"] == "Acesso Fora dos Limites: Off-by-One"
+        assert gemini_ok[0][1] == "troque <= por <"
+
+    def test_treinar_de_novo_reabre_o_pendente_do_erro_superado(
+        self, db, aluno, erros_do_aluno, gemini_ok, pre_geracoes
+    ):
+        from app.services.treino_service import gerar_para_categoria
+
+        _treinou(db, aluno, "Acesso Fora dos Limites: Off-by-One")
+        pendente = ExercicioGerado(
+            student_id=aluno.id, error_category="Acesso Fora dos Limites: Off-by-One",
+            titulo="Soma", enunciado="Some os n primeiros inteiros.",
+            casos_teste=[{"input": "3", "expected_output": "6"}],
+            created_at=datetime.utcnow())
+        db.add(pendente)
+        db.commit()
+
+        exercicio = gerar_para_categoria(aluno, "Acesso Fora dos Limites: Off-by-One", db)
+        assert exercicio["id"] == pendente.id
+        assert exercicio["reaproveitado"] is True
+        assert gemini_ok == []
+
+    def test_categoria_que_o_aluno_nunca_errou(self, db, aluno, erros_do_aluno):
+        from app.services.treino_service import TreinoIndisponivel, gerar_para_categoria
+
+        with pytest.raises(TreinoIndisponivel) as e:
+            gerar_para_categoria(aluno, "Laço Infinito", db)
+        assert str(e.value) == "Você não tem erros nessa categoria."
+
+    def test_acerto_em_exercicio_reportado_nao_supera(self, db, aluno, erros_do_aluno):
+        from app.services.treino_service import categorias_para_treinar
+
+        _treinou(db, aluno, "Acesso Fora dos Limites: Off-by-One", reportado=True)
+        assert [c["error_category"] for c in categorias_para_treinar(aluno, db)] == [
+            "Acesso Fora dos Limites: Off-by-One", "Tudo no Main"]
+
+    def test_erro_do_treino_soma_nas_ocorrencias(self, db, aluno, erros_do_aluno):
+        from app.services.treino_service import categorias_para_treinar
+
+        for _ in range(3):
+            _treinou(db, aluno, "Tudo no Main", passou=False)
+
+        categorias = categorias_para_treinar(aluno, db)
+        assert [(c["error_category"], c["ocorrencias"]) for c in categorias] == [
+            ("Tudo no Main", 4), ("Acesso Fora dos Limites: Off-by-One", 3)]
+
+    def test_falha_tecnica_nao_vira_categoria(self, db, aluno, exam_factory):
+        from app.services.treino_service import categorias_para_treinar
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        db.add(Submission(
+            question_id=exam.questions[0].id, code="int main(){}",
+            error_category="Erro Desconhecido", all_tests_passed=False,
+            student_id=aluno.id, submitted_at=datetime.utcnow(),
+        ))
+        db.commit()
+        assert categorias_para_treinar(aluno, db) == []
+
+
+class TestRotaDaTrilha:
+    def test_get_devolve_os_superados(self, client, db, aluno, erros_do_aluno, pre_geracoes):
+        _treinou(db, aluno, "Acesso Fora dos Limites: Off-by-One")
+
+        data = client.get("/aluno/treino", headers=_auth(_token(client))).json()
+        assert [c["error_category"] for c in data["categorias"]] == ["Tudo no Main"]
+        assert data["superados"][0]["error_category"] == "Acesso Fora dos Limites: Off-by-One"
+        assert data["superados"][0]["superado_em"]
+
+    def test_gerar_com_tudo_superado_da_409(
+        self, client, db, aluno, erros_do_aluno, gemini_ok, pre_geracoes
+    ):
+        _treinou(db, aluno, "Acesso Fora dos Limites: Off-by-One")
+        _treinou(db, aluno, "Tudo no Main")
+
+        resp = client.post("/aluno/treino/gerar", json={}, headers=_auth(_token(client)))
+        assert resp.status_code == 409
+        assert resp.json()["detail"].startswith("Você superou todos os erros")
+
+    def test_treino_de_outro_aluno_nao_aparece(
+        self, client, db, aluno, erros_do_aluno, pre_geracoes
+    ):
+        outro = Student(email="outro@aluno.com", nome="Outro", senha_hash="x")
+        db.add(outro)
+        db.commit()
+        _treinou(db, outro, "Acesso Fora dos Limites: Off-by-One")
+
+        data = client.get("/aluno/treino", headers=_auth(_token(client))).json()
+        assert [c["error_category"] for c in data["categorias"]] == [
+            "Acesso Fora dos Limites: Off-by-One", "Tudo no Main"]
+        assert data["superados"] == []
+        assert data["exercicios"] == []
 
 
 class TestGeracao:
@@ -413,21 +575,43 @@ class TestPreGeracao:
     """Tira o Gemini do caminho do aluno: com um exercício já pronto, abrir a
     trilha custa uma consulta ao banco em vez de nove segundos de geração."""
 
-    def test_resolver_prepara_o_proximo(self, db, aluno, erros_do_aluno, gemini_ok, sem_thread, monkeypatch):
+    def test_resolver_prepara_o_proximo_erro_ativo(
+        self, db, aluno, erros_do_aluno, gemini_ok, pre_geracoes
+    ):
+        """O erro do exercício resolvido vira superado, então o próximo a ficar
+        pronto é o do erro que continua ativo, e não outro do mesmo."""
         from app.services import treino_service
 
         exercicio = treino_service.gerar_para_categoria(aluno, None, db)
-        categoria = exercicio["error_category"]
+        assert exercicio["error_category"] == "Acesso Fora dos Limites: Off-by-One"
 
-        # O envio acerta; o evaluate_code do treino é o mesmo mock da referência.
+        # O envio acerta: o evaluate_code do treino é o mesmo mock da referência.
         treino_service.treinar(aluno, exercicio["id"], "int main(){}", db)
+        assert pre_geracoes == ["Tudo no Main"]
 
-        db.expire_all()
-        pendentes = db.query(ExercicioGerado).filter(
-            ExercicioGerado.student_id == aluno.id,
-            ExercicioGerado.error_category == categoria,
-            ExercicioGerado.resolvido.is_(False)).count()
-        assert pendentes == 1, "o proximo tinha que estar pronto"
+    def test_resolver_o_ultimo_erro_ativo_nao_prepara_nada(
+        self, db, aluno, exam_factory, pre_geracoes, monkeypatch
+    ):
+        from app.services import treino_service
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        db.add(Submission(
+            question_id=exam.questions[0].id, code="int main(){}",
+            error_category="Tudo no Main", all_tests_passed=False,
+            student_id=aluno.id, submitted_at=datetime.utcnow(),
+        ))
+        exercicio = ExercicioGerado(
+            student_id=aluno.id, error_category="Tudo no Main", titulo="Soma",
+            enunciado="Some os n primeiros inteiros.",
+            casos_teste=[{"input": "3", "expected_output": "6"}],
+            created_at=datetime.utcnow())
+        db.add(exercicio)
+        db.commit()
+        monkeypatch.setattr(treino_service, "evaluate_code",
+                            lambda *a, **k: _resultado_referencia([True]))
+
+        treino_service.treinar(aluno, exercicio.id, "int main(){}", db)
+        assert pre_geracoes == []
 
     def test_abrir_a_trilha_aquece_a_categoria_mais_forte(
         self, db, aluno, erros_do_aluno, gemini_ok, sem_thread

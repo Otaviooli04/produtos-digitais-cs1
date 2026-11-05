@@ -17,11 +17,11 @@ Numeração igual à do documento "Produto, Personas, Mercado e Roadmap", seçã
 | 3 | Diagnóstico pedagógico do erro | MVP | Pronta | `engine/heuristics.py`, 27 categorias. Chega ao aluno em toda tentativa |
 | 4 | Modo treino com tentativas ilimitadas | MVP | Pronta | `Exam.modo`, migração 0011, `services/student_activity_service.py`, `components/DisponibilidadeCard.jsx` |
 | 5 | Histórico de tentativas | MVP | Pronta | `Submission.attempt_number`, `historico_questao`, `pages/aluno/QuestaoPage.jsx` |
-| 6 | Painel de erros recorrentes do aluno | MVP | Pronta | `erros_recorrentes` em `student_activity_service.py`, `pages/aluno/ProgressoPage.jsx` |
+| 6 | Painel de erros recorrentes do aluno | MVP | Pronta | `erros_recorrentes` em `student_activity_service.py`, sobre o histórico de `services/historico_do_aluno.py` (listas e trilha juntas, falha técnica fora, erros superados à parte), `pages/aluno/ProgressoPage.jsx` |
 | 7 | Agrupamento por assinatura de falha | MVP | Pronta | `ml/cluster.py`, aba de grupos no painel do professor |
 | 8 | Montagem da prova a partir do enunciado | MVP | Pronta | `engine/semantic_extractor.py` (Gemini), job em segundo plano |
 | 9 | Modo prova com janela e tentativas controladas | v2 | Parcial | Janela e teto valem em `submeter`. Falta antifraude |
-| 10 | Trilha direcionada ao erro, com geração de exercícios | v2 | Não iniciada | Ver seção 4 |
+| 10 | Trilha direcionada ao erro, com geração de exercícios | v2 | Parcial | `services/treino_service.py`, `llm/exercise_generator.py`, `pages/aluno/TreinoPage.jsx`, migração 0016. Mostra só os erros ativos, com os superados e o "Treinar de novo" à parte. Falta a revisão do professor, ver seção 4 |
 
 Duas funcionalidades do roadmap que não estavam nessa lista também entraram:
 
@@ -45,9 +45,9 @@ O que o sistema já consegue calcular hoje, sem trabalho novo:
 
 | Métrica | Situação |
 |---|---|
-| Nº de tentativas por aluno | Pronta, em `/aluno/progresso` |
+| Nº de tentativas por aluno | Pronta, em `/aluno/progresso`, somando listas e trilha, com `tentativas_no_treino` à parte |
 | Queda nas tentativas até acertar | Pronta, `tentativas_por_questao_resolvida` |
-| Erros recorrentes eliminados | Aproximada pela tendência por categoria em `/aluno/erros-recorrentes` |
+| Erros recorrentes eliminados | Pronta para o aluno: os erros superados em `/aluno/erros-recorrentes` e `/aluno/treino` (acertou um treino feito para o erro, sem repeti-lo, depois da última vez que ele apareceu). Para a turma, segue a North Star |
 | North Star, erros corrigidos por semana | Pronta, no bloco "Funil da turma" (`GET /turmas/{id}/funil`) e no total de todas as turmas pelo `backend/scripts/funil.py`. Junto, a proteção (tentativas até acertar e acerto de primeira). A trilha conta numa turma só a partir da matrícula do aluno nela |
 | Taxa de ativação | Pronta, no bloco "Funil da turma": quem corrigiu o primeiro erro até 7 dias depois de entrar, com a meta de 60%. Ao lado, o momento de sucesso (RF16): a mediana do tempo da matrícula até o primeiro erro corrigido e quantos chegaram a ele na mesma sessão |
 | Aquisição | Pronta, no bloco "Funil da turma": matriculados contra o tamanho da turma (`turmas.alunos_previstos`, que o professor preenche) e a taxa da primeira semana, com a meta de 80%. Também a origem de cada matrícula, pelo convite com link ou pelo código digitado (`enrollments.origem`) |
@@ -59,12 +59,12 @@ O que o sistema já consegue calcular hoje, sem trabalho novo:
 
 ## 4. O que falta, e o que cada item exige
 
-1. **Trilha direcionada com geração de exercícios.** É a maior peça pendente e o
-   valor "treino sob medida" depende dela. Exige uma origem para o exercício
-   gerado, um seletor que escolha o próximo exercício a partir das categorias que
-   o aluno mais erra e uma etapa de revisão do professor, porque "professor no
-   comando" é valor declarado do produto. Também precisa de um teto de custo, já
-   que gerar exercício é chamada de LLM por aluno.
+1. **Revisão do professor na trilha.** A trilha existe desde a migração 0016,
+   com o exercício gerado para o erro que o aluno mais repete, o teto de 8
+   gerações por dia e o aluno reportando o exercício ruim. Desde o item 1.1 ela
+   entra no progresso e nos erros recorrentes. Falta a etapa de revisão do
+   professor, porque "professor no comando" é valor declarado do produto, e a
+   trilha intercalada (2.5).
 2. **Antifraude do modo prova.** Hoje a janela e o teto de tentativas são as
    únicas barreiras. O risco está declarado no próprio roadmap do Mês 4.
 3. **Relatório de fim de lista.** Fechamento por atividade para o aluno e para o

@@ -9,18 +9,7 @@ from statistics import median
 
 from app.models.orm import Enrollment
 from app.services.calendario import semana_iso
-from app.services.student_activity_service import CATEGORIA_CORRETA
-
-# O que as heurísticas devolvem quando a execução falha por fora do código do
-# aluno, como o Docker fora do ar. Não é erro dele.
-CATEGORIA_FALHA_TECNICA = "Erro Desconhecido"
-
-ACERTO = "acerto"
-ERRO = "erro"
-FALHA = "falha"
-
-LISTA = "lista"
-TRILHA = "trilha"
+from app.services.historico_do_aluno import ACERTO, ERRO, FALHA, LISTA
 
 SEMANAS = 8
 JANELA = timedelta(days=7)
@@ -94,22 +83,6 @@ class DadosDaTurma:
     questoes_abertas: dict[int, int | None]
     acessos: list[Acesso] = field(default_factory=list)
     janelas: list[JanelaDeProva] = field(default_factory=list)
-
-
-def resultado_da_lista(error_category: str | None) -> str:
-    if error_category == CATEGORIA_CORRETA:
-        return ACERTO
-    if not error_category or error_category == CATEGORIA_FALHA_TECNICA:
-        return FALHA
-    return ERRO
-
-
-def resultado_da_trilha(all_tests_passed: bool | None, error_category: str | None) -> str:
-    if all_tests_passed:
-        return ACERTO
-    if not error_category or error_category == CATEGORIA_FALHA_TECNICA:
-        return FALHA
-    return ERRO
 
 
 def taxa(parte: int, todo: int | None) -> float | None:
