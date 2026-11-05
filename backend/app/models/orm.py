@@ -1,7 +1,7 @@
 from app.core.tempo import agora_utc
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON, Float, Index,
-    UniqueConstraint, text,
+    UniqueConstraint, text, SmallInteger,
 )
 from sqlalchemy.orm import relationship
 from app.models.database import Base
@@ -172,6 +172,11 @@ class Submission(Base):
     attempt_number = Column(Integer, default=1, server_default="1")
     # Explicação individual pedida pelo aluno, gerada uma única vez por tentativa.
     llm_explanation = Column(Text, nullable=True)
+    # Dica em etapas (2.3): as duas pistas geradas junto da explicação, até onde o
+    # aluno foi (0 nenhuma, 1 e 2 as pistas, 3 a explicação) e quando pediu a primeira.
+    llm_pistas = Column(JSON, nullable=True)
+    nivel_de_ajuda = Column(SmallInteger, nullable=False, default=0, server_default="0")
+    ajuda_pedida_em = Column(DateTime, nullable=True)
     submitted_at = Column(DateTime, default=agora_utc)
 
     question = relationship("Question", back_populates="submissions")
