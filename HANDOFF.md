@@ -307,7 +307,7 @@ React 19 + Vite 8 + Tailwind v4 + React Router 7 + Recharts 3 + axios. Páginas 
 cd backend
 python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # inclui requirements.txt, com versões fixas
 ```
 
 Crie `backend/.env` (ver `.env.example`):
