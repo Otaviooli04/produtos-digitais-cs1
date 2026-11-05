@@ -13,14 +13,14 @@ Numeração igual à do documento "Produto, Personas, Mercado e Roadmap", seçã
 | # | Funcionalidade | Fase | Estado | Onde está |
 |---|---|---|---|---|
 | 1 | Turma virtual e conta do aluno | MVP | Pronta | `models/orm.py` (Student, Enrollment, `Turma.codigo_acesso`), `auth/student_service.py`, `api/routes/student.py`, `frontend/src/pages/aluno/`, migração 0010 |
-| 2 | Correção automática do código | MVP | Pronta | `engine/dynamic_analyzer.py` (Docker isolado), `engine/evaluators/code_evaluator.py` |
+| 2 | Correção automática do código | MVP | Pronta | `engine/dynamic_analyzer.py` (Docker isolado, com limite de memória, processos e CPU, sem root e imagem fixa), `engine/evaluators/code_evaluator.py` |
 | 3 | Diagnóstico pedagógico do erro | MVP | Pronta | `engine/heuristics.py`, 27 categorias. Chega ao aluno em toda tentativa |
 | 4 | Modo treino com tentativas ilimitadas | MVP | Pronta | `Exam.modo`, migração 0011, `services/student_activity_service.py`, `components/DisponibilidadeCard.jsx`. Nas telas o modo `treino` se chama **Lista** (o nome Treino fica para a trilha), e a turma do professor e a do aluno separam Provas e Listas |
 | 5 | Histórico de tentativas | MVP | Pronta | `Submission.attempt_number`, `historico_questao`, `pages/aluno/QuestaoPage.jsx`. Cada envio diz quantos casos passaram a mais que a tentativa anterior e sugere uma pausa depois de três envios errados e quase iguais em até cinco minutos (`services/ritmo_da_tentativa.py`, `components/RitmoDaTentativa.jsx`). O campo de código aceita Tab, mantém o recuo no Enter e numera as linhas (`components/CodeTextarea.jsx`) |
 | 6 | Painel de erros recorrentes do aluno | MVP | Pronta | `erros_recorrentes` em `student_activity_service.py`, sobre o histórico de `services/historico_do_aluno.py` (listas e trilha juntas, falha técnica fora, erros superados à parte), `pages/aluno/ProgressoPage.jsx` |
 | 7 | Agrupamento por assinatura de falha | MVP | Pronta | `ml/cluster.py`, aba de grupos no painel do professor |
 | 8 | Montagem da prova a partir do enunciado | MVP | Pronta | `engine/semantic_extractor.py` (Gemini), job em segundo plano |
-| 9 | Modo prova com janela e tentativas controladas | v2 | Parcial | Janela e teto valem em `submeter`. Falta antifraude |
+| 9 | Modo prova com janela e tentativas controladas | v2 | Parcial | Janela e teto valem em `submeter`, com trava contra envios simultâneos passarem do teto. Falta antifraude |
 | 10 | Trilha direcionada ao erro, com geração de exercícios | v2 | Parcial | `services/treino_service.py`, `llm/exercise_generator.py`, `pages/aluno/TreinoPage.jsx`, migração 0016. Mostra só os erros ativos, com os superados e o "Treinar de novo" à parte. Falta a revisão do professor, ver seção 4 |
 
 Duas funcionalidades do roadmap que não estavam nessa lista também entraram:

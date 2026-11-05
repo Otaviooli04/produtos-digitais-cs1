@@ -99,7 +99,7 @@ Código do aluno ─────────────────────
 | Camada | Tecnologia |
 |--------|-----------|
 | API | FastAPI + Uvicorn, Pydantic |
-| Execução isolada | Docker (`gcc:latest`, `--network none`, timeout) |
+| Execução isolada | Docker (gcc fixo pelo digest, `--network none`, limite de memória, processos e CPU, sem root, timeout) |
 | Análise estática | **tree-sitter** + `tree-sitter-c` (parser tolerante a erros) |
 | LLM | Google **Gemini 2.5 Flash** (`gemini-2.5-flash`, SDK `google-genai`) |
 | Persistência | PostgreSQL 16, SQLAlchemy 2.x, Alembic (migrações 0001–0009) |
@@ -159,7 +159,7 @@ processing_jobs   (tarefas em segundo plano)
 
 ### `app/engine/` — o núcleo técnico
 
-- **`dynamic_analyzer.py`** — compila e roda o C em container `gcc:latest` com `--network none` e timeout (dentro e fora do container, para não deixar zumbis em loop infinito). É a fonte de verdade sobre **comportamento**: compilou? passou nos testes? deu timeout? segfault? Retorna `compile_error`, `warnings`, `test_results[]`, `all_tests_passed`.
+- **`dynamic_analyzer.py`** — compila e roda o C em container do gcc fixo pelo digest (`IMAGEM_GCC`), com `--network none`, `--memory 256m`, `--pids-limit 64`, `--cpus 1`, sem capacidades, com o usuário do backend (não root) e timeout (dentro e fora do container, para não deixar zumbis em loop infinito). É a fonte de verdade sobre **comportamento**: compilou? passou nos testes? deu timeout? segfault? Retorna `compile_error`, `warnings`, `test_results[]`, `all_tests_passed`.
 - **`static_analyzer.py`** — usa **tree-sitter** (parser incremental **tolerante a erros**). Extrai `structures` (If/For/While/DoWhile/Switch), `functions` (nome, tipo de retorno, nº de parâmetros, recursão, parâmetro por ponteiro, retorna valor) e `risky_loops` (off-by-one: laço com `<=` que indexa vetor). Retorna `parse_ok=False` quando há nós de erro, **mas ainda assim popula o que conseguir** — inclusive em código que não compila.
 - **`heuristics.py`** (arquivo maior, ~21 KB) — `classify_error` cruza dinâmico + estático + a especificação da questão e produz **um** diagnóstico `{error_category, pedagogical_diagnosis, actionable_feedback}`. Ver seção 8. É o coração pedagógico do sistema.
 - **`error_locator.py`** — extrai as linhas culpadas por erros de compilação a partir do parse da saída do GCC (para o destaque no código).
@@ -299,7 +299,7 @@ React 19 + Vite 8 + Tailwind v4 + React Router 7 + Recharts 3 + axios. Páginas 
 
 ## 13. Como rodar (setup completo)
 
-**Pré-requisitos:** Python 3.10+, Docker rodando (`docker pull gcc:latest`), PostgreSQL 16+, Node 18+, `GEMINI_API_KEY`.
+**Pré-requisitos:** Python 3.10+, Docker rodando (`docker pull gcc@sha256:8d466d9001805b81ecc280645889c368ae28e75724e7ecba03a0336deda0faac`), `SECRET_KEY` no `.env`, PostgreSQL 16+, Node 18+, `GEMINI_API_KEY`.
 
 ### Backend
 

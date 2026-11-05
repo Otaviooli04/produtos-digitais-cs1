@@ -16,7 +16,7 @@ backend/app/
   api/routes/          — exam.py, submission.py, turma.py, jobs.py, student.py, student_activity.py
   auth/                — JWT de professor e de aluno (papel no token), posse de recursos
   engine/
-    dynamic_analyzer.py  — compila/roda C em Docker (gcc:latest, --network none, timeout)
+    dynamic_analyzer.py  — compila/roda C em Docker (gcc fixo pelo digest, --network none, memória, processos e CPU limitados, sem root, timeout)
     static_analyzer.py   — tree-sitter (tolerante a erros): estruturas, funções, off-by-one
     heuristics.py        — classify_error: 27 categorias pedagógicas (núcleo)
     error_locator.py     — linhas culpadas pelo erro de compilação
@@ -56,7 +56,8 @@ npm run lint     # ESLint
 
 ## Dependências-chave
 
-- **Docker** rodando (`gcc:latest`) — `dynamic_analyzer.py` depende dele.
+- **Docker** rodando com a imagem do gcc fixa pelo digest (`docker pull gcc@sha256:8d466d9001805b81ecc280645889c368ae28e75724e7ecba03a0336deda0faac`), que é a `IMAGEM_GCC` de `dynamic_analyzer.py`.
+- **SECRET_KEY** no `backend/.env`: sem ela o backend não sobe.
 - **GEMINI_API_KEY** no `backend/.env` — extração de prova e insights (`google-genai`, modelo `gemini-2.5-flash`).
 - **PostgreSQL 16+**, `DATABASE_URL` no `.env`. Venv em `backend/venv/`.
 

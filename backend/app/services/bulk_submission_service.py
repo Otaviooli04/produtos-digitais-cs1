@@ -6,6 +6,12 @@ from app.models.orm import ProcessingJob
 from app.services.submission_service import evaluate_submission
 from app.services.job_service import create_job, run_in_background, update_job
 
+# Um zip pequeno pode descompactar em gigabytes (zip bomb). Os limites olham o
+# tamanho declarado de cada .c antes de ler qualquer um.
+MAX_ARQUIVOS_NO_ZIP = 2000
+MAX_BYTES_POR_ARQUIVO = 256 * 1024
+MAX_BYTES_DESCOMPACTADOS = 50 * 1024 * 1024
+
 
 def _extract_question_number(name: str) -> str | None:
     """Extrai número da questão de strings como Q1, Questao2, 1, questão 3."""
@@ -39,6 +45,13 @@ def _enumerate_submissions(zip_bytes: bytes, fmt: str) -> list[dict]:
     entries = []
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
         raw_names = [n for n in zf.namelist() if not n.endswith('/') and n.lower().endswith('.c')]
+        tamanhos = [zf.getinfo(n).file_size for n in raw_names]
+        if len(raw_names) > MAX_ARQUIVOS_NO_ZIP:
+            raise ValueError(f"O zip tem mais de {MAX_ARQUIVOS_NO_ZIP} arquivos .c.")
+        if any(t > MAX_BYTES_POR_ARQUIVO for t in tamanhos):
+            raise ValueError("Há um arquivo .c maior que 256 KB no zip.")
+        if sum(tamanhos) > MAX_BYTES_DESCOMPACTADOS:
+            raise ValueError("O conteúdo do zip passa de 50 MB descompactado.")
         normalized = _strip_wrapper_folder(raw_names)
 
         for raw_name, norm_name in zip(raw_names, normalized):

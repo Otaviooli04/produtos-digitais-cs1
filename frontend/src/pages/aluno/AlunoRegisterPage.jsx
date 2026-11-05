@@ -76,7 +76,7 @@ export default function AlunoRegisterPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">Senha</label>
-              <input type="password" value={form.senha} onChange={set('senha')} autoComplete="new-password" required className={campo} />
+              <input type="password" value={form.senha} onChange={set('senha')} autoComplete="new-password" required minLength={8} placeholder="mínimo 8 caracteres" className={campo} />
             </div>
 
             {error && (

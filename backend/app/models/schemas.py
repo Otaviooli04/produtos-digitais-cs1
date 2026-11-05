@@ -7,7 +7,7 @@ from typing import List, Optional, Literal
 class ProfessorCreate(BaseModel):
     email: str
     nome: str = ""
-    senha: str
+    senha: str = Field(min_length=8, max_length=128)
 
 
 class ProfessorResponse(BaseModel):
@@ -27,7 +27,7 @@ class StudentCreate(BaseModel):
     email: str
     nome: str = ""
     matricula: str = ""
-    senha: str
+    senha: str = Field(min_length=8, max_length=128)
 
 
 class StudentLogin(BaseModel):

@@ -18,7 +18,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (senha !== confirma) { setError('As senhas não conferem.'); return }
-    if (senha.length < 6) { setError('A senha deve ter no mínimo 6 caracteres.'); return }
+    if (senha.length < 8) { setError('A senha deve ter no mínimo 8 caracteres.'); return }
     setError('')
     setLoading(true)
     try {
@@ -78,7 +78,8 @@ export default function RegisterPage() {
                 type="password"
                 value={senha}
                 onChange={e => setSenha(e.target.value)}
-                placeholder="mínimo 6 caracteres"
+                placeholder="mínimo 8 caracteres"
+                minLength={8}
                 autoComplete="new-password"
                 required
                 className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
