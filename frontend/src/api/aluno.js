@@ -54,3 +54,9 @@ export const treinar = (exercicioId, code) =>
 
 export const reportarExercicio = (exercicioId, motivo) =>
   alunoApi.post(`/aluno/treino/${exercicioId}/reportar`, { motivo })
+
+// ── início ───────────────────────────────────────────────────────────────────
+
+export const getInicio = () => alunoApi.get('/aluno/inicio')
+
+export const contarNovidades = () => alunoApi.get('/aluno/novidades/contagem')
