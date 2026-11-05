@@ -24,6 +24,7 @@
 - RN07: nada fala de grupo para o aluno. RN01: sem ponto, sequência ou sorteio. RN04: nada sai do app. RNF04: cada aluno só lê as próprias novidades e o professor não vê quem leu.
 - Testes: `cd backend && /home/otavio/produtos-digitais-cs1/backend/venv/bin/python -m pytest tests/ --ignore=tests/integration -q`. Nunca `rtk pytest`. Uma suíte por vez (o banco de teste é um só).
 - Git dentro do worktree: `/usr/bin/git`, um comando por chamada, a partir da raiz do worktree. O `git` puro vira `rtk git` pelo gancho e a trava do worktree recusa.
+- O `node_modules` do front já está instalado neste worktree (lockfile copiado e `npm ci` rodado na criação). Se faltar, copiar `/home/otavio/produtos-digitais-cs1/frontend/package-lock.json` para `frontend/` e rodar `npm ci --no-audit --no-fund` em `frontend/`.
 - Lint do front: `cd frontend && rtk proxy ./node_modules/.bin/eslint .` (a base tem 4 erros antigos em `QuestionPage.jsx` e `TestCasesPage.jsx`, só erro novo bloqueia). O `npx eslint` pegou um ESLint errado neste worktree.
 - Base: 404 testes. Final esperado: 467.
 
@@ -2432,7 +2433,7 @@ import EntrarNaTurma from '../../components/EntrarNaTurma'
 import Spinner from '../../components/Spinner'
 ```
 
-e apagar a função local `function EntrarNaTurma({ aoEntrar }) { ... }` inteira (do `function EntrarNaTurma` até o `}` que fecha o componente, logo antes de `function TurmaCard`). O resto da `TurmasPage` não muda.
+e apagar a função local `EntrarNaTurma` inteira, que no arquivo de hoje vai da linha 5 (`function EntrarNaTurma({ aoEntrar }) {`) até a linha 56 (o `}` que fecha o componente), junto com a linha em branco 57. O arquivo passa a ter `function TurmaCard({ turma }) {` logo depois da linha em branco que segue os imports. O resto da `TurmasPage` não muda.
 
 - [ ] **Passo 2: chamadas à API e prazo relativo**
 
