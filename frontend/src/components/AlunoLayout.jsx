@@ -17,9 +17,9 @@ function LinkInicio({ novidades }) {
         {novidades > 0 && (
           <span
             className="min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-purple-600 text-white text-[10px] font-semibold leading-[1.125rem] text-center"
-            aria-label={`${novidades} novidade${novidades === 1 ? '' : 's'}`}
           >
-            {novidades > 9 ? '9+' : novidades}
+            <span aria-hidden="true">{novidades > 9 ? '9+' : novidades}</span>
+            <span className="sr-only">{`${novidades} novidade${novidades === 1 ? '' : 's'}`}</span>
           </span>
         )}
       </span>
