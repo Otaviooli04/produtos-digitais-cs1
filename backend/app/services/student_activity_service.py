@@ -353,15 +353,46 @@ def historico_questao(student: Student, exam_id: int, question_number: str,
     return entrega
 
 
-# ── explicação individual ────────────────────────────────────────────────────
+# ── dica em etapas ───────────────────────────────────────────────────────────
 
-def explicar_tentativa(student: Student, submission_id: int, db: Session) -> dict:
-    """Explicação em linguagem natural da tentativa do aluno, gerada sob demanda.
+MENSAGEM_PROVA_ABERTA = "A dica fica disponível quando a prova fechar."
+FALHA_DA_DICA = "Não foi possível gerar a dica agora. Tente de novo."
 
-    O diagnóstico das heurísticas continua sendo a fonte da verdade — a LLM só
-    traduz o erro para quem o cometeu. Uma geração por tentativa, cacheada, e
-    nunca para tentativa correta (não há erro a explicar e a chamada seria custo
-    puro)."""
+
+def ajuda_bloqueada(modo: str | None, situacao: str, resolvida: bool,
+                    restantes: int | None) -> bool:
+    """Na prova, a ajuda da IA espera a questão deixar de aceitar envio: a prova
+    fechou, o aluno resolveu ou gastou as tentativas. Sem as duas últimas, uma
+    prova sem data de fechamento nunca liberaria a ajuda. Lista nunca bloqueia."""
+    if (modo or Exam.MODO_PROVA) != Exam.MODO_PROVA:
+        return False
+    if situacao != "aberta" or resolvida:
+        return False
+    return restantes is None or restantes > 0
+
+
+def _bloqueio_da_questao(student: Student, question: Question, db: Session) -> bool:
+    exam = question.exam
+    tentativas = _tentativas_por_questao(student, db, [question.id]).get(question.id, [])
+    return ajuda_bloqueada(exam.modo, situacao_da_atividade(exam), _resolvida(tentativas),
+                           _restantes(exam, len(tentativas)))
+
+
+def etapas_abertas(sub: Submission) -> dict:
+    """O que a tentativa já mostra da ajuda: as pistas até o nível aberto e a
+    explicação só no último."""
+    nivel = sub.nivel_de_ajuda or 0
+    return {
+        "nivel_de_ajuda": nivel,
+        "pistas": (sub.llm_pistas or [])[:min(nivel, 2)],
+        "explicacao": sub.llm_explanation if nivel >= 3 else None,
+    }
+
+
+def pedir_ajuda(student: Student, submission_id: int, nivel: int, db: Session) -> dict:
+    """Abre a etapa pedida da ajuda e devolve as etapas até ela. Uma chamada ao
+    Gemini gera as três etapas na primeira vez, e as seguintes saem do banco. O
+    maior nível aberto fica guardado, que é o dado do experimento 2."""
     sub = (
         db.query(Submission)
         .filter(Submission.id == submission_id, Submission.student_id == student.id)
@@ -371,32 +402,44 @@ def explicar_tentativa(student: Student, submission_id: int, db: Session) -> dic
         raise ValueError("Tentativa não encontrada.")
     if sub.error_category == CATEGORIA_CORRETA:
         raise AtividadeIndisponivel("Esta tentativa está correta, não há erro a explicar.")
-    if sub.llm_explanation:
-        return {"explicacao": sub.llm_explanation, "gerada_agora": False}
+    if sub.question and _bloqueio_da_questao(student, sub.question, db):
+        raise AtividadeIndisponivel(MENSAGEM_PROVA_ABERTA)
 
-    from app.llm.student_explainer import generate_student_explanation
+    if not sub.llm_pistas:
+        from app.llm.student_explainer import generate_student_help
 
-    texto = generate_student_explanation(
-        statement=(sub.question.statement if sub.question else ""),
-        code=sub.code or "",
-        error_category=sub.error_category or "",
-        pedagogical_diagnosis=sub.pedagogical_diagnosis or "",
-        test_results=[
-            {
-                "input": tr.input,
-                "expected_output": tr.expected_output,
-                "actual_output": tr.actual_output,
-                "passed": tr.passed,
-            }
-            for tr in sub.test_results
-        ],
-    )
-    if not texto:
-        raise RuntimeError("Não foi possível gerar a explicação agora. Tente de novo.")
+        try:
+            etapas = generate_student_help(
+                statement=(sub.question.statement if sub.question else ""),
+                code=sub.code or "",
+                error_category=sub.error_category or "",
+                pedagogical_diagnosis=sub.pedagogical_diagnosis or "",
+                actionable_feedback=sub.actionable_feedback or "",
+                test_results=[
+                    {
+                        "input": tr.input,
+                        "expected_output": tr.expected_output,
+                        "actual_output": tr.actual_output,
+                        "passed": tr.passed,
+                    }
+                    for tr in sub.test_results
+                ],
+            )
+        except Exception as e:  # noqa: BLE001 — qualquer falha do Gemini vira 503 sem gravar
+            raise RuntimeError(FALHA_DA_DICA) from e
+        sub.llm_pistas = etapas["pistas"]
+        sub.llm_explanation = etapas["explicacao"]
 
-    sub.llm_explanation = texto
+    if not sub.ajuda_pedida_em:
+        sub.ajuda_pedida_em = agora_utc()
+    sub.nivel_de_ajuda = max(sub.nivel_de_ajuda or 0, nivel)
     db.commit()
-    return {"explicacao": texto, "gerada_agora": True}
+    return {
+        "nivel": nivel,
+        "pistas": (sub.llm_pistas or [])[:min(nivel, 2)],
+        "explicacao": sub.llm_explanation if nivel >= 3 else None,
+        "nivel_maximo": sub.nivel_de_ajuda,
+    }
 
 
 # ── progresso ────────────────────────────────────────────────────────────────

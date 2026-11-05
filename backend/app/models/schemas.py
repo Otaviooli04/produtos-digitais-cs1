@@ -681,9 +681,15 @@ class TentativaResponse(BaseModel):
     resposta_do_professor_em: Optional[str] = None
 
 
-class ExplicacaoResponse(BaseModel):
-    explicacao: str
-    gerada_agora: bool
+class AjudaRequest(BaseModel):
+    nivel: int = Field(ge=1, le=3)
+
+
+class AjudaResponse(BaseModel):
+    nivel: int
+    pistas: List[str] = []
+    explicacao: Optional[str] = None
+    nivel_maximo: int
 
 
 class AvancoDaTentativa(BaseModel):
