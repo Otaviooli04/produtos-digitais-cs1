@@ -165,8 +165,6 @@ class Submission(Base):
     ast_structures = Column(JSON, default=list)
     ast_functions = Column(JSON, default=list)
     cluster_id = Column(Integer, nullable=True)
-    umap_x = Column(String, nullable=True)
-    umap_y = Column(String, nullable=True)
     matricula = Column(String, nullable=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=True, index=True)
     # Ordem da tentativa do aluno nesta questão (1 = primeira). Toda submissão é
