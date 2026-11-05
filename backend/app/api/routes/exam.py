@@ -107,6 +107,20 @@ def get_exam(
     return _exam_to_response(get_exam_or_404(exam_id, db, professor_id=professor.id))
 
 
+
+LIMITE_DO_PDF = 10 * 1024 * 1024
+LIMITE_DO_ZIP = 20 * 1024 * 1024
+
+
+async def _ler_com_limite(file: UploadFile, limite: int) -> bytes:
+    """Lê no máximo um byte além do limite, para recusar o arquivo grande sem
+    carregá-lo inteiro na memória."""
+    conteudo = await file.read(limite + 1)
+    if len(conteudo) > limite:
+        raise HTTPException(status_code=413,
+                            detail=f"Arquivo maior que {limite // (1024 * 1024)} MB.")
+    return conteudo
+
 @router.post("/upload", response_model=ExamUploadStartResponse)
 async def upload_exam(
     file: UploadFile = File(...),
@@ -125,7 +139,7 @@ async def upload_exam(
         ).first()
         if not turma:
             raise HTTPException(status_code=404, detail="Turma não encontrada.")
-    file_bytes = await file.read()
+    file_bytes = await _ler_com_limite(file, LIMITE_DO_PDF)
     try:
         exam, job = start_exam_processing(
             file_bytes, file.filename, db, turma_id=turma_id, professor_id=professor.id)
@@ -295,7 +309,7 @@ async def bulk_submit(
     if format not in ("by_student", "by_question"):
         raise HTTPException(status_code=400, detail="format deve ser 'by_student' ou 'by_question'.")
     get_exam_or_404(exam_id, db, professor_id=professor.id)
-    zip_bytes = await file.read()
+    zip_bytes = await _ler_com_limite(file, LIMITE_DO_ZIP)
     try:
         job = start_bulk_processing(zip_bytes, exam_id, format, db, professor_id=professor.id)
         return JobStartResponse(job_id=job.id)

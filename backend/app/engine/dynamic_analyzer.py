@@ -29,6 +29,24 @@ def _run_once(run_cmd: list[str], stdin: str):
     return "ok", r.stdout.strip()
 
 
+# Imagem fixa pelo digest: `gcc:latest` mudaria de compilador sem ninguém ver,
+# e a correção de uma turma não pode mudar no meio do semestre.
+IMAGEM_GCC = "gcc@sha256:8d466d9001805b81ecc280645889c368ae28e75724e7ecba03a0336deda0faac"
+
+
+def _limites_do_conteiner() -> list[str]:
+    """O código é de aluno: um fork em laço ou um malloc gigante não pode
+    derrubar a máquina, e nada roda como root dentro do contêiner. O usuário é
+    o dono da pasta temporária, que é a única coisa montada."""
+    return [
+        "--network", "none",
+        "--memory", "256m", "--memory-swap", "256m",
+        "--pids-limit", "64", "--cpus", "1",
+        "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+        "--user", f"{os.getuid()}:{os.getgid()}",
+    ]
+
+
 def compile_and_run(source_code: str, test_cases: list[dict]) -> dict:
     with tempfile.TemporaryDirectory() as temp_dir:
         source_path = os.path.join(temp_dir, "student_code.c")
@@ -36,9 +54,9 @@ def compile_and_run(source_code: str, test_cases: list[dict]) -> dict:
             f.write(source_code)
 
         compile_cmd = [
-            "docker", "run", "--rm", "--network", "none",
+            "docker", "run", "--rm", *_limites_do_conteiner(),
             "-v", f"{temp_dir}:/src", "-w", "/src",
-            "gcc:latest",
+            IMAGEM_GCC,
             # -lm linka a libm; -ftrivial-auto-var-init=zero zera locais não inicializadas (alinha ao CodeRunner)
             "gcc", "-Wall", "-ftrivial-auto-var-init=zero",
             "student_code.c", "-o", "exe.out", "-lm",
@@ -81,9 +99,9 @@ def compile_and_run(source_code: str, test_cases: list[dict]) -> dict:
             }
 
         run_cmd = [
-            "docker", "run", "--rm", "--network", "none", "-i",
+            "docker", "run", "--rm", *_limites_do_conteiner(), "-i",
             "-v", f"{temp_dir}:/src", "-w", "/src",
-            "gcc:latest", "timeout", "5", "./exe.out",
+            IMAGEM_GCC, "timeout", "5", "./exe.out",
         ]
         test_results = []
         for tc in test_cases:
