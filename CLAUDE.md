@@ -27,7 +27,7 @@ backend/app/
   llm/student_explainer.py  — explicação individual da tentativa p/ o aluno (sob demanda, cacheada)
   services/              — orquestração (exam, submission, bulk, turma, jobs, student_activity, effort_report, funil_service e funil_regras, acesso, calendario, treino, historico_do_aluno, ritmo_da_tentativa, novidades, inicio)
   models/                — orm.py (15 entidades) + schemas.py (Pydantic)
-  migrations/            — Alembic (revisões 0001..0019)
+  migrations/            — Alembic (revisões 0001..0020)
 frontend/                — painel do professor (`/`) + app do aluno (`/aluno`) (React 19 + Vite + Tailwind v4)
 ```
 
@@ -43,7 +43,7 @@ cd backend
 source venv/bin/activate
 uvicorn app.main:app --reload      # http://localhost:8000  |  Swagger em /docs
 alembic upgrade head               # aplica migrações
-pytest tests/ --ignore=tests/integration
+pytest tests/ --ignore=tests/integration      # dependências de teste em requirements-dev.txt
 ```
 
 ### Frontend

@@ -1,0 +1,5 @@
+# As regras que a skill qualidade usa. B008 é o Depends do FastAPI e B904 é o
+# raise HTTPException dentro de except, os dois padrões do projeto.
+[lint]
+select = ["F", "E9", "B"]
+ignore = ["B008", "B904"]

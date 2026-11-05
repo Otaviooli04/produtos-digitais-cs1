@@ -16,7 +16,8 @@ Três decisões de produto moram aqui:
 import logging
 import threading
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import timedelta
+from app.core.tempo import agora_utc
 
 from sqlalchemy.orm import Session
 
@@ -105,7 +106,7 @@ def trilha(student: Student, db: Session) -> dict:
 # ── geração ──────────────────────────────────────────────────────────────────
 
 def _restantes_hoje(student: Student, db: Session) -> int:
-    desde = datetime.utcnow() - timedelta(days=1)
+    desde = agora_utc() - timedelta(days=1)
     usadas = (
         db.query(ExercicioGerado)
         .filter(ExercicioGerado.student_id == student.id,

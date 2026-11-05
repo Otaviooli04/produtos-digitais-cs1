@@ -1,38 +1,38 @@
+# Versões fixas (item 0.3): o build de outra máquina instala exatamente o que foi testado.
+
 # API
-fastapi
-uvicorn[standard]
-pydantic
-python-dotenv
-python-multipart
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+pydantic==2.13.4
+python-dotenv==1.2.2
+python-multipart==0.0.32
 
 # Analisador estático (tolerante a erros — parseia código que não compila)
-tree-sitter
-tree-sitter-c
+tree-sitter==0.26.0
+tree-sitter-c==0.24.2
 
 # Extração de documentos
-pymupdf
-python-docx
+pymupdf==1.28.2
+python-docx==1.2.0
 
 # IA / LLM
-google-genai
+google-genai==2.18.0
 
 # Persistência
-sqlalchemy
-alembic
-psycopg2-binary
+sqlalchemy==2.0.52
+alembic==1.19.1
+psycopg2-binary==2.9.12
 
 # ML
-scikit-learn
-umap-learn
-hdbscan
-pandas
-numpy
-matplotlib
+scikit-learn==1.9.0
+umap-learn==0.5.12
+hdbscan==0.8.44
+pandas==3.0.5
+scipy==1.18.0
+numpy==2.5.2
+matplotlib==3.11.1
 
-# Testes
-pytest
-pytest-mock
-httpx
+# Autenticação
 bcrypt==4.0.1
 passlib==1.7.4
 python-jose==3.5.0

@@ -1,4 +1,5 @@
 """Funil da turma lido do banco: o que entra na conta e o que fica de fora."""
+from app.core.tempo import agora_utc
 from datetime import datetime, timedelta
 
 import pytest
@@ -345,7 +346,7 @@ class TestRota:
         turma = _turma(db, professor)
         _atividade(db, turma)
         _aluno(db, "ana@teste.com", "Ana Lima", [turma],
-               entrada=datetime.utcnow() - timedelta(days=20))
+               entrada=agora_utc() - timedelta(days=20))
 
         resp = client.get(f"/turmas/{turma.id}/funil")
 

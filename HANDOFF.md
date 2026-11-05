@@ -132,7 +132,7 @@ processing_jobs   (tarefas em segundo plano)
 - **Exam** (prova) — `filename`, `raw_text` (texto extraído do PDF/DOCX), `turma_id`.
 - **Question** — `number` (ex.: "1", "2a"), `statement`, `points` (peso na nota), `required_structures`/`forbidden_structures`/`required_functions` (JSON), `requires_loop`.
 - **TestCase** — `input`, `expected_output`.
-- **Submission** — `code`, `compile_error`, `warnings`, `all_tests_passed`, `error_category`, `pedagogical_diagnosis`, `actionable_feedback`, `ast_structures`/`ast_functions` (JSON extraído pelo tree-sitter), `cluster_id`, `umap_x`/`umap_y` (coordenadas de visualização), `matricula` (identifica o aluno — **não há entidade Aluno ainda**, só a matrícula na submissão).
+- **Submission** — `code`, `compile_error`, `warnings`, `all_tests_passed`, `error_category`, `pedagogical_diagnosis`, `actionable_feedback`, `ast_structures`/`ast_functions` (JSON extraído pelo tree-sitter), `cluster_id`, `matricula` (identifica o aluno — **não há entidade Aluno ainda**, só a matrícula na submissão).
 - **SubmissionTestResult** — resultado por caso de teste (`input`, `expected_output`, `actual_output`, `passed`).
 - **QuestionCluster** — grupo de uma questão: `cluster_label`, `size`, `dominant_error`, `insight` (síntese do Gemini, cacheada), `highlight_lines` (linhas do erro a destacar), `representative_submission_id`.
 - **ProcessingJob** — rastreia tarefas longas (`kind` = `exam_upload` | `bulk_submit`) com `status`/`stage`/`total`/`processed`/`message`/`result` para a barra de progresso.
@@ -307,7 +307,7 @@ React 19 + Vite 8 + Tailwind v4 + React Router 7 + Recharts 3 + axios. Páginas 
 cd backend
 python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # inclui requirements.txt, com versões fixas
 ```
 
 Crie `backend/.env` (ver `.env.example`):

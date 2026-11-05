@@ -6,6 +6,7 @@ trilha, para os três concordarem sobre o que está resolvido. A regra mora em
 funções puras sobre registros simples, testadas sem banco."""
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from app.core.tempo import agora_utc
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -123,7 +124,7 @@ def prazos_proximos(atividades: list[AtividadeDoPainel], agora: datetime) -> lis
 
 def painel(student: Student, db: Session, agora: datetime | None = None) -> dict:
     """O Início do aluno. Sem matrícula, só avisa que ele não tem turma."""
-    agora = agora or datetime.utcnow()
+    agora = agora or agora_utc()
     turma_ids = [e.turma_id for e in student.enrollments]
     if not turma_ids:
         return {"tem_turma": False, "novidades": [], "continuar": None, "prazos": []}

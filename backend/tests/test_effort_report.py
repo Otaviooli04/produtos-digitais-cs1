@@ -1,5 +1,6 @@
 """Relatório de esforço economizado: quantas submissões chegaram e em quantos
 itens de mesmo sintoma elas colapsam para o professor."""
+from app.core.tempo import agora_utc
 from app.models.orm import SubmissionTestResult
 
 
@@ -71,10 +72,10 @@ class TestTrajetoriaDeErros:
 
     def _prova_com_erros(self, db, professor, turma, titulo, categorias):
         from app.models.orm import Exam, Question, Submission
-        from datetime import datetime, timedelta
+        from datetime import timedelta
 
         exam = Exam(filename=f"{titulo}.pdf", titulo=titulo, turma_id=turma.id,
-                    created_at=datetime.utcnow() + timedelta(days=len(turma.exams)))
+                    created_at=agora_utc() + timedelta(days=len(turma.exams)))
         db.add(exam)
         db.flush()
         questao = Question(exam_id=exam.id, number="1", statement="enunciado")
@@ -84,7 +85,7 @@ class TestTrajetoriaDeErros:
             db.add(Submission(
                 question_id=questao.id, code="int main(){}", error_category=cat,
                 all_tests_passed=(cat == "Correto"), matricula=f"20260{i:02d}",
-                submitted_at=datetime.utcnow(),
+                submitted_at=agora_utc(),
             ))
         db.commit()
         return exam

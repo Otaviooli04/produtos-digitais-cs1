@@ -7,9 +7,9 @@ APPROVAL_THRESHOLD = 0.60
 # Variação em pontos percentuais a partir da qual a dificuldade mudou de
 # verdade entre a primeira e a última prova. Abaixo disso é ruído da amostra.
 VARIACAO_RELEVANTE = 5.0
-from datetime import datetime
+from app.core.tempo import agora_utc
 from sqlalchemy.orm import Session
-from app.models.orm import Exam, Question, Submission, Turma
+from app.models.orm import Exam, Submission, Turma
 
 # Alfabeto sem caracteres ambíguos (O/0, I/1), porque o código é ditado em sala.
 _ALFABETO_CODIGO = ''.join(c for c in string.ascii_uppercase + string.digits if c not in 'O0I1')
@@ -35,7 +35,7 @@ def create_turma(nome: str, codigo: str, db: Session, professor_id: int | None =
         nome=nome,
         codigo=codigo,
         codigo_acesso=gerar_codigo_acesso(db),
-        created_at=datetime.utcnow(),
+        created_at=agora_utc(),
         professor_id=professor_id,
         alunos_previstos=alunos_previstos,
     )

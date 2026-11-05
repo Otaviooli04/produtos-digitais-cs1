@@ -1,5 +1,6 @@
 """Registro da abertura do app do aluno (RF14), no máximo um por janela."""
 from datetime import datetime, timedelta
+from app.core.tempo import agora_utc
 
 from sqlalchemy.orm import Session
 
@@ -21,7 +22,7 @@ def registrar_acesso(student_id: int, via: str | None, db: Session,
     """Reabrir o app sem origem perto de qualquer acesso não conta, para quem
     entrou pelo convite e voltou à aba não ganhar uma abertura sem aviso. Com
     origem, só não conta se a mesma origem já entrou na janela."""
-    agora = agora or datetime.utcnow()
+    agora = agora or agora_utc()
     via = normalizar_via(via)
     recentes = {
         v for (v,) in db.query(Acesso.via).filter(
