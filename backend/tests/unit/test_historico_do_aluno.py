@@ -62,6 +62,17 @@ class TestErros:
         (erro,) = erros_do_aluno([lista(0), trilha(10, alvo=LACO)])
         assert erro.ativo
 
+    def test_acerto_que_repete_o_erro_do_exercicio_nao_supera(self):
+        """Violação de estrutura e aviso saem antes dos testes: o exercício
+        passa, mas o erro para o qual ele foi feito continua ali."""
+        estrutura = "Violação de Estrutura"
+        (erro,) = erros_do_aluno([
+            lista(0, categoria=estrutura),
+            trilha(10, alvo=estrutura, categoria=estrutura),
+        ])
+        assert erro.ativo
+        assert erro.superado_em is None
+
     def test_superado_em_e_o_primeiro_acerto_depois_da_ultima_ocorrencia(self):
         (erro,) = erros_do_aluno([lista(0), trilha(10), trilha(20)])
         assert erro.superado_em == T0 + timedelta(minutes=10)

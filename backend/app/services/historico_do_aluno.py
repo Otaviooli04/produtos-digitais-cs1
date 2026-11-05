@@ -112,8 +112,8 @@ def erros_do_aluno(envios: list[Envio]) -> list[Erro]:
     pelo nome, e os superados depois, do mais recente para o mais antigo.
 
     Superado é o erro em que, depois da última vez que ele apareceu, o aluno
-    acertou um exercício da trilha feito para ele. Se o erro aparece de novo,
-    volta a ser ativo até o próximo acerto. Falha técnica nunca vira erro."""
+    acertou um exercício da trilha feito para ele sem repetir o erro. Se o
+    erro aparece de novo, volta a ser ativo até o próximo acerto. Falha técnica nunca vira erro."""
     por_categoria: dict[str, list[Envio]] = defaultdict(list)
     for e in envios:
         if e.resultado == ERRO:
@@ -122,10 +122,14 @@ def erros_do_aluno(envios: list[Envio]) -> list[Erro]:
     erros = []
     for categoria, ocorrencias in por_categoria.items():
         ultima = ocorrencias[-1].momento
+        # O acerto com a própria categoria do erro não conta: violação de
+        # estrutura e aviso saem antes dos testes, então o exercício passa com
+        # o erro ainda ali.
         superado_em = next(
             (e.momento for e in envios
              if e.origem == TRILHA and e.alvo == categoria
-             and e.resultado == ACERTO and e.momento > ultima),
+             and e.resultado == ACERTO and e.categoria != categoria
+             and e.momento > ultima),
             None,
         )
         erros.append(Erro(categoria, tuple(ocorrencias), superado_em))

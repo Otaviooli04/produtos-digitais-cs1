@@ -69,7 +69,7 @@ Envio sem momento (`submitted_at` nulo) fica fora, como no funil. Ordem: momento
 
 **Erro ativo e erro superado.** Para cada categoria X com pelo menos um envio de resultado erro e categoria X:
 - a última ocorrência de X é o momento do último envio de resultado erro e categoria X
-- X está superado quando existe envio da trilha com alvo X, resultado acerto e momento depois da última ocorrência de X. `superado_em` é o momento do primeiro desses acertos.
+- X está superado quando existe envio da trilha com alvo X, resultado acerto, categoria diferente de X e momento depois da última ocorrência de X. `superado_em` é o momento do primeiro desses acertos. A categoria diferente de X importa porque violação de estrutura e aviso de compilação são classificados antes dos testes, e o exercício pode passar com o erro ainda ali.
 - senão, X está ativo
 
 Se X aparecer como erro depois do acerto, a última ocorrência passa a ser essa, e X volta a ser ativo até um novo acerto num exercício feito para ele. A falha técnica nunca vira categoria, porque não tem resultado erro.

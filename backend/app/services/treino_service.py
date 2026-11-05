@@ -349,9 +349,9 @@ def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict
     db.commit()
     db.refresh(tentativa)
 
-    # Acabou de resolver: o erro do exercício passa a superado, então o próximo
-    # a ficar pronto é o do primeiro erro que continua ativo. Assim, quando ele
-    # voltar à trilha, não há espera.
+    # Acabou de resolver: o próximo a ficar pronto é o do primeiro erro que
+    # continua ativo, que em geral já não é o deste exercício. Assim, quando
+    # ele voltar à trilha, não há espera.
     if acertou:
         proximo = next((e.categoria for e in _erros(student, db) if e.ativo), None)
         if proximo:
