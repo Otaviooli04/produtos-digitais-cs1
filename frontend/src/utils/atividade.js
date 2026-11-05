@@ -1,7 +1,7 @@
 // Rótulos das atividades no lado do aluno. Modo diz o que a atividade é,
 // situação diz se ela está aberta agora.
 export const MODO_LABEL = {
-  treino: 'Treino',
+  treino: 'Lista',
   prova: 'Prova',
 }
 

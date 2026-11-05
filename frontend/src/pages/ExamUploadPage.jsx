@@ -49,7 +49,7 @@ export default function ExamUploadPage() {
         <span>›</span>
         <Link to={`/turma/${turmaId}`} className="hover:text-gray-600">{turma?.nome ?? `Turma #${turmaId}`}</Link>
         <span>›</span>
-        <span className="text-gray-600">Upload de prova</span>
+        <span className="text-gray-600">Nova atividade</span>
       </div>
 
       <div className="text-center mb-8">

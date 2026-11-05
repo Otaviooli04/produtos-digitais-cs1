@@ -8,7 +8,7 @@ import { ordenarAtividades } from '../../utils/atividade'
 // Modo diz o que a atividade é, e é a primeira pergunta do aluno ao abrir a turma.
 const GRUPOS = [
   { modo: 'prova', titulo: 'Provas', vazio: 'Nenhuma prova nesta turma.' },
-  { modo: 'treino', titulo: 'Treinos', vazio: 'Nenhum treino nesta turma.' },
+  { modo: 'treino', titulo: 'Listas', vazio: 'Nenhuma lista nesta turma.' },
 ]
 
 function Grupo({ titulo, vazio, atividades }) {
