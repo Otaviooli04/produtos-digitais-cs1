@@ -226,7 +226,10 @@ def submeter(student: Student, exam_id: int, question_number: str, code: str,
 
     usadas = len(anteriores) + 1
     entrega = {
-        "tentativa": tentativa_to_dict(submissao, db, com_resposta=True),
+        "tentativa": tentativa_to_dict(
+            submissao, db, com_resposta=True,
+            bloqueada=ajuda_bloqueada(exam.modo, situacao, _resolvida(anteriores + [submissao]),
+                                      _restantes(exam, usadas))),
         "tentativas": usadas,
         "tentativas_restantes": _restantes(exam, usadas),
         "resolvida": _resolvida(anteriores + [submissao]),
@@ -292,7 +295,7 @@ def _marcar_resposta_vista(student: Student, sub: Submission, db: Session) -> No
 
 
 def tentativa_to_dict(sub: Submission, db: Session | None = None,
-                      com_resposta: bool = False) -> dict:
+                      com_resposta: bool = False, bloqueada: bool = False) -> dict:
     passados, total = _testes(sub)
     resposta, resposta_em, _ = (
         resposta_do_grupo(sub, db) if (com_resposta and db is not None)
@@ -310,7 +313,8 @@ def tentativa_to_dict(sub: Submission, db: Session | None = None,
         "submitted_at": _iso(sub.submitted_at) or "",
         "tests_passed": passados,
         "tests_total": total,
-        "explicacao": sub.llm_explanation or None,
+        **etapas_abertas(sub),
+        "ajuda_bloqueada": bloqueada,
         "test_results": [
             {
                 "input": tr.input or "",
@@ -336,6 +340,8 @@ def historico_questao(student: Student, exam_id: int, question_number: str,
 
     tentativas = _tentativas_por_questao(student, db, [question.id]).get(question.id, [])
     recentes = list(reversed(tentativas))
+    bloqueada = ajuda_bloqueada(exam.modo, situacao_da_atividade(exam), _resolvida(tentativas),
+                                _restantes(exam, len(tentativas)))
     entrega = {
         "question_number": question.number,
         "statement": question.statement or "",
@@ -344,7 +350,7 @@ def historico_questao(student: Student, exam_id: int, question_number: str,
         # carrega o retorno do professor, senão o mesmo texto apareceria repetido
         # em toda tentativa antiga que caiu no mesmo grupo.
         "tentativas": [
-            tentativa_to_dict(s, db, com_resposta=(i == 0))
+            tentativa_to_dict(s, db, com_resposta=(i == 0), bloqueada=bloqueada)
             for i, s in enumerate(recentes)
         ],
     }

@@ -238,3 +238,34 @@ class TestRotaDaAjuda:
         sub_id = _errada(client, token, prova)
         resp = client.post(f"/aluno/tentativas/{sub_id}/explicacao", headers=_auth(token))
         assert resp.status_code in (404, 405)
+
+
+class TestEtapasNaTentativa:
+    def _historico(self, client, token, prova):
+        return client.get(f"/aluno/atividades/{prova.id}/questoes/1/tentativas",
+                          headers=_auth(token)).json()
+
+    def test_historico_diz_se_a_ajuda_esta_bloqueada(self, client, db, token, prova):
+        _errada(client, token, prova)
+        assert self._historico(client, token, prova)["tentativas"][0]["ajuda_bloqueada"] is True
+        _lista(db, prova)
+        assert self._historico(client, token, prova)["tentativas"][0]["ajuda_bloqueada"] is False
+
+    def test_historico_traz_so_as_etapas_abertas(self, client, db, token, prova):
+        _lista(db, prova)
+        sub_id = _errada(client, token, prova)
+        with patch("app.llm.student_explainer.genai.Client", return_value=_mock_gemini()):
+            _ajuda(client, token, sub_id, 1)
+            depois_da_1 = self._historico(client, token, prova)["tentativas"][0]
+            _ajuda(client, token, sub_id, 3)
+            depois_da_3 = self._historico(client, token, prova)["tentativas"][0]
+        assert depois_da_1["nivel_de_ajuda"] == 1
+        assert depois_da_1["pistas"] == ETAPAS_OK["pistas"][:1]
+        assert depois_da_1["explicacao"] is None
+        assert depois_da_3["pistas"] == ETAPAS_OK["pistas"]
+        assert depois_da_3["explicacao"] == ETAPAS_OK["explicacao"]
+
+    def test_retorno_do_envio_diz_se_a_ajuda_esta_bloqueada(self, client, db, token, prova):
+        resposta = _submeter(client, token, prova.id, saida="errado").json()
+        assert resposta["tentativa"]["ajuda_bloqueada"] is True
+        assert resposta["tentativa"]["nivel_de_ajuda"] == 0
