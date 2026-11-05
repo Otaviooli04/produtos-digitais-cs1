@@ -35,15 +35,18 @@ export default function AlunoLayout() {
   const registrou = useRef(false)
   const { pathname } = useLocation()
   const [novidades, setNovidades] = useState(0)
+  const sequencia = useRef(0)
 
   // RF20: a bolinha do Início, refeita a cada troca de página e quando uma
   // chamada avisa que marcou algo como visto (o evento NOVIDADES_MUDARAM).
   useEffect(() => {
     let ativo = true
     const atualizar = () => {
+      const meuNumero = ++sequencia.current
+      const maisRecente = () => ativo && meuNumero === sequencia.current
       contarNovidades()
-        .then(({ data }) => { if (ativo) setNovidades(data.total) })
-        .catch(() => { if (ativo) setNovidades(0) })
+        .then(({ data }) => { if (maisRecente()) setNovidades(data.total) })
+        .catch(() => { if (maisRecente()) setNovidades(0) })
     }
     atualizar()
     window.addEventListener(NOVIDADES_MUDARAM, atualizar)
