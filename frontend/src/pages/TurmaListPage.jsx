@@ -214,7 +214,7 @@ export default function TurmaListPage() {
                     {t.codigo}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500">{t.exam_count} {t.exam_count === 1 ? 'prova' : 'provas'}</p>
+                <p className="text-sm text-gray-500">{t.exam_count} {t.exam_count === 1 ? 'atividade' : 'atividades'}</p>
                 <p className="text-xs text-gray-400 mt-1">{formatDate(t.created_at)}</p>
               </div>
               <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">

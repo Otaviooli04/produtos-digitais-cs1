@@ -22,6 +22,36 @@ function Kpi({ label, value, sub }) {
   )
 }
 
+const TITULO_DO_MODO = { prova: 'Provas', treino: 'Listas' }
+
+function ProgressoDoModo({ item }) {
+  const pct = item.total_questoes ? Math.round(item.questoes_resolvidas / item.total_questoes * 100) : 0
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="flex items-baseline justify-between">
+        <p className="text-sm font-semibold text-gray-900">{TITULO_DO_MODO[item.modo] ?? item.modo}</p>
+        <p className="text-xs text-gray-400">
+          {item.atividades_concluidas} de {item.total_atividades} concluída{item.total_atividades !== 1 ? 's' : ''}
+        </p>
+      </div>
+      {item.total_questoes > 0 ? (
+        <>
+          <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div className="h-full rounded-full bg-purple-500" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="text-xs text-gray-500 mt-1.5">
+            {item.questoes_resolvidas} de {item.total_questoes} questões resolvidas
+          </p>
+        </>
+      ) : (
+        <p className="text-xs text-gray-400 mt-3">
+          {item.modo === 'treino' ? 'Nenhuma lista na sua turma ainda.' : 'Nenhuma prova na sua turma ainda.'}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function semanaLabel(iso) {
   const d = new Date(`${iso}T00:00:00`)
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
@@ -85,17 +115,23 @@ export default function ProgressoPage() {
               sub="questões e treinos resolvidos no primeiro envio"
             />
             <Kpi
-              label="Dias seguidos"
-              value={progresso.dias_seguidos}
-              sub={`${progresso.total_tentativas} tentativas no total${noTreino}`}
+              label="Erros superados"
+              value={superados.length}
+              sub={`erros que pararam de aparecer · ${progresso.total_tentativas} tentativas${noTreino}`}
             />
           </div>
+
+          {progresso.por_modo?.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {progresso.por_modo.map(item => <ProgressoDoModo key={item.modo} item={item} />)}
+            </div>
+          )}
 
           {progresso.evolucao.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <h2 className="text-sm font-semibold text-gray-900 mb-1">Semana a semana</h2>
               <p className="text-xs text-gray-400 mb-4">
-                Tentativas enviadas e o que você resolveu pela primeira vez, nas listas e no treino.
+                Tentativas enviadas e o que você resolveu pela primeira vez, nas provas, nas listas e no treino.
               </p>
               <BarList
                 items={progresso.evolucao.map(p => ({
@@ -113,7 +149,7 @@ export default function ProgressoPage() {
       <div>
         <h2 className="text-sm font-semibold text-gray-900 mb-1">Erros que se repetem</h2>
         <p className="text-xs text-gray-400 mb-3">
-          {erros.total_com_erro} de {erros.total_submissoes} tentativas tiveram algum erro, somando listas e treino.
+          {erros.total_com_erro} de {erros.total_submissoes} tentativas tiveram algum erro, somando provas, listas e treino.
         </p>
 
         {erros.erros.length === 0 ? (

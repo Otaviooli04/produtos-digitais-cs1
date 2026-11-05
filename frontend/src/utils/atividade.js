@@ -1,7 +1,7 @@
 // Rótulos das atividades no lado do aluno. Modo diz o que a atividade é,
 // situação diz se ela está aberta agora.
 export const MODO_LABEL = {
-  treino: 'Treino',
+  treino: 'Lista',
   prova: 'Prova',
 }
 
@@ -12,6 +12,13 @@ export const SITUACAO = {
 }
 
 export const modoLabel = (modo) => MODO_LABEL[modo] ?? 'Prova'
+
+// Título com o tipo na frente, sem repetir quando o professor já escreveu
+// "Prova 1" ou "Lista 2" no título.
+export const comTipo = (modo, titulo) => {
+  const tipo = modoLabel(modo)
+  return titulo.toLowerCase().startsWith(tipo.toLowerCase()) ? titulo : `${tipo} · ${titulo}`
+}
 
 export const situacaoInfo = (situacao) => SITUACAO[situacao] ?? SITUACAO.aberta
 

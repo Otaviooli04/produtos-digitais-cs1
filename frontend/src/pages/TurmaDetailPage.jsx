@@ -8,7 +8,19 @@ import Badge from '../components/Badge'
 import BarList from '../components/BarList'
 import TrajetoriaDeErros from '../components/TrajetoriaDeErros'
 import FunilDaTurma from '../components/FunilDaTurma'
+import { comTipo, modoLabel } from '../utils/atividade'
 import { shortError } from '../utils/errorLabels'
+
+const GRUPOS_DE_ATIVIDADE = [
+  { modo: 'prova', titulo: 'Provas', vazio: 'Nenhuma prova nesta turma.' },
+  { modo: 'treino', titulo: 'Listas', vazio: 'Nenhuma lista nesta turma.' },
+]
+
+const contagemPorModo = (exams) => {
+  const listas = exams.filter(e => e.modo === 'treino').length
+  const provas = exams.length - listas
+  return `${provas} prova${provas !== 1 ? 's' : ''} e ${listas} lista${listas !== 1 ? 's' : ''}`
+}
 
 const SORT_OPTIONS = [
   { value: 'recent', label: 'Mais recentes' },
@@ -134,8 +146,16 @@ export default function TurmaDetailPage() {
       return sort === 'oldest' ? da - db : db - da
     })
 
+  const mediaDoModo = (modo) => {
+    const taxas = (analytics?.provas ?? [])
+      .filter(p => (p.modo || 'prova') === modo && p.pass_rate != null)
+      .map(p => p.pass_rate)
+    return taxas.length ? `${(taxas.reduce((a, b) => a + b, 0) / taxas.length).toFixed(1)}%` : '—'
+  }
+  const aproveitamentoPorModo = `provas ${mediaDoModo('prova')} · listas ${mediaDoModo('treino')}`
+
   const evolucaoData = (analytics?.provas ?? []).map(p => ({
-    name: p.filename.replace(/\.[^.]+$/, ''),
+    name: comTipo(p.modo, p.titulo || p.filename.replace(/\.[^.]+$/, '')),
     taxa: p.pass_rate ?? 0,
   }))
 
@@ -170,7 +190,7 @@ export default function TurmaDetailPage() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
-            Upload de prova
+            Nova atividade
           </button>
         </div>
       </div>
@@ -221,15 +241,16 @@ export default function TurmaDetailPage() {
           <KpiCard
             label="Aproveitamento médio"
             value={analytics.aproveitamento_medio != null ? `${analytics.aproveitamento_medio}%` : null}
-            sub="taxa de aprovação por prova"
+            sub={aproveitamentoPorModo}
           />
           <KpiCard
             label="Total de submissões"
             value={analytics.total_submissoes}
           />
           <KpiCard
-            label="Provas cadastradas"
+            label="Atividades"
             value={turma.exams.length}
+            sub={contagemPorModo(turma.exams)}
           />
         </div>
       )}
@@ -242,7 +263,7 @@ export default function TurmaDetailPage() {
           {/* Evolução entre provas */}
           {evolucaoData.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Taxa de aprovação por prova</h2>
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">Taxa de aprovação por atividade</h2>
               <BarList
                 max={100}
                 items={evolucaoData.map(d => ({
@@ -270,16 +291,16 @@ export default function TurmaDetailPage() {
         <TrajetoriaDeErros trajetoria={analytics.trajetoria} />
       )}
 
-      {/* Provas */}
+      {/* Atividades: provas e listas são o mesmo tipo de atividade, separadas pelo modo */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Provas</h2>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Atividades</h2>
         {turma.exams.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
             </svg>
-            <p className="text-sm">Nenhuma prova cadastrada.</p>
-            <p className="text-xs mt-1">Clique em "Upload de prova" para adicionar.</p>
+            <p className="text-sm">Nenhuma atividade cadastrada.</p>
+            <p className="text-xs mt-1">Clique em "Nova atividade" para adicionar uma prova ou uma lista.</p>
           </div>
         ) : (
           <>
@@ -287,13 +308,22 @@ export default function TurmaDetailPage() {
               search={search} onSearch={setSearch}
               sort={sort} onSort={setSort}
               sortOptions={SORT_OPTIONS}
-              placeholder="Buscar prova pelo nome…"
+              placeholder="Buscar prova ou lista pelo nome…"
             />
-            {displayedExams.length === 0 ? (
-              <p className="text-center py-12 text-sm text-gray-400">Nenhuma prova encontrada para o filtro.</p>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {displayedExams.map(exam => {
+            {GRUPOS_DE_ATIVIDADE.map(({ modo, titulo, vazio }) => {
+              const doGrupo = displayedExams.filter(exam => (exam.modo || 'prova') === modo)
+              return (
+                <div key={modo} className="mt-5 first:mt-0">
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    {titulo} ({doGrupo.length})
+                  </h3>
+                  {doGrupo.length === 0 ? (
+                    <p className="text-sm text-gray-400 py-4">
+                      {search.trim() ? 'Nada encontrado para o filtro.' : vazio}
+                    </p>
+                  ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {doGrupo.map(exam => {
               const ea = examAnalyticsMap[exam.id]
               return (
                 <div
@@ -305,6 +335,7 @@ export default function TurmaDetailPage() {
                       <h2 className="text-sm font-semibold text-gray-900 leading-tight truncate flex-1">
                         {exam.titulo || exam.filename}
                       </h2>
+                      <Badge color={exam.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(exam.modo)}</Badge>
                       {!exam.publicada && <Badge color="yellow">rascunho</Badge>}
                     </div>
                     <div className="flex gap-4 text-xs text-gray-500 mb-1">
@@ -325,9 +356,12 @@ export default function TurmaDetailPage() {
                   </div>
                 </div>
               )
-                })}
-              </div>
-            )}
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </>
         )}
       </div>
@@ -337,10 +371,10 @@ export default function TurmaDetailPage() {
         onClose={() => setDeleteExamTarget(null)}
         onConfirm={confirmDeleteExam}
         loading={deletingExam}
-        title="Excluir prova"
-        confirmLabel="Excluir prova"
+        title="Excluir atividade"
+        confirmLabel="Excluir atividade"
         message={deleteExamTarget
-          ? `Excluir a prova "${deleteExamTarget.filename}"? Todas as questões, test cases e submissões serão removidos permanentemente.`
+          ? `Excluir "${deleteExamTarget.titulo || deleteExamTarget.filename}"? Todas as questões, test cases e submissões serão removidos permanentemente.`
           : ''}
       />
     </div>

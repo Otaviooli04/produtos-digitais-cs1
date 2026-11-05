@@ -23,8 +23,11 @@ from sqlalchemy.orm import Session
 from app.engine.evaluators.code_evaluator import evaluate_code
 from app.llm.exercise_generator import GERACOES_POR_DIA, ExercicioInvalido, gerar_exercicio
 from app.models.orm import ExercicioGerado, Student, TentativaDeTreino
-from app.services.historico_do_aluno import Erro, erros_do_aluno, ler_historico, superados
+from app.services.historico_do_aluno import (
+    ACERTO, FALHA, Erro, erros_do_aluno, ler_historico, resultado_da_trilha, superados,
+)
 from app.services.novidades_service import marcar_exercicio_visto, registrar_exercicio
+from app.services.ritmo_da_tentativa import JANELA_DO_RITMO, EnvioDoRitmo, ritmo
 
 logger = logging.getLogger(__name__)
 
@@ -369,9 +372,18 @@ def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict
         "tentativas": len(anteriores) + 1,
         "resolvido": bool(exercicio.resolvido),
         "structure_check": resultado.get("structure_check"),
+        **ritmo([_envio_do_ritmo(t) for t in (anteriores + [tentativa])[-JANELA_DO_RITMO:]]),
     }
     marcar_exercicio_visto(student.id, exercicio.id, db)
     return entrega
+
+
+def _envio_do_ritmo(t: TentativaDeTreino) -> EnvioDoRitmo:
+    resultados = t.test_results or []
+    resultado = resultado_da_trilha(t.all_tests_passed, t.error_category)
+    return EnvioDoRitmo(t.code or "", t.submitted_at, resultado == ACERTO,
+                        sum(1 for r in resultados if r.get("passed")), len(resultados),
+                        falha=resultado == FALHA)
 
 
 def reportar(student: Student, exercicio_id: int, motivo: str, db: Session) -> dict:
