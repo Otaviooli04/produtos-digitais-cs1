@@ -1,0 +1,564 @@
+"""Novidades do aluno: o que chegou para ele e ele ainda não abriu.
+
+A resposta do professor vira novidade para quem tem a tentativa mais recente no
+grupo, e o exercício pré-gerado da trilha também. A tela que entrega a resposta
+ou o exercício marca como vista, e a leitura só mostra a que ainda vale."""
+from datetime import datetime, timedelta
+
+import pytest
+from sqlalchemy.exc import IntegrityError
+
+from app.auth.student_service import create_student_token
+from app.models.orm import (
+    Enrollment, ExercicioGerado, Novidade, QuestionCluster, Student, Submission,
+)
+from app.services.novidades_service import (
+    contar, marcar_exercicio_visto, marcar_resposta_vista, novidades_do_aluno,
+    registrar_exercicio, registrar_resposta,
+)
+
+AGORA = datetime(2026, 11, 4, 12, 0)
+CHAVE = "cat:Saída Incorreta"
+OUTRA_CHAVE = "cat:Tudo no Main"
+
+
+@pytest.fixture()
+def prova(exam_factory):
+    return exam_factory(questions=[{"number": "1"}, {"number": "2"}], titulo="Lista 3")
+
+
+def _matricular(db, nome, email, turma_id):
+    s = Student(email=email, nome=nome, senha_hash="x")
+    db.add(s)
+    db.flush()
+    db.add(Enrollment(student_id=s.id, turma_id=turma_id))
+    db.commit()
+    db.refresh(s)
+    return s
+
+
+@pytest.fixture()
+def aluno(db, prova):
+    return _matricular(db, "Ana", "ana@teste.com", prova.turma_id)
+
+
+@pytest.fixture()
+def colega(db, prova):
+    return _matricular(db, "Bia", "bia@teste.com", prova.turma_id)
+
+
+def _questao(prova, numero="1"):
+    return next(q for q in prova.questions if q.number == numero)
+
+
+def _envio(db, questao, student_id, tentativa, cluster_id, categoria="Saída Incorreta"):
+    sub = Submission(
+        question_id=questao.id, code="int main(){}", error_category=categoria,
+        all_tests_passed=False, student_id=student_id, attempt_number=tentativa,
+        cluster_id=cluster_id, submitted_at=AGORA - timedelta(hours=1),
+    )
+    db.add(sub)
+    db.commit()
+    return sub
+
+
+def _grupo(db, questao, label=0, chave=CHAVE, resposta="Revejam a condição de parada.",
+           em=AGORA):
+    grupo = QuestionCluster(
+        question_id=questao.id, cluster_label=label, chave=chave, size=1,
+        dominant_error="Saída Incorreta", resposta_professor=resposta, resposta_em=em,
+    )
+    db.add(grupo)
+    db.commit()
+    db.refresh(grupo)
+    return grupo
+
+
+def _exercicio(db, student_id, resolvido=False, reportado=False, titulo="Soma dos pares"):
+    exercicio = ExercicioGerado(
+        student_id=student_id, error_category="Tudo no Main", titulo=titulo,
+        enunciado="Some os pares.", casos_teste=[], resolvido=resolvido,
+        reportado=reportado, created_at=AGORA,
+    )
+    db.add(exercicio)
+    db.commit()
+    db.refresh(exercicio)
+    return exercicio
+
+
+def _novidade(db, student_id, questao=None, chave=CHAVE, exercicio=None, chegou_em=AGORA,
+              vista_em=None):
+    novidade = Novidade(
+        student_id=student_id,
+        tipo="exercicio" if exercicio else "retorno",
+        question_id=None if exercicio else questao.id,
+        grupo_chave=None if exercicio else chave,
+        exercicio_id=exercicio.id if exercicio else None,
+        chegou_em=chegou_em,
+        vista_em=vista_em,
+    )
+    db.add(novidade)
+    db.commit()
+    db.refresh(novidade)
+    return novidade
+
+
+class TestTabela:
+    def test_duas_nao_vistas_do_mesmo_grupo_sao_recusadas(self, db, aluno, prova):
+        _novidade(db, aluno.id, _questao(prova))
+        db.add(Novidade(student_id=aluno.id, tipo="retorno", question_id=_questao(prova).id,
+                        grupo_chave=CHAVE, chegou_em=AGORA))
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()
+
+    def test_depois_de_vista_aceita_outra_do_mesmo_grupo(self, db, aluno, prova):
+        _novidade(db, aluno.id, _questao(prova), vista_em=AGORA)
+        _novidade(db, aluno.id, _questao(prova), chegou_em=AGORA + timedelta(hours=1))
+        assert db.query(Novidade).count() == 2
+
+    def test_exercicio_nao_visto_e_um_so_por_exercicio(self, db, aluno):
+        exercicio = _exercicio(db, aluno.id)
+        _novidade(db, aluno.id, exercicio=exercicio)
+        db.add(Novidade(student_id=aluno.id, tipo="exercicio", exercicio_id=exercicio.id,
+                        chegou_em=AGORA))
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()
+
+
+class TestNascimento:
+    def test_resposta_cria_para_quem_tem_a_tentativa_mais_recente_no_grupo(
+        self, db, aluno, colega, prova
+    ):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _envio(db, q, colega.id, 1, cluster_id=0)
+        registrar_resposta(_grupo(db, q), db)
+        novidades = db.query(Novidade).order_by(Novidade.student_id).all()
+        assert [n.student_id for n in novidades] == sorted([aluno.id, colega.id])
+        assert all(n.tipo == "retorno" for n in novidades)
+        assert all(n.question_id == q.id and n.grupo_chave == CHAVE for n in novidades)
+        assert all(n.chegou_em == AGORA and n.vista_em is None for n in novidades)
+
+    def test_tentativa_antiga_no_grupo_nao_basta(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _envio(db, q, aluno.id, 2, cluster_id=1, categoria="Tudo no Main")
+        registrar_resposta(_grupo(db, q), db)
+        assert db.query(Novidade).count() == 0
+
+    def test_envio_sem_conta_nao_cria(self, db, prova):
+        q = _questao(prova)
+        _envio(db, q, None, 1, cluster_id=0)
+        registrar_resposta(_grupo(db, q), db)
+        assert db.query(Novidade).count() == 0
+
+    def test_atividade_nao_publicada_nao_cria(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        prova.publicada = False
+        db.commit()
+        registrar_resposta(_grupo(db, q), db)
+        assert db.query(Novidade).count() == 0
+
+    def test_grupo_sem_chave_nao_cria(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        registrar_resposta(_grupo(db, q, chave=None), db)
+        assert db.query(Novidade).count() == 0
+
+    def test_editar_antes_de_ver_nao_duplica(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        grupo = _grupo(db, q)
+        registrar_resposta(grupo, db)
+        grupo.resposta_professor = "Texto corrigido."
+        grupo.resposta_em = AGORA + timedelta(hours=1)
+        db.commit()
+        registrar_resposta(grupo, db)
+        (novidade,) = db.query(Novidade).all()
+        assert novidade.chegou_em == AGORA
+
+    def test_editar_depois_de_ver_cria_outra(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        grupo = _grupo(db, q)
+        registrar_resposta(grupo, db)
+        marcar_resposta_vista(aluno.id, q.id, CHAVE, db, agora=AGORA + timedelta(minutes=5))
+        grupo.resposta_professor = "Texto corrigido."
+        grupo.resposta_em = AGORA + timedelta(hours=1)
+        db.commit()
+        registrar_resposta(grupo, db)
+        novidades = db.query(Novidade).order_by(Novidade.chegou_em).all()
+        assert [n.chegou_em for n in novidades] == [AGORA, AGORA + timedelta(hours=1)]
+        assert novidades[0].vista_em == AGORA + timedelta(minutes=5)
+        assert novidades[1].vista_em is None
+
+    def test_salvar_o_mesmo_texto_depois_de_ver_nao_cria_outra(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        grupo = _grupo(db, q)
+        registrar_resposta(grupo, db)
+        marcar_resposta_vista(aluno.id, q.id, CHAVE, db, agora=AGORA + timedelta(minutes=5))
+        texto = grupo.resposta_professor
+        grupo.resposta_em = AGORA + timedelta(hours=1)
+        db.commit()
+        registrar_resposta(grupo, db, anterior=texto)
+        (novidade,) = db.query(Novidade).all()
+        assert novidade.chegou_em == AGORA
+        assert novidade.vista_em == AGORA + timedelta(minutes=5)
+
+    def test_mudar_o_texto_depois_de_ver_cria_outra_com_anterior(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        grupo = _grupo(db, q)
+        registrar_resposta(grupo, db)
+        marcar_resposta_vista(aluno.id, q.id, CHAVE, db, agora=AGORA + timedelta(minutes=5))
+        velho = grupo.resposta_professor
+        grupo.resposta_professor = "Texto corrigido."
+        grupo.resposta_em = AGORA + timedelta(hours=1)
+        db.commit()
+        registrar_resposta(grupo, db, anterior=velho)
+        novidades = db.query(Novidade).order_by(Novidade.chegou_em).all()
+        assert [n.chegou_em for n in novidades] == [AGORA, AGORA + timedelta(hours=1)]
+        assert novidades[1].vista_em is None
+
+    def test_apagar_a_resposta_remove_so_as_nao_vistas(self, db, aluno, colega, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _envio(db, q, colega.id, 1, cluster_id=0)
+        grupo = _grupo(db, q)
+        registrar_resposta(grupo, db)
+        marcar_resposta_vista(aluno.id, q.id, CHAVE, db, agora=AGORA)
+        grupo.resposta_professor = None
+        grupo.resposta_em = None
+        db.commit()
+        registrar_resposta(grupo, db)
+        (ficou,) = db.query(Novidade).all()
+        assert ficou.student_id == aluno.id
+        assert ficou.vista_em == AGORA
+
+    def test_exercicio_gravado_duas_vezes_fica_um(self, db, aluno):
+        exercicio = _exercicio(db, aluno.id)
+        registrar_exercicio(exercicio, db)
+        registrar_exercicio(exercicio, db)
+        (novidade,) = db.query(Novidade).all()
+        assert novidade.tipo == "exercicio"
+        assert novidade.exercicio_id == exercicio.id
+        assert novidade.chegou_em == AGORA
+
+
+class TestMarcarComoVista:
+    def test_marcar_a_resposta_so_mexe_no_grupo_dela(self, db, aluno, prova):
+        q = _questao(prova)
+        _novidade(db, aluno.id, q, chave=CHAVE)
+        _novidade(db, aluno.id, q, chave=OUTRA_CHAVE)
+        marcar_resposta_vista(aluno.id, q.id, CHAVE, db, agora=AGORA)
+        vistas = {n.grupo_chave: n.vista_em for n in db.query(Novidade).all()}
+        assert vistas == {CHAVE: AGORA, OUTRA_CHAVE: None}
+
+    def test_marcar_o_exercicio_preenche_vista_em(self, db, aluno):
+        exercicio = _exercicio(db, aluno.id)
+        _novidade(db, aluno.id, exercicio=exercicio)
+        marcar_exercicio_visto(aluno.id, exercicio.id, db, agora=AGORA)
+        assert db.query(Novidade).one().vista_em == AGORA
+
+
+class TestLeitura:
+    def _retorno_valido(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        grupo = _grupo(db, q)
+        _novidade(db, aluno.id, q)
+        return q, grupo
+
+    def test_retorno_que_vale_aparece_com_titulo_e_link(self, db, aluno, prova):
+        self._retorno_valido(db, aluno, prova)
+        assert novidades_do_aluno(aluno, db) == [{
+            "tipo": "retorno", "titulo": "Questão 1 · Lista 3",
+            "chegou_em": AGORA.isoformat(), "exam_id": prova.id,
+            "question_number": "1", "exercicio_id": None,
+        }]
+
+    def test_grupo_apagado_some_e_a_linha_fica(self, db, aluno, prova):
+        _, grupo = self._retorno_valido(db, aluno, prova)
+        db.delete(grupo)
+        db.commit()
+        assert novidades_do_aluno(aluno, db) == []
+        assert db.query(Novidade).one().vista_em is None
+
+    def test_aluno_que_mudou_de_grupo_com_envio_novo_nao_ve(self, db, aluno, prova):
+        q, _ = self._retorno_valido(db, aluno, prova)
+        _envio(db, q, aluno.id, 2, cluster_id=1, categoria="Tudo no Main")
+        assert novidades_do_aluno(aluno, db) == []
+
+    def test_atividade_despublicada_some(self, db, aluno, prova):
+        self._retorno_valido(db, aluno, prova)
+        prova.publicada = False
+        db.commit()
+        assert novidades_do_aluno(aluno, db) == []
+
+    def test_aluno_que_saiu_da_turma_nao_ve(self, db, aluno, prova):
+        self._retorno_valido(db, aluno, prova)
+        db.query(Enrollment).filter_by(student_id=aluno.id).delete()
+        db.commit()
+        db.refresh(aluno)
+        assert novidades_do_aluno(aluno, db) == []
+
+    @pytest.mark.parametrize("estado", ["resolvido", "reportado"])
+    def test_exercicio_resolvido_ou_reportado_some(self, db, aluno, estado):
+        exercicio = _exercicio(db, aluno.id, **{estado: True})
+        _novidade(db, aluno.id, exercicio=exercicio)
+        assert novidades_do_aluno(aluno, db) == []
+
+    def test_mais_recente_primeiro_e_contagem_igual(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q)
+        _novidade(db, aluno.id, q, chegou_em=AGORA)
+        exercicio = _exercicio(db, aluno.id)
+        _novidade(db, aluno.id, exercicio=exercicio, chegou_em=AGORA + timedelta(hours=2))
+        itens = novidades_do_aluno(aluno, db)
+        assert [i["tipo"] for i in itens] == ["exercicio", "retorno"]
+        assert itens[0] == {
+            "tipo": "exercicio", "titulo": "Soma dos pares",
+            "chegou_em": (AGORA + timedelta(hours=2)).isoformat(),
+            "exam_id": None, "question_number": None, "exercicio_id": exercicio.id,
+        }
+        assert contar(aluno, db) == 2
+
+    def test_novidade_de_outro_aluno_nao_aparece(self, db, aluno, colega, prova):
+        self._retorno_valido(db, aluno, prova)
+        assert novidades_do_aluno(colega, db) == []
+        assert contar(colega, db) == 0
+
+
+class TestGanchoDoProfessor:
+    def test_resposta_pela_rota_cria_a_novidade(self, client, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q, resposta=None, em=None)
+        resp = client.put(f"/exam/{prova.id}/questions/1/grupos/0/resposta",
+                          json={"texto": "Revejam a condição de parada."})
+        assert resp.status_code == 200
+        (novidade,) = db.query(Novidade).all()
+        assert novidade.student_id == aluno.id
+        assert novidade.grupo_chave == CHAVE
+        assert novidade.vista_em is None
+
+    def test_falha_ao_gravar_nao_desfaz_a_resposta(self, client, db, aluno, prova, monkeypatch):
+        from app.services import novidades_service
+
+        def explode(*a, **k):
+            raise RuntimeError("banco caiu")
+
+        monkeypatch.setattr(novidades_service, "_alcancados", explode)
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        grupo = _grupo(db, q, resposta=None, em=None)
+        resp = client.put(f"/exam/{prova.id}/questions/1/grupos/0/resposta",
+                          json={"texto": "Revejam a condição de parada."})
+        assert resp.status_code == 200
+        db.expire_all()
+        assert db.get(QuestionCluster, grupo.id).resposta_professor == (
+            "Revejam a condição de parada.")
+        assert db.query(Novidade).count() == 0
+
+    def _respondida_e_vista(self, client, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        grupo = _grupo(db, q, resposta=None, em=None)
+        url = f"/exam/{prova.id}/questions/1/grupos/0/resposta"
+        client.put(url, json={"texto": "Revejam a condição de parada."})
+        marcar_resposta_vista(aluno.id, q.id, CHAVE, db)
+        db.expire_all()
+        return grupo, url
+
+    def test_salvar_o_mesmo_texto_de_novo_nao_cria_nem_muda_o_momento(
+        self, client, db, aluno, prova
+    ):
+        grupo, url = self._respondida_e_vista(client, db, aluno, prova)
+        antes = db.get(QuestionCluster, grupo.id).resposta_em
+        resp = client.put(url, json={"texto": "Revejam a condição de parada."})
+        assert resp.status_code == 200
+        db.expire_all()
+        assert db.query(Novidade).count() == 1
+        assert db.get(QuestionCluster, grupo.id).resposta_em == antes
+
+    def test_texto_diferente_depois_de_vista_cria_nova_e_atualiza_o_momento(
+        self, client, db, aluno, prova
+    ):
+        grupo, url = self._respondida_e_vista(client, db, aluno, prova)
+        antes = db.get(QuestionCluster, grupo.id).resposta_em
+        resp = client.put(url, json={"texto": "Outro texto, agora mais claro."})
+        assert resp.status_code == 200
+        db.expire_all()
+        assert db.query(Novidade).count() == 2
+        assert db.query(Novidade).filter(Novidade.vista_em.is_(None)).count() == 1
+        assert db.get(QuestionCluster, grupo.id).resposta_em > antes
+
+    def test_apagar_a_resposta_pela_rota_remove_a_novidade_nao_vista(
+        self, client, db, aluno, prova
+    ):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q, resposta=None, em=None)
+        url = f"/exam/{prova.id}/questions/1/grupos/0/resposta"
+        client.put(url, json={"texto": "Revejam a condição de parada."})
+        assert db.query(Novidade).count() == 1
+        resp = client.put(url, json={"texto": ""})
+        assert resp.status_code == 200
+        db.expire_all()
+        assert db.query(Novidade).count() == 0
+
+
+class TestExclusao:
+    def _com_novidade(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q)
+        _novidade(db, aluno.id, q)
+
+    def test_apagar_a_atividade_remove_as_novidades(self, client, db, aluno, prova):
+        self._com_novidade(db, aluno, prova)
+        assert client.delete(f"/exam/{prova.id}").status_code == 204
+        assert db.query(Novidade).count() == 0
+
+    def test_apagar_a_questao_remove_so_as_novidades_dela(self, client, db, aluno, prova):
+        self._com_novidade(db, aluno, prova)
+        segunda = _questao(prova, "2")
+        _novidade(db, aluno.id, segunda)
+        assert client.delete(f"/exam/{prova.id}/questions/1").status_code == 204
+        (ficou,) = db.query(Novidade).all()
+        assert ficou.question_id == segunda.id
+
+    def test_apagar_a_turma_remove_as_novidades(self, client, db, aluno, prova):
+        self._com_novidade(db, aluno, prova)
+        assert client.delete(f"/turmas/{prova.turma_id}").status_code == 204
+        assert db.query(Novidade).count() == 0
+
+
+def _auth(student):
+    return {"Authorization": f"Bearer {create_student_token(student.id)}"}
+
+
+ERRO_DE_SAIDA = {
+    "compile_error": "",
+    "warnings": "",
+    "all_tests_passed": False,
+    "diagnosis": {
+        "error_category": "Saída Incorreta",
+        "pedagogical_diagnosis": "diagnóstico",
+        "actionable_feedback": "o que fazer",
+    },
+    "ast_structures": [],
+    "ast_functions": [],
+    "test_results": [],
+}
+
+
+def _explode(*a, **k):
+    raise RuntimeError("banco caiu")
+
+
+class TestGanchosDaLista:
+    def _historico(self, client, aluno, prova):
+        return client.get(f"/aluno/atividades/{prova.id}/questoes/1/tentativas",
+                          headers=_auth(aluno))
+
+    def _grupo_respondido_pelo_agrupamento(self, db, aluno, prova, submission_factory):
+        """Três envios de "Saída Incorreta" (menos de 6) formam o grupo
+        `cat:Saída Incorreta` no agrupamento de verdade, e a resposta do
+        professor vira a novidade do aluno."""
+        from app.ml.cluster import cluster_question
+
+        q = _questao(prova)
+        for i in range(2):
+            submission_factory(q.id, code=f"int main(){{return {i};}}",
+                               error_category="Saída Incorreta", all_tests_passed=False)
+        _envio(db, q, aluno.id, 1, cluster_id=None)
+        cluster_question(q.id, db)
+        grupo = db.query(QuestionCluster).filter_by(question_id=q.id, chave=CHAVE).one()
+        grupo.resposta_professor = "Revejam a condição de parada."
+        grupo.resposta_em = AGORA
+        db.commit()
+        registrar_resposta(grupo, db)
+        assert db.query(Novidade).one().vista_em is None
+
+    def _envia(self, client, aluno, prova, monkeypatch):
+        from app.services import student_activity_service as svc
+
+        monkeypatch.setattr(svc, "evaluate_code", lambda *a, **k: dict(ERRO_DE_SAIDA))
+        return client.post(f"/aluno/atividades/{prova.id}/questoes/1/submissoes",
+                           json={"code": "int main(){return 3;}"}, headers=_auth(aluno))
+
+    def test_historico_com_resposta_marca_como_vista(self, client, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q)
+        _novidade(db, aluno.id, q)
+        resp = self._historico(client, aluno, prova)
+        assert resp.json()["tentativas"][0]["resposta_do_professor"] == (
+            "Revejam a condição de parada.")
+        db.expire_all()
+        assert db.query(Novidade).one().vista_em is not None
+
+    def test_historico_sem_resposta_nao_marca(self, client, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q, resposta=None, em=None)
+        _novidade(db, aluno.id, q)
+        self._historico(client, aluno, prova)
+        db.expire_all()
+        assert db.query(Novidade).one().vista_em is None
+
+    def test_historico_nao_marca_a_novidade_de_outro_grupo(self, client, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=1, categoria="Tudo no Main")
+        _envio(db, q, aluno.id, 2, cluster_id=0)
+        _grupo(db, q, label=0, chave=CHAVE)
+        _grupo(db, q, label=1, chave=OUTRA_CHAVE, resposta="Separe em funções.")
+        _novidade(db, aluno.id, q, chave=CHAVE)
+        _novidade(db, aluno.id, q, chave=OUTRA_CHAVE)
+        self._historico(client, aluno, prova)
+        db.expire_all()
+        vistas = {n.grupo_chave: n.vista_em is not None for n in db.query(Novidade).all()}
+        assert vistas == {CHAVE: True, OUTRA_CHAVE: False}
+
+    def test_envio_que_cai_em_grupo_respondido_marca(
+        self, client, db, aluno, prova, monkeypatch, submission_factory
+    ):
+        self._grupo_respondido_pelo_agrupamento(db, aluno, prova, submission_factory)
+        resp = self._envia(client, aluno, prova, monkeypatch)
+        assert resp.status_code == 201
+        assert resp.json()["tentativa"]["resposta_do_professor"] == (
+            "Revejam a condição de parada.")
+        db.expire_all()
+        assert db.query(Novidade).one().vista_em is not None
+
+    def test_falha_na_marcacao_nao_derruba_o_historico(
+        self, client, db, aluno, prova, monkeypatch
+    ):
+        from app.services import novidades_service
+
+        monkeypatch.setattr(novidades_service, "_marcar", _explode)
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q)
+        _novidade(db, aluno.id, q)
+        resp = self._historico(client, aluno, prova)
+        assert resp.status_code == 200
+        assert resp.json()["tentativas"][0]["resposta_do_professor"] == (
+            "Revejam a condição de parada.")
+
+    def test_falha_na_marcacao_nao_derruba_o_envio(
+        self, client, db, aluno, prova, monkeypatch, submission_factory
+    ):
+        from app.services import novidades_service
+
+        self._grupo_respondido_pelo_agrupamento(db, aluno, prova, submission_factory)
+        monkeypatch.setattr(novidades_service, "_marcar", _explode)
+        resp = self._envia(client, aluno, prova, monkeypatch)
+        assert resp.status_code == 201
+        assert resp.json()["tentativa"]["error_category"] == "Saída Incorreta"

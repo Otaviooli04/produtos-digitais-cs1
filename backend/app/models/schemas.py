@@ -856,3 +856,46 @@ class TreinoSubmissaoResponse(BaseModel):
 
 class ReportarExercicioRequest(BaseModel):
     motivo: str = ""
+
+
+# ── Início do aluno ──────────────────────────────────────────────────────────
+
+class NovidadeItem(BaseModel):
+    tipo: Literal["retorno", "exercicio"]
+    titulo: str
+    chegou_em: Optional[str] = None
+    exam_id: Optional[int] = None
+    question_number: Optional[str] = None
+    exercicio_id: Optional[int] = None
+
+
+class ContinuarItem(BaseModel):
+    origem: Literal["lista", "trilha"]
+    situacao: Literal["em_andamento", "proxima"]
+    titulo: str
+    turma_nome: str = ""
+    tentativas: int = 0
+    ultimo_erro: str = ""
+    exam_id: Optional[int] = None
+    question_number: Optional[str] = None
+    exercicio_id: Optional[int] = None
+
+
+class PrazoItem(BaseModel):
+    exam_id: int
+    titulo: str
+    turma_nome: str
+    modo: str
+    tipo: Literal["fecha", "abre"]
+    quando: str
+
+
+class InicioResponse(BaseModel):
+    tem_turma: bool
+    novidades: List[NovidadeItem] = []
+    continuar: Optional[ContinuarItem] = None
+    prazos: List[PrazoItem] = []
+
+
+class ContagemNovidadesResponse(BaseModel):
+    total: int

@@ -47,6 +47,7 @@ from app.services.exam_service import (
     update_exam,
     update_question,
 )
+from app.services.novidades_service import registrar_resposta
 
 router = APIRouter(prefix="/exam", tags=["exam"])
 
@@ -487,11 +488,15 @@ def put_resposta_do_grupo(
         raise HTTPException(status_code=404, detail="Grupo não encontrado.")
 
     texto = (body.texto or "").strip()
+    anterior = grupo.resposta_professor
+    mudou = (texto or None) != anterior
     grupo.resposta_professor = texto or None
-    grupo.resposta_em = datetime.utcnow() if texto else None
-    grupo.resposta_por = professor.id if texto else None
+    if mudou:
+        grupo.resposta_em = datetime.utcnow() if texto else None
+        grupo.resposta_por = professor.id if texto else None
     db.commit()
     db.refresh(grupo)
+    registrar_resposta(grupo, db, anterior=anterior)
 
     alcancados = len({
         s.student_id for s in question.submissions

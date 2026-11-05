@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from app.models.orm import ExercicioGerado, Student, Submission, TentativaDeTreino
+from app.models.orm import ExercicioGerado, Novidade, Student, Submission, TentativaDeTreino
 
 CADASTRO = {"email": "treino@aluno.com", "nome": "Aluno Treino", "senha": "senha12345"}
 
@@ -697,3 +697,73 @@ class TestPreGeracao:
         assert escolhido["reaproveitado"] is True
         assert escolhido["error_category"] == "Acesso Fora dos Limites: Off-by-One"
         assert len(gemini_ok) == antes, "nao podia gerar tendo um pronto"
+
+
+class TestNovidadesDaTrilha:
+    """O exercício que a pré-geração deixa pronto espera pelo aluno no Início,
+    e abrir, tentar ou receber o exercício conta como visto."""
+
+    def _pendente_com_novidade(self, db, aluno):
+        exercicio = ExercicioGerado(
+            student_id=aluno.id, error_category="Acesso Fora dos Limites: Off-by-One",
+            titulo="Soma", enunciado="Some os n primeiros inteiros.",
+            casos_teste=[{"input": "3", "expected_output": "6"}],
+            created_at=datetime.utcnow())
+        db.add(exercicio)
+        db.flush()
+        db.add(Novidade(student_id=aluno.id, tipo="exercicio", exercicio_id=exercicio.id,
+                        chegou_em=exercicio.created_at))
+        db.commit()
+        db.refresh(exercicio)
+        return exercicio
+
+    def _vista(self, db):
+        db.expire_all()
+        return db.query(Novidade).one().vista_em
+
+    def test_pre_geracao_cria_a_novidade(
+        self, db, aluno, erros_do_aluno, gemini_ok, sem_thread
+    ):
+        from app.services.treino_service import trilha
+
+        trilha(aluno, db)
+        db.expire_all()
+        (gerado,) = db.query(ExercicioGerado).all()
+        (novidade,) = db.query(Novidade).all()
+        assert novidade.tipo == "exercicio"
+        assert novidade.exercicio_id == gerado.id
+        assert novidade.chegou_em == gerado.created_at
+        assert novidade.vista_em is None
+
+    def test_exercicio_pedido_na_hora_nao_cria(self, db, aluno, erros_do_aluno, gemini_ok):
+        from app.services import treino_service
+
+        treino_service.gerar_para_categoria(aluno, None, db)
+        assert db.query(Novidade).count() == 0
+
+    def test_abrir_o_exercicio_marca_como_visto(self, db, aluno):
+        from app.services import treino_service
+
+        exercicio = self._pendente_com_novidade(db, aluno)
+        treino_service.detalhe(aluno, exercicio.id, db)
+        assert self._vista(db) is not None
+
+    def test_tentar_o_exercicio_marca_como_visto(self, db, aluno, monkeypatch):
+        from app.services import treino_service
+
+        exercicio = self._pendente_com_novidade(db, aluno)
+        monkeypatch.setattr(treino_service, "evaluate_code",
+                            lambda *a, **k: _resultado_referencia([False]))
+        treino_service.treinar(aluno, exercicio.id, "int main(){}", db)
+        assert self._vista(db) is not None
+
+    def test_pendente_devolvido_pela_trilha_marca_como_visto(
+        self, db, aluno, erros_do_aluno, gemini_ok
+    ):
+        from app.services import treino_service
+
+        exercicio = self._pendente_com_novidade(db, aluno)
+        devolvido = treino_service.gerar_para_categoria(aluno, None, db)
+        assert devolvido["id"] == exercicio.id
+        assert devolvido["reaproveitado"] is True
+        assert self._vista(db) is not None

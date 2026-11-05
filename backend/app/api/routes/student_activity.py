@@ -6,8 +6,11 @@ from app.models.database import get_db
 from app.models.orm import Student
 from app.models.schemas import (
     AlunoSubmissaoRequest, AlunoSubmissaoResponse, AtividadeDetalhe, AtividadeResumo,
-    ErrosRecorrentesResponse, ExplicacaoResponse, HistoricoQuestaoResponse, ProgressoResponse,
+    ContagemNovidadesResponse, ErrosRecorrentesResponse, ExplicacaoResponse,
+    HistoricoQuestaoResponse, InicioResponse, ProgressoResponse,
 )
+from app.services.inicio_service import painel
+from app.services.novidades_service import contar
 from app.services.student_activity_service import (
     AtividadeIndisponivel, detalhe_atividade, erros_recorrentes, explicar_tentativa,
     historico_questao, listar_atividades, progresso, submeter,
@@ -110,3 +113,19 @@ def get_erros_recorrentes(
     current: Student = Depends(get_current_student),
 ):
     return erros_recorrentes(current, db)
+
+
+@router.get("/inicio", response_model=InicioResponse)
+def get_inicio(
+    db: Session = Depends(get_db),
+    current: Student = Depends(get_current_student),
+):
+    return painel(current, db)
+
+
+@router.get("/novidades/contagem", response_model=ContagemNovidadesResponse)
+def get_contagem_de_novidades(
+    db: Session = Depends(get_db),
+    current: Student = Depends(get_current_student),
+):
+    return {"total": contar(current, db)}

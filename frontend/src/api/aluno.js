@@ -1,5 +1,15 @@
 import alunoApi from './alunoClient'
 
+export const NOVIDADES_MUDARAM = 'novidades:mudaram'
+
+// Estas chamadas fazem o backend marcar uma novidade como vista. Avisar o menu
+// na hora evita a bolinha só sumir na navegação seguinte.
+const avisandoNovidades = (promessa) =>
+  promessa.then((resposta) => {
+    window.dispatchEvent(new Event(NOVIDADES_MUDARAM))
+    return resposta
+  })
+
 export const registerAluno = (email, nome, matricula, senha) =>
   alunoApi.post('/aluno/register', { email, nome, matricula, senha })
 
@@ -28,10 +38,10 @@ export const listarAtividades = (turmaId = null) =>
 export const getAtividade = (examId) => alunoApi.get(`/aluno/atividades/${examId}`)
 
 export const submeterResposta = (examId, questionNumber, code) =>
-  alunoApi.post(`/aluno/atividades/${examId}/questoes/${questionNumber}/submissoes`, { code })
+  avisandoNovidades(alunoApi.post(`/aluno/atividades/${examId}/questoes/${questionNumber}/submissoes`, { code }))
 
 export const getTentativas = (examId, questionNumber) =>
-  alunoApi.get(`/aluno/atividades/${examId}/questoes/${questionNumber}/tentativas`)
+  avisandoNovidades(alunoApi.get(`/aluno/atividades/${examId}/questoes/${questionNumber}/tentativas`))
 
 export const getProgresso = () => alunoApi.get('/aluno/progresso')
 
@@ -45,12 +55,19 @@ export const explicarTentativa = (submissionId) =>
 export const getTrilha = () => alunoApi.get('/aluno/treino')
 
 export const gerarExercicio = (errorCategory = null) =>
-  alunoApi.post('/aluno/treino/gerar', { error_category: errorCategory })
+  avisandoNovidades(alunoApi.post('/aluno/treino/gerar', { error_category: errorCategory }))
 
-export const getExercicio = (exercicioId) => alunoApi.get(`/aluno/treino/${exercicioId}`)
+export const getExercicio = (exercicioId) =>
+  avisandoNovidades(alunoApi.get(`/aluno/treino/${exercicioId}`))
 
 export const treinar = (exercicioId, code) =>
-  alunoApi.post(`/aluno/treino/${exercicioId}/tentativas`, { code })
+  avisandoNovidades(alunoApi.post(`/aluno/treino/${exercicioId}/tentativas`, { code }))
 
 export const reportarExercicio = (exercicioId, motivo) =>
   alunoApi.post(`/aluno/treino/${exercicioId}/reportar`, { motivo })
+
+// ── início ───────────────────────────────────────────────────────────────────
+
+export const getInicio = () => alunoApi.get('/aluno/inicio')
+
+export const contarNovidades = () => alunoApi.get('/aluno/novidades/contagem')

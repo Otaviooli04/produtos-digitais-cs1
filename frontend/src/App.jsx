@@ -27,6 +27,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const AlunoLoginPage = lazy(() => import('./pages/aluno/AlunoLoginPage'))
 const AlunoRegisterPage = lazy(() => import('./pages/aluno/AlunoRegisterPage'))
 const ConvitePage = lazy(() => import('./pages/aluno/ConvitePage'))
+const InicioPage = lazy(() => import('./pages/aluno/InicioPage'))
 const TurmasPage = lazy(() => import('./pages/aluno/TurmasPage'))
 const TurmaPage = lazy(() => import('./pages/aluno/TurmaPage'))
 const AtividadePage = lazy(() => import('./pages/aluno/AtividadePage'))
@@ -60,7 +61,7 @@ export default function App() {
               <Route path="aluno/convite/:codigo" element={<ConvitePage />} />
               <Route element={<AlunoProtectedRoute />}>
                 <Route element={<AlunoLayout />}>
-                  <Route path="aluno" element={<Navigate to="/aluno/turmas" replace />} />
+                  <Route path="aluno" element={<InicioPage />} />
                   <Route path="aluno/turmas" element={<TurmasPage />} />
                   <Route path="aluno/turmas/:turmaId" element={<TurmaPage />} />
                   <Route path="aluno/progresso" element={<ProgressoPage />} />

@@ -21,6 +21,7 @@ from app.services.historico_do_aluno import (
     ACERTO, CATEGORIA_CORRETA, ERRO, FALHA, LISTA, TRILHA, dias_seguidos, erros_do_aluno,
     evolucao, ler_historico, resolucoes, resultado_da_lista, rotulos, superados, tendencias,
 )
+from app.services.novidades_service import marcar_resposta_vista
 from app.services.ritmo_da_tentativa import JANELA_DO_RITMO, EnvioDoRitmo, ritmo
 
 logger = logging.getLogger(__name__)
@@ -217,7 +218,7 @@ def submeter(student: Student, exam_id: int, question_number: str, code: str,
     _agrupar_em_silencio(question.id, db)
 
     usadas = len(anteriores) + 1
-    return {
+    entrega = {
         "tentativa": tentativa_to_dict(submissao, db, com_resposta=True),
         "tentativas": usadas,
         "tentativas_restantes": _restantes(exam, usadas),
@@ -226,6 +227,8 @@ def submeter(student: Student, exam_id: int, question_number: str, code: str,
         "function_check": result.get("function_check"),
         **ritmo([_envio_do_ritmo(s) for s in (anteriores + [submissao])[-JANELA_DO_RITMO:]]),
     }
+    _marcar_resposta_vista(student, submissao, db)
+    return entrega
 
 
 def _envio_do_ritmo(sub: Submission) -> EnvioDoRitmo:
@@ -252,30 +255,41 @@ def _agrupar_em_silencio(question_id: int, db: Session) -> None:
         db.rollback()
 
 
-def resposta_do_grupo(sub: Submission, db: Session) -> tuple[str | None, str | None]:
-    """O retorno que o professor escreveu para o grupo desta tentativa.
+def resposta_do_grupo(sub: Submission, db: Session) -> tuple[str | None, str | None, str | None]:
+    """O retorno que o professor escreveu para o grupo desta tentativa: o texto,
+    quando foi escrito e a `chave` do grupo, que marca a novidade como vista.
 
     O aluno nunca vê que está em um grupo, nem quem mais está nele. Ele vê um
     retorno do professor dele, porque é o que é: dizer ao aluno que a resposta
-    foi escrita para um grupo seria dizer que ela não é dele."""
+    foi escrita para um grupo seria dizer que ela não é dele. A chave fica no
+    servidor e não vai para a resposta da API."""
     from app.models.orm import QuestionCluster
 
     if sub.cluster_id is None:
-        return None, None
+        return None, None, None
     grupo = db.query(QuestionCluster).filter(
         QuestionCluster.question_id == sub.question_id,
         QuestionCluster.cluster_label == sub.cluster_id,
     ).first()
     if not grupo or not grupo.resposta_professor:
-        return None, None
-    return grupo.resposta_professor, _iso(grupo.resposta_em)
+        return None, None, None
+    return grupo.resposta_professor, _iso(grupo.resposta_em), grupo.chave
+
+
+def _marcar_resposta_vista(student: Student, sub: Submission, db: Session) -> None:
+    """A tela da questão acabou de entregar a resposta do professor nesta
+    tentativa: a novidade dela conta como vista. Só a do grupo desta tentativa."""
+    _, _, chave = resposta_do_grupo(sub, db)
+    if chave:
+        marcar_resposta_vista(student.id, sub.question_id, chave, db)
 
 
 def tentativa_to_dict(sub: Submission, db: Session | None = None,
                       com_resposta: bool = False) -> dict:
     passados, total = _testes(sub)
-    resposta, resposta_em = (
-        resposta_do_grupo(sub, db) if (com_resposta and db is not None) else (None, None))
+    resposta, resposta_em, _ = (
+        resposta_do_grupo(sub, db) if (com_resposta and db is not None)
+        else (None, None, None))
     return {
         "submission_id": sub.id,
         "attempt_number": sub.attempt_number or 1,
@@ -314,7 +328,8 @@ def historico_questao(student: Student, exam_id: int, question_number: str,
         raise ValueError(f"Questão {question_number} não encontrada nesta atividade.")
 
     tentativas = _tentativas_por_questao(student, db, [question.id]).get(question.id, [])
-    return {
+    recentes = list(reversed(tentativas))
+    entrega = {
         "question_number": question.number,
         "statement": question.statement or "",
         "resolvida": _resolvida(tentativas),
@@ -323,9 +338,12 @@ def historico_questao(student: Student, exam_id: int, question_number: str,
         # em toda tentativa antiga que caiu no mesmo grupo.
         "tentativas": [
             tentativa_to_dict(s, db, com_resposta=(i == 0))
-            for i, s in enumerate(reversed(tentativas))
+            for i, s in enumerate(recentes)
         ],
     }
+    if recentes:
+        _marcar_resposta_vista(student, recentes[0], db)
+    return entrega
 
 
 # ── explicação individual ────────────────────────────────────────────────────
