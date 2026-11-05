@@ -24,6 +24,7 @@ from app.engine.evaluators.code_evaluator import evaluate_code
 from app.llm.exercise_generator import GERACOES_POR_DIA, ExercicioInvalido, gerar_exercicio
 from app.models.orm import ExercicioGerado, Student, TentativaDeTreino
 from app.services.historico_do_aluno import Erro, erros_do_aluno, ler_historico, superados
+from app.services.novidades_service import marcar_exercicio_visto, registrar_exercicio
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,9 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
         .first()
     )
     if pendente:
-        return _exercicio_detalhe(pendente, db, reaproveitado=True)
+        entrega = _exercicio_detalhe(pendente, db, reaproveitado=True)
+        marcar_exercicio_visto(student.id, pendente.id, db)
+        return entrega
 
     if _restantes_hoje(student, db) <= 0:
         raise TreinoIndisponivel(
@@ -287,7 +290,8 @@ def preparar_proximo(student_id: int, categoria: str) -> None:
                 return
             diagnostico = next(
                 (e.o_que_fazer for e in _erros(student, db) if e.categoria == categoria), "")
-            _gerar_e_salvar(student, categoria, diagnostico, db)
+            exercicio = _gerar_e_salvar(student, categoria, diagnostico, db)
+            registrar_exercicio(exercicio, db)
         finally:
             with _trava:
                 _em_voo.discard(chave)
@@ -305,7 +309,10 @@ def _meu_exercicio(student: Student, exercicio_id: int, db: Session) -> Exercici
 
 
 def detalhe(student: Student, exercicio_id: int, db: Session) -> dict:
-    return _exercicio_detalhe(_meu_exercicio(student, exercicio_id, db), db)
+    exercicio = _meu_exercicio(student, exercicio_id, db)
+    entrega = _exercicio_detalhe(exercicio, db)
+    marcar_exercicio_visto(student.id, exercicio.id, db)
+    return entrega
 
 
 def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict:
@@ -357,12 +364,14 @@ def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict
         if proximo:
             preparar_proximo(student.id, proximo)
 
-    return {
+    entrega = {
         "tentativa": _tentativa_dict(tentativa),
         "tentativas": len(anteriores) + 1,
         "resolvido": bool(exercicio.resolvido),
         "structure_check": resultado.get("structure_check"),
     }
+    marcar_exercicio_visto(student.id, exercicio.id, db)
+    return entrega
 
 
 def reportar(student: Student, exercicio_id: int, motivo: str, db: Session) -> dict:
