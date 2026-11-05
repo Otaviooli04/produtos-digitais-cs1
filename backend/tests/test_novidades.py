@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from app.auth.student_service import create_student_token
 from app.models.orm import (
     Enrollment, ExercicioGerado, Novidade, QuestionCluster, Student, Submission,
 )
@@ -331,3 +332,108 @@ class TestLeitura:
         self._retorno_valido(db, aluno, prova)
         assert novidades_do_aluno(colega, db) == []
         assert contar(colega, db) == 0
+
+
+class TestGanchoDoProfessor:
+    def test_resposta_pela_rota_cria_a_novidade(self, client, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q, resposta=None, em=None)
+        resp = client.put(f"/exam/{prova.id}/questions/1/grupos/0/resposta",
+                          json={"texto": "Revejam a condição de parada."})
+        assert resp.status_code == 200
+        (novidade,) = db.query(Novidade).all()
+        assert novidade.student_id == aluno.id
+        assert novidade.grupo_chave == CHAVE
+        assert novidade.vista_em is None
+
+    def test_falha_ao_gravar_nao_desfaz_a_resposta(self, client, db, aluno, prova, monkeypatch):
+        from app.services import novidades_service
+
+        def explode(*a, **k):
+            raise RuntimeError("banco caiu")
+
+        monkeypatch.setattr(novidades_service, "_alcancados", explode)
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        grupo = _grupo(db, q, resposta=None, em=None)
+        resp = client.put(f"/exam/{prova.id}/questions/1/grupos/0/resposta",
+                          json={"texto": "Revejam a condição de parada."})
+        assert resp.status_code == 200
+        db.expire_all()
+        assert db.get(QuestionCluster, grupo.id).resposta_professor == (
+            "Revejam a condição de parada.")
+        assert db.query(Novidade).count() == 0
+
+    def _respondida_e_vista(self, client, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        grupo = _grupo(db, q, resposta=None, em=None)
+        url = f"/exam/{prova.id}/questions/1/grupos/0/resposta"
+        client.put(url, json={"texto": "Revejam a condição de parada."})
+        marcar_resposta_vista(aluno.id, q.id, CHAVE, db)
+        db.expire_all()
+        return grupo, url
+
+    def test_salvar_o_mesmo_texto_de_novo_nao_cria_nem_muda_o_momento(
+        self, client, db, aluno, prova
+    ):
+        grupo, url = self._respondida_e_vista(client, db, aluno, prova)
+        antes = db.get(QuestionCluster, grupo.id).resposta_em
+        resp = client.put(url, json={"texto": "Revejam a condição de parada."})
+        assert resp.status_code == 200
+        db.expire_all()
+        assert db.query(Novidade).count() == 1
+        assert db.get(QuestionCluster, grupo.id).resposta_em == antes
+
+    def test_texto_diferente_depois_de_vista_cria_nova_e_atualiza_o_momento(
+        self, client, db, aluno, prova
+    ):
+        grupo, url = self._respondida_e_vista(client, db, aluno, prova)
+        antes = db.get(QuestionCluster, grupo.id).resposta_em
+        resp = client.put(url, json={"texto": "Outro texto, agora mais claro."})
+        assert resp.status_code == 200
+        db.expire_all()
+        assert db.query(Novidade).count() == 2
+        assert db.query(Novidade).filter(Novidade.vista_em.is_(None)).count() == 1
+        assert db.get(QuestionCluster, grupo.id).resposta_em > antes
+
+    def test_apagar_a_resposta_pela_rota_remove_a_novidade_nao_vista(
+        self, client, db, aluno, prova
+    ):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q, resposta=None, em=None)
+        url = f"/exam/{prova.id}/questions/1/grupos/0/resposta"
+        client.put(url, json={"texto": "Revejam a condição de parada."})
+        assert db.query(Novidade).count() == 1
+        resp = client.put(url, json={"texto": ""})
+        assert resp.status_code == 200
+        db.expire_all()
+        assert db.query(Novidade).count() == 0
+
+
+class TestExclusao:
+    def _com_novidade(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q)
+        _novidade(db, aluno.id, q)
+
+    def test_apagar_a_atividade_remove_as_novidades(self, client, db, aluno, prova):
+        self._com_novidade(db, aluno, prova)
+        assert client.delete(f"/exam/{prova.id}").status_code == 204
+        assert db.query(Novidade).count() == 0
+
+    def test_apagar_a_questao_remove_so_as_novidades_dela(self, client, db, aluno, prova):
+        self._com_novidade(db, aluno, prova)
+        segunda = _questao(prova, "2")
+        _novidade(db, aluno.id, segunda)
+        assert client.delete(f"/exam/{prova.id}/questions/1").status_code == 204
+        (ficou,) = db.query(Novidade).all()
+        assert ficou.question_id == segunda.id
+
+    def test_apagar_a_turma_remove_as_novidades(self, client, db, aluno, prova):
+        self._com_novidade(db, aluno, prova)
+        assert client.delete(f"/turmas/{prova.turma_id}").status_code == 204
+        assert db.query(Novidade).count() == 0

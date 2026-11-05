@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.engine.document_parser import parse_document
 from app.engine.semantic_extractor import extract_exam_structure
 from app.models.orm import (
-    Exam, Question, TestCase, ProcessingJob,
+    Exam, Novidade, Question, TestCase, ProcessingJob,
     Submission, SubmissionTestResult, QuestionCluster,
 )
 from app.services.job_service import create_job, run_in_background, update_job
@@ -86,6 +86,8 @@ def _delete_questions(question_ids: list[int], db: Session) -> None:
     if sub_ids:
         db.query(SubmissionTestResult).filter(
             SubmissionTestResult.submission_id.in_(sub_ids)).delete(synchronize_session=False)
+    db.query(Novidade).filter(
+        Novidade.question_id.in_(question_ids)).delete(synchronize_session=False)
     db.query(QuestionCluster).filter(
         QuestionCluster.question_id.in_(question_ids)).delete(synchronize_session=False)
     db.query(Submission).filter(
