@@ -136,14 +136,16 @@ class TestColunas:
         sub = _tentativa(db, exam_factory)
         sub.llm_pistas = ["Olhe a média.", "O cálculo na linha 3."]
         db.commit()
-        db.refresh(sub)
+        sub_id = sub.id
+        db.expunge(sub)  # força a leitura do banco, senão o atributo vive só no objeto
+        sub = db.get(Submission, sub_id)
         assert sub.llm_pistas == ["Olhe a média.", "O cálculo na linha 3."]
 ```
 
 - [ ] **Passo 3: rodar e ver falhar**
 
 Rodar: `cd backend && /home/otavio/produtos-digitais-cs1/backend/venv/bin/python -m pytest tests/test_ajuda_em_etapas.py -q`
-Esperado: FALHA com `AttributeError: 'Submission' object has no attribute 'nivel_de_ajuda'` (e `TypeError` ou `AttributeError` no segundo).
+Esperado: FALHA com `AttributeError: 'Submission' object has no attribute 'nivel_de_ajuda'` no primeiro e `AttributeError` em `llm_pistas` no segundo, lido de novo do banco.
 
 - [ ] **Passo 4: escrever o mínimo para passar**
 
@@ -621,6 +623,12 @@ def _ajuda(client, token, sub_id, nivel):
                        headers=_auth(token))
 
 
+@pytest.fixture(autouse=True)
+def _chave_do_gemini(monkeypatch):
+    """Os testes simulam o cliente do Gemini. A chave falsa evita depender do .env."""
+    monkeypatch.setattr(student_explainer, "GEMINI_API_KEY", "chave-de-teste")
+
+
 def _errada(client, token, prova):
     return _submeter(client, token, prova.id, saida="errado").json()["tentativa"]["submission_id"]
 
@@ -645,9 +653,11 @@ class TestRotaDaAjuda:
         mock = _mock_gemini()
         with patch("app.llm.student_explainer.genai.Client", return_value=mock):
             _ajuda(client, token, sub_id, 1)
-            _ajuda(client, token, sub_id, 2)
+            segunda = _ajuda(client, token, sub_id, 2).json()
             terceira = _ajuda(client, token, sub_id, 3).json()
         assert mock.models.generate_content.call_count == 1
+        assert segunda == {"nivel": 2, "pistas": ETAPAS_OK["pistas"],
+                           "explicacao": None, "nivel_maximo": 2}
         assert terceira["pistas"] == ETAPAS_OK["pistas"]
         assert terceira["explicacao"] == ETAPAS_OK["explicacao"]
 
@@ -1153,10 +1163,14 @@ Em `frontend/src/components/TentativaDetalhe.jsx`:
 3. Trocar o bloco inteiro que começa em `{temErro && podeExplicar && (explicacao ? (` e termina no `))}` correspondente (o cartão "Explicando o seu código" e o botão "Explicar meu erro") por:
 
 ```jsx
-        {temErro && podeExplicar && <AjudaEmEtapas tentativa={tentativa} />}
+        {temErro && podeExplicar && (
+          <AjudaEmEtapas key={tentativa.submission_id} tentativa={tentativa} />
+        )}
 ```
 
-4. Se `useState` deixar de ser usado no arquivo, tirar do import de `react` (o ESLint acusa).
+4. Tirar `import { useState } from 'react'` e `import Spinner from './Spinner'`, que ficam sem uso (o `Spinner` só servia ao botão "Explicar meu erro"). O ESLint acusa os dois se ficarem.
+
+A `key` com o `submission_id` remonta o componente quando a `QuestaoPage` troca a tentativa do resultado por uma nova, senão a nova herdaria as pistas e o nível da anterior.
 
 O comentário que explica `podeExplicar` (tentativa de treino não tem `submission_id` e não pede explicação) continua valendo e fica.
 
