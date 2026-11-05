@@ -75,7 +75,7 @@ Migração **0021** (`down_revision = '0020'`), três colunas novas em `submissi
 ## Testes
 
 - Função pura do bloqueio: prova aberta com tentativa restante bloqueia, prova encerrada libera, prova sem janela com teto gasto libera, questão resolvida libera, lista nunca bloqueia, prova sem teto e sem data fica bloqueada até resolver.
-- Rota: nível 1 devolve uma pista e grava `nivel_de_ajuda` 1 e `ajuda_pedida_em`. Nível 2 devolve duas. Nível 3 devolve as duas e a explicação. Pedir nível menor depois de maior não baixa `nivel_de_ajuda`. Só uma chamada ao Gemini para os três níveis. Tentativa de outro aluno dá 404. Tentativa correta dá 409. Prova aberta dá 409 sem chamar o Gemini. Falha do Gemini não grava nada.
+- Rota: nível 1 devolve uma pista e grava `nivel_de_ajuda` 1 e `ajuda_pedida_em`. Nível 2 devolve duas. Nível 3 devolve as duas e a explicação. Pedir nível menor depois de maior não baixa `nivel_de_ajuda`. Só uma chamada ao Gemini para os três níveis. Tentativa de outro aluno dá 404. Tentativa correta dá 400. Prova aberta dá 400 sem chamar o Gemini. Falha do Gemini dá 503 e não grava nada.
 - Tentativa antiga com `llm_explanation` e sem pistas gera numa chamada e grava as três etapas.
 - `TentativaResponse` traz só as pistas até o nível aberto e `explicacao` só no nível 3.
 - Gemini (com o cliente simulado): o prompt contém os marcadores e a instrução, a resposta JSON válida vira as três etapas, a resposta fora do formato ou longa demais é falha, o filtro tira bloco de código, e etapa com linha de código vira o texto padrão do diagnóstico.
