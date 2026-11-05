@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_professor
 from app.auth.service import (
     authenticate_professor, create_access_token, hash_password, register_professor, verify_password,
 )
+from app.core.limite import CADASTRO, conferir_login, por_ip
 from app.models.database import get_db
 from app.models.orm import Professor
 from app.models.schemas import (
@@ -14,7 +15,8 @@ from app.models.schemas import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(por_ip(CADASTRO))])
 def register(body: ProfessorCreate, db: Session = Depends(get_db)):
     try:
         professor = register_professor(body.email, body.nome, body.senha, db)
@@ -27,7 +29,8 @@ def register(body: ProfessorCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: ProfessorCreate, db: Session = Depends(get_db)):
+def login(body: ProfessorCreate, request: Request, db: Session = Depends(get_db)):
+    conferir_login(request, body.email)
     professor = authenticate_professor(body.email, body.senha, db)
     if not professor:
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos.")

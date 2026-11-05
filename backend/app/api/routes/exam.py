@@ -8,6 +8,7 @@ from app.auth.ownership import get_exam_or_404, get_question_or_404
 from app.engine.error_locator import parse_compile_error_lines
 from app.llm.feedback_generator import generate_cluster_insights
 from app.ml.cluster import cluster_question
+from app.core.limite import ENVIO_EM_LOTE, INSIGHTS, UPLOAD_DE_PROVA, por_professor
 from app.models.database import get_db
 from app.models.orm import Exam, Professor, Question, QuestionCluster, TestCase as TestCaseORM
 from app.models.schemas import (
@@ -121,7 +122,8 @@ async def _ler_com_limite(file: UploadFile, limite: int) -> bytes:
                             detail=f"Arquivo maior que {limite // (1024 * 1024)} MB.")
     return conteudo
 
-@router.post("/upload", response_model=ExamUploadStartResponse)
+@router.post("/upload", response_model=ExamUploadStartResponse,
+             dependencies=[Depends(por_professor(UPLOAD_DE_PROVA))])
 async def upload_exam(
     file: UploadFile = File(...),
     turma_id: Optional[int] = Form(None),
@@ -296,7 +298,8 @@ def delete_question_testcase(
     db.commit()
 
 
-@router.post("/{exam_id}/submissions/bulk", response_model=JobStartResponse)
+@router.post("/{exam_id}/submissions/bulk", response_model=JobStartResponse,
+             dependencies=[Depends(por_professor(ENVIO_EM_LOTE))])
 async def bulk_submit(
     exam_id: int,
     file: UploadFile = File(...),
@@ -524,7 +527,8 @@ def put_resposta_do_grupo(
     )
 
 
-@router.post("/{exam_id}/questions/{question_number}/insights", response_model=InsightsResponse)
+@router.post("/{exam_id}/questions/{question_number}/insights", response_model=InsightsResponse,
+             dependencies=[Depends(por_professor(INSIGHTS))])
 def run_insights(
     exam_id: int,
     question_number: str,

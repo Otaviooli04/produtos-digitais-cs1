@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_professor
 from app.auth.ownership import get_exam_or_404
+from app.core.limite import CORRECAO_DO_PROFESSOR, por_professor
 from app.models.database import get_db
 from app.models.orm import Professor, Submission
 from app.models.schemas import CodeSubmissionRequest, CodeSubmissionResponse
@@ -22,7 +23,8 @@ def _get_submission_or_404(submission_id: int, db: Session, professor_id: int) -
     return sub
 
 
-@router.post("/evaluate", response_model=CodeSubmissionResponse)
+@router.post("/evaluate", response_model=CodeSubmissionResponse,
+             dependencies=[Depends(por_professor(CORRECAO_DO_PROFESSOR))])
 async def submit_answer(
     body: CodeSubmissionRequest,
     db: Session = Depends(get_db),
@@ -37,7 +39,8 @@ async def submit_answer(
         raise HTTPException(status_code=503, detail=str(e))
 
 
-@router.post("/{submission_id}/reevaluate", response_model=CodeSubmissionResponse)
+@router.post("/{submission_id}/reevaluate", response_model=CodeSubmissionResponse,
+             dependencies=[Depends(por_professor(CORRECAO_DO_PROFESSOR))])
 def reevaluate(
     submission_id: int,
     db: Session = Depends(get_db),
