@@ -12,6 +12,7 @@ import QuestionForm from '../components/QuestionForm'
 import DisponibilidadeCard from '../components/DisponibilidadeCard'
 import PublicacaoCard from '../components/PublicacaoCard'
 import Logo from '../components/Logo'
+import { modoLabel } from '../utils/atividade'
 
 export default function ExamDashboard() {
   const { id } = useParams()
@@ -69,7 +70,7 @@ export default function ExamDashboard() {
       await deleteExam(id)
       navigate(exam?.turma_id ? `/turma/${exam.turma_id}` : '/')
     } catch {
-      setError('Erro ao excluir a prova.')
+      setError('Erro ao excluir a atividade.')
       setBusy(false)
     }
   }
@@ -83,7 +84,7 @@ export default function ExamDashboard() {
       setRenameOpen(false)
       await loadExam()
     } catch {
-      setError('Erro ao renomear a prova.')
+      setError('Erro ao renomear a atividade.')
     } finally {
       setBusy(false)
     }
@@ -95,7 +96,7 @@ export default function ExamDashboard() {
         setExam(examRes.data)
         if (resultsRes) setResults(resultsRes.data)
       })
-      .catch(() => setError('Erro ao carregar a prova.'))
+      .catch(() => setError('Erro ao carregar a atividade.'))
 
   useEffect(() => {
     loadExam().finally(() => setLoading(false))
@@ -133,6 +134,7 @@ export default function ExamDashboard() {
   // O que o aluno lê. Sem título definido, o nome do arquivo sem a extensão é um
   // ponto de partida melhor do que "prova1_2026.pdf".
   const nomeDaAtividade = exam.titulo || (exam.filename || '').replace(/\.[^.]+$/, '') || `Atividade ${id}`
+  const tipo = modoLabel(exam.modo).toLowerCase()
 
   return (
     <div>
@@ -148,9 +150,10 @@ export default function ExamDashboard() {
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-6">
         <div className="min-w-0">
-          <p className="text-xs text-gray-400 mb-0.5">Prova #{id} · {exam.filename}</p>
+          <p className="text-xs text-gray-400 mb-0.5">{modoLabel(exam.modo)} #{id} · {exam.filename}</p>
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="text-xl font-semibold text-gray-900 truncate">{nomeDaAtividade}</h1>
+            <Badge color={exam.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(exam.modo)}</Badge>
             {!exam.publicada && <Badge color="yellow">rascunho</Badge>}
           </div>
         </div>
@@ -203,8 +206,8 @@ export default function ExamDashboard() {
           </button>
           <button
             onClick={() => setExamDeleteOpen(true)}
-            title="Excluir prova"
-            aria-label="Excluir prova"
+            title={`Excluir ${tipo}`}
+            aria-label={`Excluir ${tipo}`}
             className="inline-flex items-center justify-center p-2 rounded-lg border border-red-200 text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -254,7 +257,7 @@ export default function ExamDashboard() {
           <Logo className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm text-gray-500">Nenhuma questão extraída.</p>
           <p className="text-xs text-gray-400 mt-1">
-            A extração pode ter falhado. Verifique a chave do Gemini e tente reenviar a prova.
+            A extração pode ter falhado. Verifique a chave do Gemini e tente reenviar o arquivo.
           </p>
         </div>
       )}
@@ -262,7 +265,7 @@ export default function ExamDashboard() {
       <div className="flex items-center justify-between mb-3">
         {exam.questions.length > 0 && (
           <p className="text-sm text-gray-500">
-            Valor total da prova: <span className="font-medium text-gray-700">{exam.total_points ?? 0}</span>
+            Valor total da {tipo}: <span className="font-medium text-gray-700">{exam.total_points ?? 0}</span>
           </p>
         )}
         <button
@@ -432,12 +435,12 @@ export default function ExamDashboard() {
         onClose={() => setExamDeleteOpen(false)}
         onConfirm={confirmDeleteExam}
         loading={busy}
-        title="Excluir prova"
-        confirmLabel="Excluir prova"
-        message={`Excluir a prova "${exam.filename}"? Todas as questões, test cases e submissões serão removidos permanentemente.`}
+        title={`Excluir ${tipo}`}
+        confirmLabel={`Excluir ${tipo}`}
+        message={`Excluir a ${tipo} "${nomeDaAtividade}"? Todas as questões, test cases e submissões serão removidos permanentemente.`}
       />
 
-      <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Renomear prova">
+      <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title={`Renomear ${tipo}`}>
         <form onSubmit={submitRename} className="space-y-3">
           <input
             type="text" value={renameValue} onChange={e => setRenameValue(e.target.value)}

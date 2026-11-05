@@ -25,7 +25,7 @@ backend/app/
   ml/cluster.py          — agrupamento (determinístico por assinatura de falha; UMAP/HDBSCAN = baseline/visualização)
   llm/feedback_generator.py — insights por grupo p/ o professor (Gemini, 1 chamada/questão, cacheada)
   llm/student_explainer.py  — explicação individual da tentativa p/ o aluno (sob demanda, cacheada)
-  services/              — orquestração (exam, submission, bulk, turma, jobs, student_activity, effort_report, funil_service e funil_regras, acesso, calendario, treino, historico_do_aluno)
+  services/              — orquestração (exam, submission, bulk, turma, jobs, student_activity, effort_report, funil_service e funil_regras, acesso, calendario, treino, historico_do_aluno, ritmo_da_tentativa)
   models/                — orm.py (14 entidades) + schemas.py (Pydantic)
   migrations/            — Alembic (revisões 0001..0018)
 frontend/                — painel do professor (`/`) + app do aluno (`/aluno`) (React 19 + Vite + Tailwind v4)
@@ -33,7 +33,7 @@ frontend/                — painel do professor (`/`) + app do aluno (`/aluno`)
 
 **Fluxo:** `CodeRequest` → `dynamic_analyzer` + `static_analyzer` → `heuristics.classify_error` → agrupamento por assinatura de falha → insights (Gemini).
 
-**Princípio central:** sem "modos de correção". Cada questão declara o que exige (`required_structures`, `forbidden_structures`, `required_functions`) e os verificadores só disparam o relevante (sistema adaptativo). O `Exam.modo` (treino/prova) é outra coisa: diz ao aluno o que a atividade é e governa janela e teto de tentativas, nunca como o código é avaliado.
+**Princípio central:** sem "modos de correção". Cada questão declara o que exige (`required_structures`, `forbidden_structures`, `required_functions`) e os verificadores só disparam o relevante (sistema adaptativo). O `Exam.modo` (treino/prova) é outra coisa: diz ao aluno o que a atividade é e governa janela e teto de tentativas, nunca como o código é avaliado. Nas telas, o modo `treino` se chama **Lista**, e "Treino" é só a trilha de exercícios gerados dos erros do aluno.
 
 ## Comandos
 

@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getExercicio, reportarExercicio, treinar } from '../../api/aluno'
 import Badge from '../../components/Badge'
+import RitmoDaTentativa from '../../components/RitmoDaTentativa'
 import Spinner from '../../components/Spinner'
 import TentativaDetalhe from '../../components/TentativaDetalhe'
 import { categoriaColor, formatarData } from '../../utils/atividade'
 import { shortError } from '../../utils/errorLabels'
+import CodeTextarea from '../../components/CodeTextarea'
 
 const MODELO = '#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}'
 
@@ -103,7 +105,7 @@ function Conteudo({ exercicioId }) {
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Seu código em C</h2>
-        <textarea
+        <CodeTextarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
           spellCheck={false}
@@ -153,7 +155,14 @@ function Conteudo({ exercicioId }) {
       {resultado && (
         <div>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Resultado</h2>
-          <TentativaDetalhe tentativa={resultado.tentativa} structureCheck={resultado.structure_check} />
+          <div className="space-y-3">
+            <RitmoDaTentativa
+              avanco={resultado.avanco}
+              sugerirPausa={resultado.sugerir_pausa}
+              semCasos={resultado.tentativa.tests_total === 0}
+            />
+            <TentativaDetalhe tentativa={resultado.tentativa} structureCheck={resultado.structure_check} />
+          </div>
         </div>
       )}
 

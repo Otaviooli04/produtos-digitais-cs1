@@ -102,6 +102,12 @@ function Painel({ funil }) {
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Erros corrigidos</p>
           <p className="text-2xl font-bold text-gray-900">{ns.semana_atual}</p>
           <p className="text-xs text-gray-500">nesta semana · {ns.total} desde o início</p>
+          {ns.por_tipo && (
+            <p className="text-xs text-gray-400 mt-2">
+              Onde foram corrigidos: {ns.por_tipo.provas} nas provas, {ns.por_tipo.listas} nas listas
+              e {ns.por_tipo.trilha} na trilha de treino.
+            </p>
+          )}
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5 lg:col-span-2">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Erros corrigidos por semana</h3>
@@ -146,7 +152,7 @@ function Painel({ funil }) {
       </div>
 
       <p className="text-xs text-gray-500">
-        Hábito na semana de {rotuloSemana(semana.semana)}: {pct(semana.taxa_sem_prova_marcada)} voltaram sem prova marcada, {pct(semana.taxa_sem_aviso)} abriram sem aviso e {pct(semana.taxa_por_conta_propria)} enviaram no treino.
+        Hábito na semana de {rotuloSemana(semana.semana)}: {pct(semana.taxa_sem_prova_marcada)} voltaram sem prova marcada, {pct(semana.taxa_sem_aviso)} abriram sem aviso e {pct(semana.taxa_por_conta_propria)} enviaram em listas ou na trilha.
       </p>
 
       <AlunosEmRisco saude={saude} />

@@ -180,6 +180,7 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
             "id": exam.id,
             "filename": exam.filename,
             "titulo": exam.titulo,
+            "modo": exam.modo or Exam.MODO_PROVA,
             "created_at": exam.created_at.isoformat(),
             "pass_rate": round(pass_rate, 1) if pass_rate is not None else None,
             "total_submissoes": len(exam_subs),
@@ -239,6 +240,7 @@ def _trajetoria_de_erros(erros_por_prova: list[tuple]) -> list[dict]:
             series[categoria].append({
                 "exam_id": exam.id,
                 "titulo": exam.titulo or exam.filename or f"Atividade {exam.id}",
+                "modo": exam.modo or Exam.MODO_PROVA,
                 "ocorrencias": ocorrencias,
                 "alunos": alunos,
                 "proporcao": round(ocorrencias / com_erro * 100, 1),

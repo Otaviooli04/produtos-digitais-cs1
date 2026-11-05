@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getAtividade, getTentativas, submeterResposta } from '../../api/aluno'
 import Badge from '../../components/Badge'
+import RitmoDaTentativa from '../../components/RitmoDaTentativa'
 import Spinner from '../../components/Spinner'
 import TentativaDetalhe from '../../components/TentativaDetalhe'
 import { categoriaColor, formatarData } from '../../utils/atividade'
+import CodeTextarea from '../../components/CodeTextarea'
 
 const MODELO = '#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}'
 
@@ -163,7 +165,7 @@ function QuestaoConteudo({ examId, numero }) {
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <label className="block text-xs font-medium text-gray-500 mb-1.5">Seu código em C</label>
-        <textarea
+        <CodeTextarea
           rows={18}
           value={code}
           onChange={e => setCode(e.target.value)}
@@ -201,6 +203,11 @@ function QuestaoConteudo({ examId, numero }) {
       {resultado && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-gray-900">Resultado</h2>
+          <RitmoDaTentativa
+            avanco={resultado.avanco}
+            sugerirPausa={resultado.sugerir_pausa}
+            semCasos={resultado.tentativa.tests_total === 0}
+          />
           <TentativaDetalhe
             tentativa={resultado.tentativa}
             functionCheck={resultado.function_check}

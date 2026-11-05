@@ -43,7 +43,7 @@ export default function DisponibilidadeCard({ exam, onSave }) {
   const campo = 'w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent'
 
   const resumo = [
-    exam.modo === 'treino' ? 'Treino' : 'Prova',
+    exam.modo === 'treino' ? 'Lista' : 'Prova',
     exam.abre_em || exam.fecha_em ? 'com janela' : 'sem janela',
     exam.max_tentativas != null ? `até ${exam.max_tentativas} tentativas` : 'tentativas ilimitadas',
   ].join(' · ')
@@ -68,7 +68,7 @@ export default function DisponibilidadeCard({ exam, onSave }) {
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Modo</label>
             <div className="flex gap-2">
-              {[['treino', 'Treino'], ['prova', 'Prova']].map(([valor, rotulo]) => (
+              {[['treino', 'Lista'], ['prova', 'Prova']].map(([valor, rotulo]) => (
                 <button
                   key={valor}
                   onClick={() => setModo(valor)}

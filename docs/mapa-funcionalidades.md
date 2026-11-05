@@ -15,8 +15,8 @@ Numeração igual à do documento "Produto, Personas, Mercado e Roadmap", seçã
 | 1 | Turma virtual e conta do aluno | MVP | Pronta | `models/orm.py` (Student, Enrollment, `Turma.codigo_acesso`), `auth/student_service.py`, `api/routes/student.py`, `frontend/src/pages/aluno/`, migração 0010 |
 | 2 | Correção automática do código | MVP | Pronta | `engine/dynamic_analyzer.py` (Docker isolado), `engine/evaluators/code_evaluator.py` |
 | 3 | Diagnóstico pedagógico do erro | MVP | Pronta | `engine/heuristics.py`, 27 categorias. Chega ao aluno em toda tentativa |
-| 4 | Modo treino com tentativas ilimitadas | MVP | Pronta | `Exam.modo`, migração 0011, `services/student_activity_service.py`, `components/DisponibilidadeCard.jsx` |
-| 5 | Histórico de tentativas | MVP | Pronta | `Submission.attempt_number`, `historico_questao`, `pages/aluno/QuestaoPage.jsx` |
+| 4 | Modo treino com tentativas ilimitadas | MVP | Pronta | `Exam.modo`, migração 0011, `services/student_activity_service.py`, `components/DisponibilidadeCard.jsx`. Nas telas o modo `treino` se chama **Lista** (o nome Treino fica para a trilha), e a turma do professor e a do aluno separam Provas e Listas |
+| 5 | Histórico de tentativas | MVP | Pronta | `Submission.attempt_number`, `historico_questao`, `pages/aluno/QuestaoPage.jsx`. Cada envio diz quantos casos passaram a mais que a tentativa anterior e sugere uma pausa depois de três envios errados e quase iguais em até cinco minutos (`services/ritmo_da_tentativa.py`, `components/RitmoDaTentativa.jsx`). O campo de código aceita Tab, mantém o recuo no Enter e numera as linhas (`components/CodeTextarea.jsx`) |
 | 6 | Painel de erros recorrentes do aluno | MVP | Pronta | `erros_recorrentes` em `student_activity_service.py`, sobre o histórico de `services/historico_do_aluno.py` (listas e trilha juntas, falha técnica fora, erros superados à parte), `pages/aluno/ProgressoPage.jsx` |
 | 7 | Agrupamento por assinatura de falha | MVP | Pronta | `ml/cluster.py`, aba de grupos no painel do professor |
 | 8 | Montagem da prova a partir do enunciado | MVP | Pronta | `engine/semantic_extractor.py` (Gemini), job em segundo plano |
@@ -45,10 +45,10 @@ O que o sistema já consegue calcular hoje, sem trabalho novo:
 
 | Métrica | Situação |
 |---|---|
-| Nº de tentativas por aluno | Pronta, em `/aluno/progresso`, somando listas e trilha, com `tentativas_no_treino` à parte |
+| Nº de tentativas por aluno | Pronta, em `/aluno/progresso`, somando provas, listas e trilha, com `tentativas_no_treino` à parte e as questões resolvidas separadas por provas e listas (`por_modo`). O cartão de dias seguidos deu lugar aos erros superados |
 | Queda nas tentativas até acertar | Pronta, `tentativas_por_questao_resolvida` |
 | Erros recorrentes eliminados | Pronta para o aluno: os erros superados em `/aluno/erros-recorrentes` e `/aluno/treino` (acertou um treino feito para o erro, sem repeti-lo, depois da última vez que ele apareceu). Para a turma, segue a North Star |
-| North Star, erros corrigidos por semana | Pronta, no bloco "Funil da turma" (`GET /turmas/{id}/funil`) e no total de todas as turmas pelo `backend/scripts/funil.py`. Junto, a proteção (tentativas até acertar e acerto de primeira). A trilha conta numa turma só a partir da matrícula do aluno nela |
+| North Star, erros corrigidos por semana | Pronta, no bloco "Funil da turma" (`GET /turmas/{id}/funil`) e no total de todas as turmas pelo `backend/scripts/funil.py`. Junto, a proteção (tentativas até acertar e acerto de primeira). A trilha conta numa turma só a partir da matrícula do aluno nela. A North Star também sai repartida por onde o erro foi corrigido, em provas, listas ou na trilha (`por_tipo`), e o aproveitamento da turma aparece separado por provas e listas |
 | Taxa de ativação | Pronta, no bloco "Funil da turma": quem corrigiu o primeiro erro até 7 dias depois de entrar, com a meta de 60%. Ao lado, o momento de sucesso (RF16): a mediana do tempo da matrícula até o primeiro erro corrigido e quantos chegaram a ele na mesma sessão |
 | Aquisição | Pronta, no bloco "Funil da turma": matriculados contra o tamanho da turma (`turmas.alunos_previstos`, que o professor preenche) e a taxa da primeira semana, com a meta de 80%. Também a origem de cada matrícula, pelo convite com link ou pelo código digitado (`enrollments.origem`) |
 | Alunos em risco (vermelho e amarelo) | Pronta, no bloco "Funil da turma", só para quem tem questão em aberto (RN09) |

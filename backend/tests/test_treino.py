@@ -423,6 +423,23 @@ class TestTreino:
             assert r["tentativa"]["attempt_number"] == esperado
         assert db.query(TentativaDeTreino).count() == 5
 
+    def test_resposta_traz_avanco_e_pausa(self, db, aluno, monkeypatch):
+        from app.services import treino_service
+
+        exercicio = self._exercicio(db, aluno)
+        monkeypatch.setattr(treino_service, "evaluate_code",
+                            lambda *a, **k: self._resultado(False))
+        for _ in range(3):
+            r = treino_service.treinar(aluno, exercicio.id, "int main(){}", db)
+        assert r["avanco"]["casos_a_mais"] == 0
+        assert r["sugerir_pausa"] is True
+
+        monkeypatch.setattr(treino_service, "evaluate_code",
+                            lambda *a, **k: self._resultado(True))
+        r = treino_service.treinar(aluno, exercicio.id, "int main(){}", db)
+        assert r["avanco"]["casos_a_mais"] == 1
+        assert r["sugerir_pausa"] is False
+
     def test_acertar_marca_o_exercicio_como_resolvido(self, db, aluno, monkeypatch):
         from app.services import treino_service
 
