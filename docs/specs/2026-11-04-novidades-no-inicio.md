@@ -117,6 +117,8 @@ A linha que deixa de valer não é apagada nem alterada. Ela continua com `vista
   - `detalhe`, `treinar` e o ramo de `gerar_para_categoria` que devolve o pendente chamam `marcar_exercicio_visto`.
 - `exam_service._delete_questions`: apaga as novidades das questões antes de apagar as questões. A exclusão de atividade e a de turma passam por ela.
 
+A marcação de visto e a gravação da novidade são secundárias ao que a rota entrega. Nos ganchos do aluno (`historico_questao`, `submeter`, `detalhe`, `treinar` e `gerar_para_categoria`), a marcação vem depois da conferência de posse que a função já faz, e uma falha nela vai para o log com `rollback` e não derruba a resposta, como o `_agrupar_em_silencio` faz com o agrupamento. Na rota do professor, a falha ao gravar as novidades também vai para o log e não desfaz a resposta já salva. Na pré-geração, `registrar_exercicio` usa a sessão da própria tarefa em segundo plano.
+
 **Rotas novas** no router do aluno (`app/api/routes/student_activity.py`, prefixo `/aluno`), as duas com `get_current_student`:
 
 - `GET /aluno/inicio` devolve `InicioResponse`.
@@ -200,11 +202,12 @@ Os títulos seguem o que o aluno já vê: `titulo_da_atividade` para a atividade
 33. `GET /aluno/inicio` e `GET /aluno/novidades/contagem` dão 401 sem token e com token de professor.
 34. Dois alunos com dados diferentes recebem cada um só o seu.
 
-**Exclusão**
+**Exclusão e falhas**
 35. Apagar uma atividade, uma questão e uma turma com novidades não quebra e remove as novidades das questões apagadas.
+36. Uma falha simulada na marcação de visto não derruba o histórico da questão nem o envio, e uma falha ao gravar as novidades não desfaz a resposta do professor.
 
 **Fechamento**
-36. Smoke com o Docker de verdade: envio real que cai num grupo, resposta do professor pela rota, novidade no Início e na contagem, histórico da questão marcando como vista. Como o Gemini está sem crédito, o exercício "pré-gerado" é gravado por script no banco de desenvolvimento, junto com a novidade dele, e apagado no fim.
+37. Smoke com o Docker de verdade: envio real que cai num grupo, resposta do professor pela rota, novidade no Início e na contagem, histórico da questão marcando como vista. Como o Gemini está sem crédito, o exercício "pré-gerado" é gravado por script no banco de desenvolvimento, junto com a novidade dele, e apagado no fim.
 
 ## Fora do escopo
 
@@ -232,4 +235,5 @@ Os títulos seguem o que o aluno já vê: `titulo_da_atividade` para a atividade
 11. **Sem preenchimento do passado.** A tabela começa com a 0019. Antes de uma demonstração, o professor escreve uma resposta nova para a novidade aparecer.
 12. **O reagrupamento que muda o aluno de grupo sem envio novo não gera novidade.** É raro e resolver pediria mexer no agrupamento, que roda a cada envio.
 13. **"Prazos" vale para treino e prova**, com o modo escrito no cartão, porque a lista de treino com data também vence.
-14. **Migração 0019 para as novidades**, e o 0.2 passa para a 0020.
+14. **Migração 0019 para as novidades**, e o 0.2 passa para a 0020. A única branch remota ainda não mergeada em 04/11 (`feature/conta-do-aluno`) é de documentação e não tem migração.
+15. **Falha na novidade não derruba a rota** (recomendação do revisor de spec). O aluno precisa do diagnóstico e o professor precisa da resposta salva. A novidade é o registro em volta disso.
