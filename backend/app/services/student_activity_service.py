@@ -372,7 +372,7 @@ def ajuda_bloqueada(modo: str | None, situacao: str, resolvida: bool,
     prova sem data de fechamento nunca liberaria a ajuda. Lista nunca bloqueia."""
     if (modo or Exam.MODO_PROVA) != Exam.MODO_PROVA:
         return False
-    if situacao != "aberta" or resolvida:
+    if situacao == "encerrada" or resolvida:
         return False
     return restantes is None or restantes > 0
 
@@ -408,6 +408,9 @@ def pedir_ajuda(student: Student, submission_id: int, nivel: int, db: Session) -
         raise ValueError("Tentativa não encontrada.")
     if sub.error_category == CATEGORIA_CORRETA:
         raise AtividadeIndisponivel("Esta tentativa está correta, não há erro a explicar.")
+    if resultado_da_lista(sub.error_category) == FALHA:
+        raise AtividadeIndisponivel(
+            "Esta tentativa não foi corrigida por uma falha do sistema. Envie de novo.")
     if sub.question and _bloqueio_da_questao(student, sub.question, db):
         raise AtividadeIndisponivel(MENSAGEM_PROVA_ABERTA)
 
@@ -432,6 +435,7 @@ def pedir_ajuda(student: Student, submission_id: int, nivel: int, db: Session) -
                 ],
             )
         except Exception as e:  # noqa: BLE001 — qualquer falha do Gemini vira 503 sem gravar
+            logger.exception("Falha ao gerar a dica da tentativa %s", sub.id)
             raise RuntimeError(FALHA_DA_DICA) from e
         sub.llm_pistas = etapas["pistas"]
         sub.llm_explanation = etapas["explicacao"]
