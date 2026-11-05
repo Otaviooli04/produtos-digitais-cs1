@@ -7,8 +7,16 @@ funções puras sobre registros simples, testadas sem banco."""
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.models.orm import Exam, ExercicioGerado, Student, Submission
+from app.services.calendario import situacao_da_atividade
 from app.services.funil_regras import ANTECEDENCIA_DA_PROVA
-from app.services.historico_do_aluno import ACERTO, FALHA, LISTA, Envio
+from app.services.historico_do_aluno import ACERTO, FALHA, LISTA, TRILHA, Envio, ler_historico
+from app.services.novidades_service import novidades_do_aluno
+from app.services.student_activity_service import titulo_da_atividade
+
 
 # Quanto antes de fechar uma atividade aberta aparece em "Prazos próximos".
 JANELA_DO_PRAZO = timedelta(days=7)
@@ -111,3 +119,78 @@ def prazos_proximos(atividades: list[AtividadeDoPainel], agora: datetime) -> lis
          "modo": a.modo, "tipo": tipo, "quando": quando.isoformat()}
         for quando, tipo, a in prazos
     ]
+
+
+def painel(student: Student, db: Session, agora: datetime | None = None) -> dict:
+    """O Início do aluno. Sem matrícula, só avisa que ele não tem turma."""
+    agora = agora or datetime.utcnow()
+    turma_ids = [e.turma_id for e in student.enrollments]
+    if not turma_ids:
+        return {"tem_turma": False, "novidades": [], "continuar": None, "prazos": []}
+
+    envios = ler_historico(student, db)
+    atividades, disponiveis = _atividades_e_questoes(student, turma_ids, envios, agora, db)
+    disponiveis.update(_exercicios_abertos(student, db))
+    return {
+        "tem_turma": True,
+        "novidades": novidades_do_aluno(student, db),
+        "continuar": escolher_continuar(envios, disponiveis, proxima_atividade(atividades)),
+        "prazos": prazos_proximos(atividades, agora),
+    }
+
+
+def _atividades_e_questoes(student: Student, turma_ids: list[int], envios: list[Envio],
+                           agora: datetime, db: Session):
+    """As atividades publicadas das turmas do aluno e, das abertas, as questões
+    sem acerto que ainda têm tentativa. O teto conta todos os envios da questão,
+    como o `submeter` conta."""
+    resolvidas = {e.item_id for e in envios if e.origem == LISTA and e.resultado == ACERTO}
+    usadas = dict(
+        db.query(Submission.question_id, func.count(Submission.id))
+        .filter(Submission.student_id == student.id)
+        .group_by(Submission.question_id)
+        .all()
+    )
+    exams = (
+        db.query(Exam)
+        .filter(Exam.turma_id.in_(turma_ids), Exam.publicada.is_(True))
+        .all()
+    )
+    atividades: list[AtividadeDoPainel] = []
+    disponiveis: dict[tuple[str, int], ItemDisponivel] = {}
+    for exam in exams:
+        situacao = situacao_da_atividade(exam, agora)
+        titulo = titulo_da_atividade(exam)
+        turma_nome = exam.turma.nome if exam.turma else ""
+        pendentes = [
+            q for q in exam.questions
+            if q.id not in resolvidas
+            and (exam.max_tentativas is None or usadas.get(q.id, 0) < exam.max_tentativas)
+        ]
+        atividades.append(AtividadeDoPainel(
+            exam_id=exam.id, titulo=titulo, turma_nome=turma_nome,
+            modo=exam.modo or Exam.MODO_PROVA, situacao=situacao,
+            abre_em=exam.abre_em, fecha_em=exam.fecha_em, criada_em=exam.created_at,
+            com_o_que_fazer=bool(pendentes),
+        ))
+        if situacao == "aberta":
+            for q in pendentes:
+                disponiveis[(LISTA, q.id)] = ItemDisponivel(
+                    origem=LISTA, item_id=q.id, titulo=f"Questão {q.number} · {titulo}",
+                    turma_nome=turma_nome, exam_id=exam.id, question_number=q.number)
+    return atividades, disponiveis
+
+
+def _exercicios_abertos(student: Student, db: Session) -> dict[tuple[str, int], ItemDisponivel]:
+    abertos = (
+        db.query(ExercicioGerado)
+        .filter(ExercicioGerado.student_id == student.id,
+                ExercicioGerado.resolvido.is_(False),
+                ExercicioGerado.reportado.is_(False))
+        .all()
+    )
+    return {
+        (TRILHA, e.id): ItemDisponivel(origem=TRILHA, item_id=e.id, titulo=e.titulo,
+                                       exercicio_id=e.id)
+        for e in abertos
+    }

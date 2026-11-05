@@ -5,10 +5,19 @@ As regras são funções puras, testadas com listas montadas à mão. O painel e
 rotas são testados no banco."""
 from datetime import datetime, timedelta
 
+import pytest
+
+from app.auth.service import create_access_token
+from app.auth.student_service import create_student_token
+from app.models.orm import (
+    Enrollment, Exam, Novidade, Question, QuestionCluster, Student, Submission,
+)
 from app.services.historico_do_aluno import ACERTO, ERRO, FALHA, LISTA, TRILHA, Envio
 from app.services.inicio_service import (
-    AtividadeDoPainel, ItemDisponivel, escolher_continuar, prazos_proximos, proxima_atividade,
+    AtividadeDoPainel, ItemDisponivel, escolher_continuar, painel, prazos_proximos,
+    proxima_atividade,
 )
+
 
 AGORA = datetime(2026, 11, 4, 12, 0)
 
@@ -149,3 +158,133 @@ class TestProximaAtividade:
         atividades = [_atividade(1, situacao="agendada", abre_em=AGORA + timedelta(days=1)),
                       _atividade(2, com_o_que_fazer=False)]
         assert proxima_atividade(atividades) is None
+
+
+@pytest.fixture()
+def prova(db, exam_factory):
+    exam = exam_factory(questions=[{"number": "1"}, {"number": "2"}], titulo="Lista 3")
+    exam.fecha_em = AGORA + timedelta(days=2)
+    db.commit()
+    db.refresh(exam)
+    return exam
+
+
+def _matricular(db, email, turma_id):
+    s = Student(email=email, nome=email.split("@")[0], senha_hash="x")
+    db.add(s)
+    db.flush()
+    db.add(Enrollment(student_id=s.id, turma_id=turma_id))
+    db.commit()
+    db.refresh(s)
+    return s
+
+
+@pytest.fixture()
+def aluno(db, prova):
+    return _matricular(db, "ana@teste.com", prova.turma_id)
+
+
+def _errou(db, prova, aluno, numero="1", quando=AGORA - timedelta(hours=1), cluster_id=None):
+    questao = next(q for q in prova.questions if q.number == numero)
+    db.add(Submission(
+        question_id=questao.id, code="int main(){}", error_category="Saída Incorreta",
+        all_tests_passed=False, student_id=aluno.id, attempt_number=1,
+        cluster_id=cluster_id, submitted_at=quando,
+    ))
+    db.commit()
+    return questao
+
+
+def _auth(token):
+    return {"Authorization": f"Bearer {token}"}
+
+
+class TestPainel:
+    def test_questao_em_andamento_e_prazo_da_atividade(self, db, aluno, prova):
+        _errou(db, prova, aluno)
+        resultado = painel(aluno, db, agora=AGORA)
+        assert resultado["tem_turma"] is True
+        assert resultado["novidades"] == []
+        assert resultado["continuar"] == {
+            "origem": "lista", "situacao": "em_andamento", "titulo": "Questão 1 · Lista 3",
+            "turma_nome": "Turma Teste", "tentativas": 1, "ultimo_erro": "Saída Incorreta",
+            "exam_id": prova.id, "question_number": "1", "exercicio_id": None,
+        }
+        assert resultado["prazos"] == [{
+            "exam_id": prova.id, "titulo": "Lista 3", "turma_nome": "Turma Teste",
+            "modo": "prova", "tipo": "fecha",
+            "quando": (AGORA + timedelta(days=2)).isoformat(),
+        }]
+
+    def test_so_atividades_publicadas_das_turmas_do_aluno(
+        self, db, aluno, prova, exam_factory
+    ):
+        rascunho = Exam(filename="r.pdf", raw_text="", turma_id=prova.turma_id,
+                        titulo="Rascunho", publicada=False,
+                        fecha_em=AGORA + timedelta(days=1))
+        db.add(rascunho)
+        db.flush()
+        db.add(Question(exam_id=rascunho.id, number="1", statement="x"))
+        outra = exam_factory(questions=[{"number": "1"}], titulo="De outra turma")
+        outra.fecha_em = AGORA + timedelta(days=1)
+        db.commit()
+        prazos = painel(aluno, db, agora=AGORA)["prazos"]
+        assert [p["exam_id"] for p in prazos] == [prova.id]
+
+    def test_tentativas_esgotadas_tiram_a_atividade_do_continuar_e_dos_prazos(
+        self, db, aluno, prova
+    ):
+        prova.max_tentativas = 1
+        db.commit()
+        _errou(db, prova, aluno, "1")
+        _errou(db, prova, aluno, "2")
+        resultado = painel(aluno, db, agora=AGORA)
+        assert resultado["continuar"] is None
+        assert resultado["prazos"] == []
+
+    def test_atividade_encerrada_nao_entra(self, db, aluno, prova):
+        prova.fecha_em = AGORA - timedelta(hours=1)
+        db.commit()
+        _errou(db, prova, aluno, quando=AGORA - timedelta(hours=2))
+        resultado = painel(aluno, db, agora=AGORA)
+        assert resultado["continuar"] is None
+        assert resultado["prazos"] == []
+
+    def test_aluno_sem_turma(self, db):
+        sozinho = Student(email="sem@teste.com", nome="Sem Turma", senha_hash="x")
+        db.add(sozinho)
+        db.commit()
+        assert painel(sozinho, db, agora=AGORA) == {
+            "tem_turma": False, "novidades": [], "continuar": None, "prazos": []}
+
+
+class TestRotas:
+    @pytest.mark.parametrize("caminho", ["/aluno/inicio", "/aluno/novidades/contagem"])
+    def test_sem_token_da_401(self, client, caminho):
+        assert client.get(caminho).status_code == 401
+
+    @pytest.mark.parametrize("caminho", ["/aluno/inicio", "/aluno/novidades/contagem"])
+    def test_token_de_professor_da_401(self, client, professor, caminho):
+        resp = client.get(caminho, headers=_auth(create_access_token(professor.id)))
+        assert resp.status_code == 401
+
+    def test_cada_aluno_recebe_so_o_seu(self, client, db, aluno, prova):
+        colega = _matricular(db, "bia@teste.com", prova.turma_id)
+        questao = _errou(db, prova, aluno, cluster_id=0)
+        db.add(QuestionCluster(
+            question_id=questao.id, cluster_label=0, chave="cat:Saída Incorreta", size=1,
+            dominant_error="Saída Incorreta", resposta_professor="Revejam a parada.",
+            resposta_em=AGORA))
+        db.add(Novidade(student_id=aluno.id, tipo="retorno", question_id=questao.id,
+                        grupo_chave="cat:Saída Incorreta", chegou_em=AGORA))
+        db.commit()
+
+        meu = client.get("/aluno/inicio", headers=_auth(create_student_token(aluno.id))).json()
+        dela = client.get("/aluno/inicio",
+                          headers=_auth(create_student_token(colega.id))).json()
+        assert [n["titulo"] for n in meu["novidades"]] == ["Questão 1 · Lista 3"]
+        assert dela["novidades"] == []
+        assert client.get("/aluno/novidades/contagem",
+                          headers=_auth(create_student_token(aluno.id))).json() == {"total": 1}
+        assert client.get("/aluno/novidades/contagem",
+                          headers=_auth(create_student_token(colega.id))).json() == {"total": 0}
