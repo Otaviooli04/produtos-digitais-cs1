@@ -5,7 +5,7 @@ import { useAlunoAuth } from '../context/AlunoAuthContext'
 import Logo from './Logo'
 
 const linkClass = ({ isActive }) =>
-  `text-sm px-3 py-1.5 rounded-lg transition-colors ${
+  `text-sm px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 ${
     isActive ? 'bg-purple-50 text-purple-700 font-medium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
   }`
 
@@ -115,7 +115,7 @@ export default function AlunoLayout() {
             </div>
           )}
         </div>
-        <div className="sm:hidden border-t border-gray-100 px-6 py-2 flex gap-1">
+        <div className="sm:hidden border-t border-gray-100 px-6 py-2 flex gap-1 overflow-x-auto">
           <LinkInicio novidades={novidades} />
           <NavLink to="/aluno/turmas" className={linkClass}>Turmas</NavLink>
           <NavLink to="/aluno/treino" className={linkClass}>Treino</NavLink>
