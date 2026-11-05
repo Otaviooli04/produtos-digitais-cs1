@@ -8,16 +8,16 @@ import { categoriaColor, formatarData } from '../utils/atividade'
  * e o que fazer. Mesmo bloco serve para o envio recém-feito e para o histórico.
  */
 export default function TentativaDetalhe({
-  tentativa, functionCheck = null, mostrarCodigo = false, permitirExplicacao = true,
+  tentativa, functionCheck = null, mostrarCodigo = false, permitirAjuda = true,
 }) {
   if (!tentativa) return null
 
-  // A explicação individual é da tentativa de PROVA, que tem `submission_id` e
-  // cache próprio. Tentativa de treino não passa por ali: ela já vem com o
-  // diagnóstico e o que fazer, e pedir explicação seria chamada de LLM por
-  // tentativa num lugar onde as tentativas são ilimitadas.
-  const podeExplicar = permitirExplicacao && tentativa.submission_id != null
+  // A ajuda em etapas vale para prova e lista, que têm `submission_id` e cache
+  // próprio. A trilha fica sem, porque não tem `submission_id`. Falha técnica
+  // também não pede ajuda: a tentativa nem foi corrigida.
+  const podePedirAjuda = permitirAjuda && tentativa.submission_id != null
   const temErro = tentativa.error_category && tentativa.error_category !== 'Correto'
+    && tentativa.error_category !== 'Erro Desconhecido'
 
   return (
     <div className="space-y-3">
@@ -38,7 +38,7 @@ export default function TentativaDetalhe({
           </div>
         )}
 
-        {temErro && podeExplicar && (
+        {temErro && podePedirAjuda && (
           <AjudaEmEtapas key={tentativa.submission_id} tentativa={tentativa} />
         )}
       </div>
