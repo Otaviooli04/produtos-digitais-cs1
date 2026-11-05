@@ -437,3 +437,128 @@ class TestExclusao:
         self._com_novidade(db, aluno, prova)
         assert client.delete(f"/turmas/{prova.turma_id}").status_code == 204
         assert db.query(Novidade).count() == 0
+
+
+def _auth(student):
+    return {"Authorization": f"Bearer {create_student_token(student.id)}"}
+
+
+ERRO_DE_SAIDA = {
+    "compile_error": "",
+    "warnings": "",
+    "all_tests_passed": False,
+    "diagnosis": {
+        "error_category": "Saída Incorreta",
+        "pedagogical_diagnosis": "diagnóstico",
+        "actionable_feedback": "o que fazer",
+    },
+    "ast_structures": [],
+    "ast_functions": [],
+    "test_results": [],
+}
+
+
+def _explode(*a, **k):
+    raise RuntimeError("banco caiu")
+
+
+class TestGanchosDaLista:
+    def _historico(self, client, aluno, prova):
+        return client.get(f"/aluno/atividades/{prova.id}/questoes/1/tentativas",
+                          headers=_auth(aluno))
+
+    def _grupo_respondido_pelo_agrupamento(self, db, aluno, prova, submission_factory):
+        """Três envios de "Saída Incorreta" (menos de 6) formam o grupo
+        `cat:Saída Incorreta` no agrupamento de verdade, e a resposta do
+        professor vira a novidade do aluno."""
+        from app.ml.cluster import cluster_question
+
+        q = _questao(prova)
+        for i in range(2):
+            submission_factory(q.id, code=f"int main(){{return {i};}}",
+                               error_category="Saída Incorreta", all_tests_passed=False)
+        _envio(db, q, aluno.id, 1, cluster_id=None)
+        cluster_question(q.id, db)
+        grupo = db.query(QuestionCluster).filter_by(question_id=q.id, chave=CHAVE).one()
+        grupo.resposta_professor = "Revejam a condição de parada."
+        grupo.resposta_em = AGORA
+        db.commit()
+        registrar_resposta(grupo, db)
+        assert db.query(Novidade).one().vista_em is None
+
+    def _envia(self, client, aluno, prova, monkeypatch):
+        from app.services import student_activity_service as svc
+
+        monkeypatch.setattr(svc, "evaluate_code", lambda *a, **k: dict(ERRO_DE_SAIDA))
+        return client.post(f"/aluno/atividades/{prova.id}/questoes/1/submissoes",
+                           json={"code": "int main(){return 3;}"}, headers=_auth(aluno))
+
+    def test_historico_com_resposta_marca_como_vista(self, client, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q)
+        _novidade(db, aluno.id, q)
+        resp = self._historico(client, aluno, prova)
+        assert resp.json()["tentativas"][0]["resposta_do_professor"] == (
+            "Revejam a condição de parada.")
+        db.expire_all()
+        assert db.query(Novidade).one().vista_em is not None
+
+    def test_historico_sem_resposta_nao_marca(self, client, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q, resposta=None, em=None)
+        _novidade(db, aluno.id, q)
+        self._historico(client, aluno, prova)
+        db.expire_all()
+        assert db.query(Novidade).one().vista_em is None
+
+    def test_historico_nao_marca_a_novidade_de_outro_grupo(self, client, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=1, categoria="Tudo no Main")
+        _envio(db, q, aluno.id, 2, cluster_id=0)
+        _grupo(db, q, label=0, chave=CHAVE)
+        _grupo(db, q, label=1, chave=OUTRA_CHAVE, resposta="Separe em funções.")
+        _novidade(db, aluno.id, q, chave=CHAVE)
+        _novidade(db, aluno.id, q, chave=OUTRA_CHAVE)
+        self._historico(client, aluno, prova)
+        db.expire_all()
+        vistas = {n.grupo_chave: n.vista_em is not None for n in db.query(Novidade).all()}
+        assert vistas == {CHAVE: True, OUTRA_CHAVE: False}
+
+    def test_envio_que_cai_em_grupo_respondido_marca(
+        self, client, db, aluno, prova, monkeypatch, submission_factory
+    ):
+        self._grupo_respondido_pelo_agrupamento(db, aluno, prova, submission_factory)
+        resp = self._envia(client, aluno, prova, monkeypatch)
+        assert resp.status_code == 201
+        assert resp.json()["tentativa"]["resposta_do_professor"] == (
+            "Revejam a condição de parada.")
+        db.expire_all()
+        assert db.query(Novidade).one().vista_em is not None
+
+    def test_falha_na_marcacao_nao_derruba_o_historico(
+        self, client, db, aluno, prova, monkeypatch
+    ):
+        from app.services import novidades_service
+
+        monkeypatch.setattr(novidades_service, "_marcar", _explode)
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q)
+        _novidade(db, aluno.id, q)
+        resp = self._historico(client, aluno, prova)
+        assert resp.status_code == 200
+        assert resp.json()["tentativas"][0]["resposta_do_professor"] == (
+            "Revejam a condição de parada.")
+
+    def test_falha_na_marcacao_nao_derruba_o_envio(
+        self, client, db, aluno, prova, monkeypatch, submission_factory
+    ):
+        from app.services import novidades_service
+
+        self._grupo_respondido_pelo_agrupamento(db, aluno, prova, submission_factory)
+        monkeypatch.setattr(novidades_service, "_marcar", _explode)
+        resp = self._envia(client, aluno, prova, monkeypatch)
+        assert resp.status_code == 201
+        assert resp.json()["tentativa"]["error_category"] == "Saída Incorreta"
