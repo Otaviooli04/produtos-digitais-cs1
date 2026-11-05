@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON, Float, Index,
-    UniqueConstraint,
+    UniqueConstraint, text,
 )
 from sqlalchemy.orm import relationship
 from app.models.database import Base
@@ -286,3 +286,35 @@ class TentativaDeTreino(Base):
     submitted_at = Column(DateTime, default=datetime.utcnow)
 
     exercicio = relationship("ExercicioGerado", back_populates="tentativas")
+
+
+class Novidade(Base):
+    """O que chegou para o aluno e ele ainda não abriu: a resposta do professor
+    ao erro dele ou um exercício da trilha pronto antes de ele pedir.
+
+    `chegou_em` e `vista_em` são o dado do experimento 1 do Plano de Growth. A
+    linha que deixa de valer (o aluno corrigiu o erro antes de abrir) não é
+    apagada, porque foi isso que aconteceu: chegou e não foi vista. No retorno,
+    o grupo é guardado pela `chave`, que vale mesmo depois de os grupos serem
+    refeitos ou de a linha do grupo ser apagada."""
+    __tablename__ = "novidades"
+    __table_args__ = (
+        Index("uq_novidade_retorno_aberta", "student_id", "question_id", "grupo_chave",
+              unique=True,
+              postgresql_where=text("tipo = 'retorno' AND vista_em IS NULL")),
+        Index("uq_novidade_exercicio_aberta", "student_id", "exercicio_id",
+              unique=True,
+              postgresql_where=text("tipo = 'exercicio' AND vista_em IS NULL")),
+    )
+
+    TIPO_RETORNO = "retorno"
+    TIPO_EXERCICIO = "exercicio"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True)
+    tipo = Column(String(16), nullable=False)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=True, index=True)
+    grupo_chave = Column(String, nullable=True)
+    exercicio_id = Column(Integer, ForeignKey("exercicios_gerados.id"), nullable=True)
+    chegou_em = Column(DateTime, nullable=False)
+    vista_em = Column(DateTime, nullable=True)
