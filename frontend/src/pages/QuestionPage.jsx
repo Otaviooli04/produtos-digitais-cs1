@@ -91,6 +91,7 @@ export default function QuestionPage() {
 
   useEffect(() => {
     if (tab === 'respostas' && !submissions) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- carga disparada pela troca de aba
       setSubLoading(true)
       getQuestionSubmissions(id, num)
         .then(({ data }) => setSubmissions(data.submissions))
@@ -101,6 +102,7 @@ export default function QuestionPage() {
   // Carrega os grupos já salvos (agrupados automaticamente no lote) ao abrir a aba.
   useEffect(() => {
     if (tab === 'cluster' && !clusterResult && !groupsFetched) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- carga disparada pela troca de aba
       setGroupsFetched(true)
       setGroupsLoading(true)
       getGroups(id, num)
@@ -253,6 +255,7 @@ export default function QuestionPage() {
       tab === 'cluster' && clusterResult && !groupsLoading &&
       !hasInsights && !insightsRunning && !autoInsightTried && rankedGroups.length > 0
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- marca a tentativa automática uma vez só
       setAutoInsightTried(true)
       genInsights()
     }

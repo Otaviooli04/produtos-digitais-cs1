@@ -2,7 +2,6 @@
 Testes de integração — usam Docker GCC e Gemini reais.
 Rodar com: pytest tests/integration/ -v -m integration
 """
-import io
 import pytest
 from unittest.mock import patch
 
@@ -159,7 +158,7 @@ def int_client():
         yield c, db, professor
     fastapi_app.dependency_overrides.clear()
     db.rollback()
-    from tests.conftest import Base, engine
+    from tests.conftest import Base
     for table in reversed(Base.metadata.sorted_tables):
         db.execute(table.delete())
     db.commit()
@@ -427,7 +426,6 @@ class TestFluxoCompleto:
         assert resp.status_code == 200
         cluster_data = resp.json()
         assert cluster_data["total_submissions"] == 8
-        assert len(cluster_data["scatter"]) == 8
 
         db.expire_all()
         clusters_db = db.query(QuestionCluster).filter(
@@ -652,7 +650,7 @@ int main() {
     def test_clustering_com_20_submissoes_diversas(self, int_client):
         client, db, professor = int_client
 
-        from app.models.orm import Exam, Question, TestCase, Submission, QuestionCluster
+        from app.models.orm import Exam, Question, TestCase, Submission
 
         # Prova e questão
         turma = Turma(nome="Turma Teste", codigo="TT", professor_id=professor.id)
@@ -714,16 +712,11 @@ int main() {
         cluster_data = resp.json()
 
         assert cluster_data["total_submissions"] == 20
-        assert len(cluster_data["scatter"]) == 20
 
         # Com 20 submissões em 5 grupos distintos o HDBSCAN deve encontrar >= 2 clusters
         assert len(cluster_data["clusters"]) >= 2
 
-        # A maioria das submissões deve estar em algum cluster (não ser outlier)
-        outliers = sum(1 for p in cluster_data["scatter"] if p["cluster_id"] == -1)
-        assert outliers < 10, f"Muitos outliers: {outliers}/20"
-
-        # Todos os pontos têm coordenadas 2D válidas
-        for point in cluster_data["scatter"]:
-            assert isinstance(point["x"], float)
-            assert isinstance(point["y"], float)
+        # A maioria das submissões deve estar em algum grupo. O mapa de dispersão
+        # (`scatter`) saiu da resposta em 12/09, então a conta é pelos grupos.
+        agrupadas = sum(c["size"] for c in cluster_data["clusters"])
+        assert agrupadas > 10, f"Muitas fora de grupo: {20 - agrupadas}/20"
