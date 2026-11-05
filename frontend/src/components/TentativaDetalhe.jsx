@@ -1,8 +1,6 @@
-import { useState } from 'react'
 import Badge from './Badge'
 import FunctionCheckCard from './FunctionCheckCard'
-import Spinner from './Spinner'
-import { explicarTentativa } from '../api/aluno'
+import AjudaEmEtapas from './AjudaEmEtapas'
 import { categoriaColor, formatarData } from '../utils/atividade'
 
 /**
@@ -12,10 +10,6 @@ import { categoriaColor, formatarData } from '../utils/atividade'
 export default function TentativaDetalhe({
   tentativa, functionCheck = null, mostrarCodigo = false, permitirExplicacao = true,
 }) {
-  const [explicacao, setExplicacao] = useState(tentativa?.explicacao || null)
-  const [gerando, setGerando] = useState(false)
-  const [erroExplicacao, setErroExplicacao] = useState('')
-
   if (!tentativa) return null
 
   // A explicação individual é da tentativa de PROVA, que tem `submission_id` e
@@ -24,19 +18,6 @@ export default function TentativaDetalhe({
   // tentativa num lugar onde as tentativas são ilimitadas.
   const podeExplicar = permitirExplicacao && tentativa.submission_id != null
   const temErro = tentativa.error_category && tentativa.error_category !== 'Correto'
-
-  const pedirExplicacao = async () => {
-    setErroExplicacao('')
-    setGerando(true)
-    try {
-      const { data } = await explicarTentativa(tentativa.submission_id)
-      setExplicacao(data.explicacao)
-    } catch (e) {
-      setErroExplicacao(e.response?.data?.detail || 'Não foi possível gerar a explicação agora.')
-    } finally {
-      setGerando(false)
-    }
-  }
 
   return (
     <div className="space-y-3">
@@ -57,24 +38,9 @@ export default function TentativaDetalhe({
           </div>
         )}
 
-        {temErro && podeExplicar && (explicacao ? (
-          <div className="mt-3 rounded-lg bg-purple-50 border border-purple-100 px-4 py-2.5">
-            <p className="text-xs font-medium text-purple-800 mb-0.5">Explicando o seu código</p>
-            <p className="text-xs text-purple-700 whitespace-pre-wrap">{explicacao}</p>
-          </div>
-        ) : (
-          <div className="mt-3">
-            <button
-              onClick={pedirExplicacao}
-              disabled={gerando}
-              className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-40 transition-colors"
-            >
-              {gerando && <Spinner className="w-3.5 h-3.5" />}
-              {gerando ? 'Analisando seu código…' : 'Explicar meu erro'}
-            </button>
-            {erroExplicacao && <p className="mt-1.5 text-xs text-red-600">{erroExplicacao}</p>}
-          </div>
-        ))}
+        {temErro && podeExplicar && (
+          <AjudaEmEtapas key={tentativa.submission_id} tentativa={tentativa} />
+        )}
       </div>
 
       {/* O retorno do professor vem em cartão próprio, fora do bloco do
