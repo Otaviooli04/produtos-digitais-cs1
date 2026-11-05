@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from app.core.tempo import agora_utc
 from enum import Enum
 from typing import List, Optional
 
@@ -12,6 +11,7 @@ from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
 from scipy.sparse import hstack, issparse
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.tempo import agora_utc
 from app.models.orm import QuestionCluster, Submission
 
 MIN_SUBMISSIONS = 3

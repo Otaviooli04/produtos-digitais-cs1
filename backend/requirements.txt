@@ -28,6 +28,7 @@ scikit-learn==1.9.0
 umap-learn==0.5.12
 hdbscan==0.8.44
 pandas==3.0.5
+scipy==1.18.0
 numpy==2.5.2
 matplotlib==3.11.1
 

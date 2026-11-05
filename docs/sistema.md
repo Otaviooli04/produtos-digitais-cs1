@@ -382,7 +382,7 @@ Campos que importam (definição em `backend/app/models/orm.py`):
 - **exams** — `filename`, `raw_text`, `turma_id`.
 - **questions** — `number`, `statement`, `points`, `required_structures`, `forbidden_structures`, `required_functions`, `requires_loop`.
 - **test_cases** — `input`, `expected_output`.
-- **submissions** — `code`, `compile_error`, `warnings`, `all_tests_passed`, `error_category`, `pedagogical_diagnosis`, `actionable_feedback`, `ast_structures`, `ast_functions`, `cluster_id`, `umap_x`, `umap_y`, `matricula`.
+- **submissions** — `code`, `compile_error`, `warnings`, `all_tests_passed`, `error_category`, `pedagogical_diagnosis`, `actionable_feedback`, `ast_structures`, `ast_functions`, `cluster_id`, `matricula`.
 - **submission_test_results** — `input`, `expected_output`, `actual_output`, `passed`.
 - **question_clusters** — `cluster_label`, `size`, `dominant_error`, `insight`, `highlight_lines`, `representative_submission_id`.
 - **processing_jobs** — `kind` (`exam_upload` | `bulk_submit`), `status`, `stage`, `total`, `processed`, `message`, `result`.

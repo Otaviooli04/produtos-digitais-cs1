@@ -233,7 +233,7 @@ derivar o AST do parser real (tree-sitter), tornando a avaliação fiel à produ
 - `questions`: inclui `required_structures`, `forbidden_structures`,
   `required_functions` (JSON).
 - `submissions`: código, `compile_error`, `error_category`, diagnóstico,
-  `ast_structures`, `ast_functions`, `cluster_id`, `umap_x/umap_y`, `matricula`.
+  `ast_structures`, `ast_functions`, `cluster_id`, `matricula`.
 - `submission_test_results`: resultado por test case.
 - `question_clusters`: rótulo, tamanho, erro dominante, submissão representativa.
 
