@@ -1,5 +1,16 @@
 """Dica em etapas (2.3): colunas, gerador do Gemini, bloqueio da prova e rota."""
-from app.models.orm import Submission
+import json
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from app.llm import student_explainer
+from app.models.orm import Student, Submission
+from app.services.student_activity_service import ajuda_bloqueada
+from tests.conftest import gemini_response
+from tests.test_student_activity import _auth, _submeter, prova, token, tentativa_factory
+
+FIXTURES_DE_ALUNO = (prova, token, tentativa_factory)  # o pytest acha as fixtures pelo nome importado
 
 
 def _tentativa(db, exam_factory, categoria="Saída Incorreta"):
@@ -28,14 +39,6 @@ class TestColunas:
         sub = db.get(Submission, sub_id)
         assert sub.llm_pistas == ["Olhe a média.", "O cálculo na linha 3."]
 
-
-import json
-from unittest.mock import MagicMock, patch
-
-import pytest
-
-from app.llm import student_explainer
-from tests.conftest import gemini_response
 
 ETAPAS_OK = {
     "pistas": ["Olhe o que acontece com a média quando muda a quantidade de notas.",
@@ -94,12 +97,6 @@ class TestGerador:
 
     def test_texto_padrao_sem_campos_das_regras(self):
         assert student_explainer.textos_padrao("", "") == [student_explainer.PISTA_PADRAO] * 3
-
-
-from app.services.student_activity_service import ajuda_bloqueada
-from tests.test_student_activity import (  # noqa: F401 — prova, token e tentativa_factory são fixtures
-    _auth, _submeter, prova, tentativa_factory, token,
-)
 
 
 @pytest.mark.parametrize("modo, situacao, resolvida, restantes, esperado", [
@@ -186,8 +183,6 @@ class TestRotaDaAjuda:
         assert mock.models.generate_content.call_count == 0
 
     def test_tentativa_de_outro_aluno(self, client, db, token, prova, tentativa_factory):
-        from app.models.orm import Student
-
         outro = Student(email="outro@teste.com", nome="Outro", senha_hash="x")
         db.add(outro)
         db.commit()
