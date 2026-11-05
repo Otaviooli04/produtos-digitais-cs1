@@ -6,7 +6,7 @@ Guia para o Claude Code neste repositório. **Leia `HANDOFF.md` primeiro** — e
 
 Sistema de *Learning Analytics* para CS1 (turmas introdutórias de programação em C). Originou-se de um TCC concluído e validado. **Esta fase é a disciplina de Produtos Digitais**, com foco em transformá-lo em **produto voltado ao aluno** (feedback personalizado, acompanhamento, engajamento). Detalhes e backlog de produto em `HANDOFF.md` (seção 15).
 
-O sistema corrige código C de provas como um **funil interpretável**: análise estática (tree-sitter) + execução isolada (Docker/GCC) + heurísticas pedagógicas classificam o erro, e as submissões são **agrupadas por assinatura de falha** para o professor intervir por grupo. O lado do aluno já tem conta, entrada por código de turma ou convite com link, modo treino/prova, histórico de tentativas, progresso e painel de erros recorrentes. O que falta está mapeado em `docs/mapa-funcionalidades.md`.
+O sistema corrige código C de provas como um **funil interpretável**: análise estática (tree-sitter) + execução isolada (Docker/GCC) + heurísticas pedagógicas classificam o erro, e as submissões são **agrupadas por assinatura de falha** para o professor intervir por grupo. O lado do aluno já tem conta, entrada por código de turma ou convite com link, modo treino/prova, histórico de tentativas, progresso, painel de erros recorrentes e um Início com as novidades que chegaram para ele (resposta do professor e exercício pronto), onde parou e os prazos, com a bolinha de novidades no menu. O que falta está mapeado em `docs/mapa-funcionalidades.md`.
 
 ## Arquitetura
 
@@ -25,9 +25,9 @@ backend/app/
   ml/cluster.py          — agrupamento (determinístico por assinatura de falha; UMAP/HDBSCAN = baseline/visualização)
   llm/feedback_generator.py — insights por grupo p/ o professor (Gemini, 1 chamada/questão, cacheada)
   llm/student_explainer.py  — explicação individual da tentativa p/ o aluno (sob demanda, cacheada)
-  services/              — orquestração (exam, submission, bulk, turma, jobs, student_activity, effort_report, funil_service e funil_regras, acesso, calendario, treino, historico_do_aluno)
-  models/                — orm.py (14 entidades) + schemas.py (Pydantic)
-  migrations/            — Alembic (revisões 0001..0018)
+  services/              — orquestração (exam, submission, bulk, turma, jobs, student_activity, effort_report, funil_service e funil_regras, acesso, calendario, treino, historico_do_aluno, novidades, inicio)
+  models/                — orm.py (15 entidades) + schemas.py (Pydantic)
+  migrations/            — Alembic (revisões 0001..0019)
 frontend/                — painel do professor (`/`) + app do aluno (`/aluno`) (React 19 + Vite + Tailwind v4)
 ```
 

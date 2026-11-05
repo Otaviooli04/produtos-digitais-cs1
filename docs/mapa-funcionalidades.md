@@ -27,6 +27,7 @@ Duas funcionalidades do roadmap que não estavam nessa lista também entraram:
 
 | Funcionalidade | Mês | Estado | Onde está |
 |---|---|---|---|
+| Início com novidades, continuar e prazos (RF20, RF26, experimento 1 do Plano de Growth) | 3 | Pronta | `services/novidades_service.py` (tabela `novidades` da migração 0019, com `chegou_em` e `vista_em`), `services/inicio_service.py`, `GET /aluno/inicio`, `GET /aluno/novidades/contagem`, `pages/aluno/InicioPage.jsx` e a bolinha no `AlunoLayout`. A resposta do professor ao grupo e o exercício pré-gerado viram novidade, e abrir a questão ou o exercício marca como visto |
 | Explicação individual da tentativa | 3 | Pronta | `llm/student_explainer.py`, cache em `submissions.llm_explanation`, migração 0012 |
 | Relatório de esforço economizado | 4 | Pronta | `services/effort_report_service.py`, card em `ResultsPage.jsx` |
 
@@ -55,6 +56,7 @@ O que o sistema já consegue calcular hoje, sem trabalho novo:
 | Esforço economizado do professor | Pronta, em `/exam/{id}/effort-report` |
 | Retenção semanal | Pronta pelo acesso, no bloco "Funil da turma": quem abriu o app na semana e já tinha feito algo antes, com a meta de 50%. Ao lado, a retenção pelo envio e os sinais de hábito: voltou sem prova marcada, abriu sem aviso e enviou por conta própria (treino ou trilha) |
 | DAU e WAU, retorno medido pelo acesso | Parcial. Cada abertura do app do aluno vira um acesso (`POST /aluno/acessos`, tabela `acessos` da migração 0018), com descarte em 30 minutos e a origem `convite` quando vem do link. A retenção já usa o acesso. DAU e WAU como número ainda não aparecem em tela |
+| Retorno em 7 dias com e sem novidade (experimento 1) | Dados prontos: cada novidade guarda `chegou_em` e `vista_em`, e o acesso guarda quando o aluno abriu. A comparação fica para depois do piloto |
 | NPS | Não. Exige coleta dentro do produto |
 
 ## 4. O que falta, e o que cada item exige
