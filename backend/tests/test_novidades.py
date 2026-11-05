@@ -12,7 +12,8 @@ from app.models.orm import (
     Enrollment, ExercicioGerado, Novidade, QuestionCluster, Student, Submission,
 )
 from app.services.novidades_service import (
-    marcar_exercicio_visto, marcar_resposta_vista, registrar_exercicio, registrar_resposta,
+    contar, marcar_exercicio_visto, marcar_resposta_vista, novidades_do_aluno,
+    registrar_exercicio, registrar_resposta,
 )
 
 AGORA = datetime(2026, 11, 4, 12, 0)
@@ -261,3 +262,72 @@ class TestMarcarComoVista:
         _novidade(db, aluno.id, exercicio=exercicio)
         marcar_exercicio_visto(aluno.id, exercicio.id, db, agora=AGORA)
         assert db.query(Novidade).one().vista_em == AGORA
+
+
+class TestLeitura:
+    def _retorno_valido(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        grupo = _grupo(db, q)
+        _novidade(db, aluno.id, q)
+        return q, grupo
+
+    def test_retorno_que_vale_aparece_com_titulo_e_link(self, db, aluno, prova):
+        self._retorno_valido(db, aluno, prova)
+        assert novidades_do_aluno(aluno, db) == [{
+            "tipo": "retorno", "titulo": "Questão 1 · Lista 3",
+            "chegou_em": AGORA.isoformat(), "exam_id": prova.id,
+            "question_number": "1", "exercicio_id": None,
+        }]
+
+    def test_grupo_apagado_some_e_a_linha_fica(self, db, aluno, prova):
+        _, grupo = self._retorno_valido(db, aluno, prova)
+        db.delete(grupo)
+        db.commit()
+        assert novidades_do_aluno(aluno, db) == []
+        assert db.query(Novidade).one().vista_em is None
+
+    def test_aluno_que_mudou_de_grupo_com_envio_novo_nao_ve(self, db, aluno, prova):
+        q, _ = self._retorno_valido(db, aluno, prova)
+        _envio(db, q, aluno.id, 2, cluster_id=1, categoria="Tudo no Main")
+        assert novidades_do_aluno(aluno, db) == []
+
+    def test_atividade_despublicada_some(self, db, aluno, prova):
+        self._retorno_valido(db, aluno, prova)
+        prova.publicada = False
+        db.commit()
+        assert novidades_do_aluno(aluno, db) == []
+
+    def test_aluno_que_saiu_da_turma_nao_ve(self, db, aluno, prova):
+        self._retorno_valido(db, aluno, prova)
+        db.query(Enrollment).filter_by(student_id=aluno.id).delete()
+        db.commit()
+        db.refresh(aluno)
+        assert novidades_do_aluno(aluno, db) == []
+
+    @pytest.mark.parametrize("estado", ["resolvido", "reportado"])
+    def test_exercicio_resolvido_ou_reportado_some(self, db, aluno, estado):
+        exercicio = _exercicio(db, aluno.id, **{estado: True})
+        _novidade(db, aluno.id, exercicio=exercicio)
+        assert novidades_do_aluno(aluno, db) == []
+
+    def test_mais_recente_primeiro_e_contagem_igual(self, db, aluno, prova):
+        q = _questao(prova)
+        _envio(db, q, aluno.id, 1, cluster_id=0)
+        _grupo(db, q)
+        _novidade(db, aluno.id, q, chegou_em=AGORA)
+        exercicio = _exercicio(db, aluno.id)
+        _novidade(db, aluno.id, exercicio=exercicio, chegou_em=AGORA + timedelta(hours=2))
+        itens = novidades_do_aluno(aluno, db)
+        assert [i["tipo"] for i in itens] == ["exercicio", "retorno"]
+        assert itens[0] == {
+            "tipo": "exercicio", "titulo": "Soma dos pares",
+            "chegou_em": (AGORA + timedelta(hours=2)).isoformat(),
+            "exam_id": None, "question_number": None, "exercicio_id": exercicio.id,
+        }
+        assert contar(aluno, db) == 2
+
+    def test_novidade_de_outro_aluno_nao_aparece(self, db, aluno, colega, prova):
+        self._retorno_valido(db, aluno, prova)
+        assert novidades_do_aluno(colega, db) == []
+        assert contar(colega, db) == 0

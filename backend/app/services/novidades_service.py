@@ -12,7 +12,9 @@ from datetime import datetime
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.models.orm import ExercicioGerado, Novidade, Question, QuestionCluster, Submission
+from app.models.orm import (
+    ExercicioGerado, Novidade, Question, QuestionCluster, Student, Submission,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -127,3 +129,83 @@ def marcar_exercicio_visto(student_id: int, exercicio_id: int, db: Session,
         Novidade.tipo == EXERCICIO,
         Novidade.exercicio_id == exercicio_id,
     ], db, agora), "marcar o exercício como visto", db)
+
+
+def _iso(valor) -> str | None:
+    return valor.isoformat() if valor else None
+
+
+def _retorno_que_vale(novidade: Novidade, student_id: int, turma_ids: set[int],
+                      db: Session) -> dict | None:
+    """A resposta ainda está lá e ainda é para ele: atividade publicada de uma
+    turma dele, grupo existente com resposta e a tentativa mais recente nele."""
+    # Import tardio: o student_activity_service importa este módulo para marcar
+    # a resposta como vista.
+    from app.services.student_activity_service import titulo_da_atividade
+
+    questao = db.get(Question, novidade.question_id)
+    exam = questao.exam if questao else None
+    if not exam or not exam.publicada or exam.turma_id not in turma_ids:
+        return None
+    grupo = db.query(QuestionCluster).filter(
+        QuestionCluster.question_id == questao.id,
+        QuestionCluster.chave == novidade.grupo_chave,
+    ).first()
+    if not grupo or not grupo.resposta_professor:
+        return None
+    ultima = (
+        db.query(Submission.cluster_id)
+        .filter(Submission.question_id == questao.id, Submission.student_id == student_id)
+        .order_by(Submission.attempt_number.desc(), Submission.id.desc())
+        .first()
+    )
+    if ultima is None or ultima.cluster_id != grupo.cluster_label:
+        return None
+    return {
+        "tipo": RETORNO,
+        "titulo": f"Questão {questao.number} · {titulo_da_atividade(exam)}",
+        "chegou_em": _iso(novidade.chegou_em),
+        "exam_id": exam.id,
+        "question_number": questao.number,
+        "exercicio_id": None,
+    }
+
+
+def _exercicio_que_vale(novidade: Novidade, db: Session) -> dict | None:
+    exercicio = db.get(ExercicioGerado, novidade.exercicio_id)
+    if not exercicio or exercicio.resolvido or exercicio.reportado:
+        return None
+    return {
+        "tipo": EXERCICIO,
+        "titulo": exercicio.titulo,
+        "chegou_em": _iso(novidade.chegou_em),
+        "exam_id": None,
+        "question_number": None,
+        "exercicio_id": exercicio.id,
+    }
+
+
+def novidades_do_aluno(student: Student, db: Session) -> list[dict]:
+    """As não vistas que ainda valem, da que chegou por último para a primeira.
+
+    A que deixou de valer some daqui e fica no banco como está: ela chegou e
+    não foi vista, que é o que o experimento precisa enxergar."""
+    turma_ids = {e.turma_id for e in student.enrollments}
+    abertas = (
+        db.query(Novidade)
+        .filter(Novidade.student_id == student.id, Novidade.vista_em.is_(None))
+        .order_by(Novidade.chegou_em.desc(), Novidade.id.desc())
+        .all()
+    )
+    itens = []
+    for novidade in abertas:
+        item = (_retorno_que_vale(novidade, student.id, turma_ids, db)
+                if novidade.tipo == RETORNO else _exercicio_que_vale(novidade, db))
+        if item:
+            itens.append(item)
+    return itens
+
+
+def contar(student: Student, db: Session) -> int:
+    """O número da bolinha do menu. Passa pela mesma conferência da lista."""
+    return len(novidades_do_aluno(student, db))
