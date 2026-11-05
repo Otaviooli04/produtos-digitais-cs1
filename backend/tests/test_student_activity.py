@@ -315,10 +315,12 @@ class TestProgresso:
         self, client, db, token, prova, tentativa_factory,
     ):
         aluno_id = _aluno_id(client, token)
-        tentativa_factory(aluno_id, "1", "Correto",
-                          quando=datetime.utcnow() - timedelta(seconds=30))
+        # Meio-dia de hoje: perto da meia-noite UTC os envios cairiam em dias diferentes.
+        agora = datetime.utcnow().replace(hour=12, minute=0, second=0, microsecond=0)
+        tentativa_factory(aluno_id, "1", "Correto", quando=agora - timedelta(seconds=30))
         _treino(db, aluno_id, "Laço Infinito",
-                [(False, "Laço Infinito"), (False, "Laço Infinito"), (True, "Correto")])
+                [(False, "Laço Infinito"), (False, "Laço Infinito"), (True, "Correto")],
+                quando=agora)
 
         data = client.get("/aluno/progresso", headers=_auth(token)).json()
         assert data["questoes_resolvidas"] == 1

@@ -139,6 +139,11 @@ class TestTendencia:
         t = tendencias([lista(0), lista(1, ACERTO, item=2)])
         assert t[OFF] == Tendencia(recentes=1, anteriores=0, sentido="estavel")
 
+    def test_mesma_taxa_dentro_e_fora_da_janela_e_estavel(self):
+        envios = [lista(i) if i % 2 == 0 else lista(i, ACERTO, item=2) for i in range(20)]
+        t = tendencias(envios)
+        assert t[OFF] == Tendencia(recentes=5, anteriores=5, sentido="estavel")
+
     def test_falha_tecnica_nao_ocupa_a_janela(self):
         antigos = [lista(i, categoria=LACO) for i in range(10)]
         falhas = [lista(20 + i, FALHA, categoria="Erro Desconhecido") for i in range(10)]
