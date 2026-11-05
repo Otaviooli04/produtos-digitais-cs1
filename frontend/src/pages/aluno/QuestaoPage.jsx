@@ -35,11 +35,9 @@ function ItemHistorico({ tentativa, aberto, onToggle }) {
           {aberto ? 'ocultar' : 'ver'}
         </span>
       </button>
-      {aberto && (
-        <div className="border-t border-gray-100 p-4 bg-gray-50">
-          <TentativaDetalhe tentativa={tentativa} mostrarCodigo />
-        </div>
-      )}
+      <div className={`border-t border-gray-100 p-4 bg-gray-50${aberto ? '' : ' hidden'}`}>
+        <TentativaDetalhe tentativa={tentativa} mostrarCodigo />
+      </div>
     </div>
   )
 }
