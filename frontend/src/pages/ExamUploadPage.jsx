@@ -30,7 +30,7 @@ export default function ExamUploadPage() {
       // A extração das questões roda em segundo plano; o dashboard exibe o progresso.
       navigate(`/exam/${data.exam_id}`)
     } catch (e) {
-      setError(e.response?.data?.detail || 'Erro ao processar a prova. Tente novamente.')
+      setError(e.response?.data?.detail || 'Erro ao processar o arquivo. Tente novamente.')
     } finally {
       setUploading(false)
     }
@@ -58,8 +58,8 @@ export default function ExamUploadPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900">Nova prova</h1>
-        <p className="mt-1 text-sm text-gray-500">Faça upload do arquivo da prova. O Gemini irá extrair as questões automaticamente.</p>
+        <h1 className="text-2xl font-semibold text-gray-900">Nova atividade</h1>
+        <p className="mt-1 text-sm text-gray-500">Envie o PDF da prova ou da lista. O Gemini extrai as questões, e depois você escolhe se a atividade é prova ou lista.</p>
       </div>
 
       <div

@@ -93,7 +93,7 @@ export default function BulkSubmitPage() {
   return (
     <div className="max-w-2xl">
       <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
-        <Link to={`/exam/${id}`} className="hover:text-gray-600">Prova #{id}</Link>
+        <Link to={`/exam/${id}`} className="hover:text-gray-600">Atividade #{id}</Link>
         <span>›</span>
         <span className="text-gray-600">Submissões em lote</span>
       </div>
@@ -246,7 +246,7 @@ export default function BulkSubmitPage() {
               to={`/exam/${id}`}
               className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              Voltar à prova
+              Voltar à atividade
             </Link>
           </div>
         </div>

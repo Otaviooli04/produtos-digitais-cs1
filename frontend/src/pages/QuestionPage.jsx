@@ -261,7 +261,7 @@ export default function QuestionPage() {
   return (
     <div>
       <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
-        <Link to={`/exam/${id}`} className="hover:text-gray-600">Prova #{id}</Link>
+        <Link to={`/exam/${id}`} className="hover:text-gray-600">Atividade #{id}</Link>
         <span>›</span>
         <span className="text-gray-600">Questão {num}</span>
       </div>
