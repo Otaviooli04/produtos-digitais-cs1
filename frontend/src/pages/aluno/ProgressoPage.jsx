@@ -147,7 +147,7 @@ export default function ProgressoPage() {
                   )}
 
                   {e.questoes.length > 0 && (
-                    <p className="mt-2 text-xs text-gray-400">Aconteceu em: {e.questoes.join(' · ')}</p>
+                    <p className="mt-2 text-xs text-gray-400">Aconteceu em: {e.questoes.join(', ')}</p>
                   )}
                 </div>
               )

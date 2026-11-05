@@ -32,7 +32,8 @@ def post_gerar(
     """Gera um exercício para a categoria pedida, ou para a que o aluno mais erra.
 
     Devolve 409 quando não há o que gerar agora, com o motivo em texto: teto
-    diário atingido, ou ainda sem erro suficiente para montar a trilha."""
+    diário atingido, ainda sem erro suficiente para montar a trilha, ou todos
+    os erros já superados."""
     try:
         return gerar_para_categoria(current, body.error_category, db)
     except TreinoIndisponivel as e:
