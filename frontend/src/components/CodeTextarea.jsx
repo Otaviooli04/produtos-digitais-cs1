@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 
 const RECUO = '    '
 
@@ -7,9 +7,27 @@ const RECUO = '    '
  * recuo, e Enter mantém o recuo da linha (com um nível a mais depois de `{`).
  * Mesmas props de um textarea: `onChange` recebe `{ target: { value } }`.
  */
-export default function CodeTextarea({ value, onChange, onKeyDown, ...props }) {
+export default function CodeTextarea({ value, onChange, onKeyDown, className = '', ...props }) {
   const ref = useRef(null)
+  const gutter = useRef(null)
   const cursor = useRef(null)
+  const [medidas, setMedidas] = useState(null)
+
+  // A numeração copia fonte, altura de linha e recuo de cima do próprio campo,
+  // que muda de tamanho entre as telas.
+  useLayoutEffect(() => {
+    if (!ref.current) return
+    const css = getComputedStyle(ref.current)
+    setMedidas({
+      fontSize: css.fontSize, lineHeight: css.lineHeight,
+      paddingTop: css.paddingTop, paddingBottom: css.paddingBottom,
+    })
+  }, [])
+
+  const sincronizar = () => {
+    if (gutter.current && ref.current) gutter.current.scrollTop = ref.current.scrollTop
+  }
+  const linhas = Math.max(1, (value ?? '').split('\n').length)
 
   useLayoutEffect(() => {
     if (cursor.current && ref.current) {
@@ -73,15 +91,28 @@ export default function CodeTextarea({ value, onChange, onKeyDown, ...props }) {
   }
 
   return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={onChange}
-      onKeyDown={handleKeyDown}
-      spellCheck={false}
-      autoCapitalize="off"
-      autoCorrect="off"
-      {...props}
-    />
+    <div className="flex items-stretch">
+      <div
+        ref={gutter}
+        aria-hidden="true"
+        className="select-none overflow-hidden text-right font-mono tabular-nums text-gray-400 pr-2 shrink-0"
+        style={medidas ?? undefined}
+      >
+        {Array.from({ length: linhas }, (_, i) => <div key={i}>{i + 1}</div>)}
+      </div>
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={onChange}
+        onKeyDown={handleKeyDown}
+        onScroll={sincronizar}
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
+        wrap="off"
+        className={`${className} flex-1 min-w-0`}
+        {...props}
+      />
+    </div>
   )
 }
