@@ -2,6 +2,7 @@
 
 Este módulo só lê e converte em registros. As contas estão em `funil_regras`."""
 from datetime import datetime
+from app.core.tempo import agora_utc
 
 from sqlalchemy.orm import Session, load_only
 
@@ -138,7 +139,7 @@ def _dados_da_turma(turma: Turma, db: Session, agora: datetime) -> DadosDaTurma:
 
 
 def funil_da_turma(turma: Turma, db: Session, agora: datetime | None = None) -> dict:
-    agora = agora or datetime.utcnow()
+    agora = agora or agora_utc()
     dados = _dados_da_turma(turma, db, agora)
     return {
         "turma_id": turma.id,
@@ -152,7 +153,7 @@ def funil_geral(db: Session, agora: datetime | None = None) -> dict:
     aluno uma vez, então não é a soma das turmas: o treino de quem está em duas
     turmas aparece nas duas. Juntar o que cada turma leu faz cada aluno contar a
     partir da primeira matrícula."""
-    agora = agora or datetime.utcnow()
+    agora = agora or agora_utc()
     turmas = db.query(Turma).order_by(Turma.id).all()
     professores = dict(db.query(Professor.id, Professor.nome).all())
 

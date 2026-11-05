@@ -1,6 +1,7 @@
 """Recortes de tempo usados por mais de um serviço: a semana de um envio e a
 situação de uma atividade num instante."""
 from datetime import datetime, timedelta
+from app.core.tempo import agora_utc
 
 from app.models.orm import Exam
 
@@ -12,7 +13,7 @@ def semana_iso(momento: datetime) -> str:
 
 
 def situacao_da_atividade(exam: Exam, agora: datetime | None = None) -> str:
-    agora = agora or datetime.utcnow()
+    agora = agora or agora_utc()
     if exam.abre_em and agora < exam.abre_em:
         return "agendada"
     if exam.fecha_em and agora > exam.fecha_em:

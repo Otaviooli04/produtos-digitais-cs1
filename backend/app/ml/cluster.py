@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import datetime
+from app.core.tempo import agora_utc
 from enum import Enum
 from typing import List, Optional
 
@@ -306,7 +306,7 @@ def _persist_results(
     pela `chave`, que sobrevive à renumeração dos rótulos, e só o que mudou é
     atualizado. Grupo que deixou de existir é removido, e só ele."""
     chaves = chaves or {}
-    agora = datetime.utcnow()
+    agora = agora_utc()
 
     for sub, label in zip(submissions, labels):
         sub.cluster_id = int(label)

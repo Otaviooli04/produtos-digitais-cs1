@@ -8,6 +8,7 @@ Este módulo é o único que grava e lê a tabela. A novidade é o registro em v
 do que a rota entrega, então falha aqui vai para o log e não derruba a rota."""
 import logging
 from datetime import datetime
+from app.core.tempo import agora_utc
 
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -75,7 +76,7 @@ def _registrar_resposta(grupo: QuestionCluster, db: Session, anterior: str | Non
         return
     _gravar([
         {"student_id": student_id, "tipo": RETORNO, "question_id": grupo.question_id,
-         "grupo_chave": grupo.chave, "chegou_em": grupo.resposta_em or datetime.utcnow()}
+         "grupo_chave": grupo.chave, "chegou_em": grupo.resposta_em or agora_utc()}
         for student_id in _alcancados(grupo.question_id, grupo.cluster_label, db)
     ], db)
 
@@ -98,13 +99,13 @@ def registrar_exercicio(exercicio: ExercicioGerado, db: Session) -> None:
     na hora não passa por aqui, porque não fica esperando por ele."""
     _sem_derrubar(lambda: _gravar([{
         "student_id": exercicio.student_id, "tipo": EXERCICIO, "exercicio_id": exercicio.id,
-        "chegou_em": exercicio.created_at or datetime.utcnow(),
+        "chegou_em": exercicio.created_at or agora_utc(),
     }], db), f"gravar a novidade do exercício {exercicio.id}", db)
 
 
 def _marcar(filtros: list, db: Session, agora: datetime | None) -> None:
     db.query(Novidade).filter(Novidade.vista_em.is_(None), *filtros).update(
-        {Novidade.vista_em: agora or datetime.utcnow()}, synchronize_session=False)
+        {Novidade.vista_em: agora or agora_utc()}, synchronize_session=False)
     db.commit()
 
 

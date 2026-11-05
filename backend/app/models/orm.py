@@ -1,4 +1,4 @@
-from datetime import datetime
+from app.core.tempo import agora_utc
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON, Float, Index,
     UniqueConstraint, text,
@@ -14,7 +14,7 @@ class Professor(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     nome = Column(String, nullable=False)
     senha_hash = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=agora_utc)
 
     turmas = relationship("Turma", back_populates="professor")
 
@@ -29,7 +29,7 @@ class Student(Base):
     nome = Column(String, nullable=False)
     matricula = Column(String, nullable=True, index=True)
     senha_hash = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=agora_utc)
 
     enrollments = relationship("Enrollment", back_populates="student", cascade="all, delete-orphan")
     submissions = relationship("Submission", back_populates="student")
@@ -49,7 +49,7 @@ class Turma(Base):
     # Tamanho da turma informado pelo professor. É o denominador da aquisição no
     # funil, porque o sistema só conhece quem entrou, não quem deveria entrar.
     alunos_previstos = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=agora_utc)
     professor_id = Column(Integer, ForeignKey("professors.id"), nullable=True)
 
     professor = relationship("Professor", back_populates="turmas")
@@ -71,7 +71,7 @@ class Enrollment(Base):
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True)
     turma_id = Column(Integer, ForeignKey("turmas.id"), nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=agora_utc)
     origem = Column(String(16), nullable=True)
 
     student = relationship("Student", back_populates="enrollments")
@@ -88,7 +88,7 @@ class Acesso(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
-    momento = Column(DateTime, nullable=False, default=datetime.utcnow)
+    momento = Column(DateTime, nullable=False, default=agora_utc)
     via = Column(String(32), nullable=True)
 
     student = relationship("Student", back_populates="acessos")
@@ -108,7 +108,7 @@ class Exam(Base):
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String)
     raw_text = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=agora_utc)
     turma_id = Column(Integer, ForeignKey("turmas.id"), nullable=True)
     titulo = Column(String, nullable=True)  # None = cai no nome do arquivo
     publicada = Column(Boolean, default=False, server_default="false", nullable=False)
@@ -174,7 +174,7 @@ class Submission(Base):
     attempt_number = Column(Integer, default=1, server_default="1")
     # Explicação individual pedida pelo aluno, gerada uma única vez por tentativa.
     llm_explanation = Column(Text, nullable=True)
-    submitted_at = Column(DateTime, default=datetime.utcnow)
+    submitted_at = Column(DateTime, default=agora_utc)
 
     question = relationship("Question", back_populates="submissions")
     student = relationship("Student", back_populates="submissions")
@@ -238,8 +238,8 @@ class ProcessingJob(Base):
     result = Column(JSON, default=dict)
     exam_id = Column(Integer, ForeignKey("exams.id"), nullable=True)
     professor_id = Column(Integer, ForeignKey("professors.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=agora_utc)
+    updated_at = Column(DateTime, default=agora_utc, onupdate=agora_utc)
 
 
 class ExercicioGerado(Base):
@@ -260,7 +260,7 @@ class ExercicioGerado(Base):
     # Sem fila de revisão do professor, o aluno é quem sinaliza exercício ruim.
     reportado = Column(Boolean, default=False, server_default="false", nullable=False)
     reportado_motivo = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=agora_utc)
 
     student = relationship("Student")
     tentativas = relationship(
@@ -283,7 +283,7 @@ class TentativaDeTreino(Base):
     actionable_feedback = Column(Text, default="")
     test_results = Column(JSON, default=list)
     attempt_number = Column(Integer, default=1, server_default="1")
-    submitted_at = Column(DateTime, default=datetime.utcnow)
+    submitted_at = Column(DateTime, default=agora_utc)
 
     exercicio = relationship("ExercicioGerado", back_populates="tentativas")
 

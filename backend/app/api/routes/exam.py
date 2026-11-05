@@ -1,4 +1,4 @@
-from datetime import datetime
+from app.core.tempo import agora_utc
 from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
@@ -505,7 +505,7 @@ def put_resposta_do_grupo(
     mudou = (texto or None) != anterior
     grupo.resposta_professor = texto or None
     if mudou:
-        grupo.resposta_em = datetime.utcnow() if texto else None
+        grupo.resposta_em = agora_utc() if texto else None
         grupo.resposta_por = professor.id if texto else None
     db.commit()
     db.refresh(grupo)

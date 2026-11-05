@@ -10,7 +10,7 @@ Duas regras sustentam este módulo:
 """
 import logging
 from collections import defaultdict
-from datetime import datetime
+from app.core.tempo import agora_utc
 
 from sqlalchemy.orm import Session
 
@@ -452,7 +452,7 @@ def progresso(student: Student, db: Session) -> dict:
             if resolvidas else None
         ),
         "acertos_de_primeira": sum(1 for r in resolvidas if r.tentativas == 1),
-        "dias_seguidos": dias_seguidos(envios, datetime.utcnow().date()),
+        "dias_seguidos": dias_seguidos(envios, agora_utc().date()),
         "ultima_submissao": _iso(envios[-1].momento) if envios else None,
         "evolucao": evolucao(envios, resolvidas),
         "por_modo": por_modo,

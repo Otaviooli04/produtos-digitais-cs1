@@ -4,7 +4,8 @@ O Gemini é mockado em tudo. O que importa testar aqui é a regra de produto:
 o que entra na trilha, quando gera e quando reaproveita, o teto de custo, e a
 fronteira entre treino e nota.
 """
-from datetime import datetime, timedelta
+from app.core.tempo import agora_utc
+from datetime import timedelta
 
 import pytest
 
@@ -69,7 +70,7 @@ def erros_do_aluno(db, aluno, exam_factory):
             question_id=questao.id, code=f"int main(){{return {i};}}",
             error_category=cat, all_tests_passed=False,
             pedagogical_diagnosis="diag", actionable_feedback="troque <= por <",
-            student_id=aluno.id, submitted_at=datetime.utcnow(),
+            student_id=aluno.id, submitted_at=agora_utc(),
         ))
     db.commit()
     return exam
@@ -121,13 +122,13 @@ def _treinou(db, aluno, categoria, passou=True, reportado=False):
         student_id=aluno.id, error_category=categoria, titulo="Soma",
         enunciado="Some os n primeiros inteiros.",
         casos_teste=[{"input": "3", "expected_output": "6"}],
-        resolvido=passou, reportado=reportado, created_at=datetime.utcnow())
+        resolvido=passou, reportado=reportado, created_at=agora_utc())
     db.add(exercicio)
     db.flush()
     db.add(TentativaDeTreino(
         exercicio_id=exercicio.id, student_id=aluno.id, code="int main(){}",
         all_tests_passed=passou, error_category="Correto" if passou else categoria,
-        submitted_at=datetime.utcnow() + timedelta(seconds=1)))
+        submitted_at=agora_utc() + timedelta(seconds=1)))
     db.commit()
     return exercicio
 
@@ -155,7 +156,7 @@ class TestOQueEntraNaTrilha:
         db.add(Submission(
             question_id=exam.questions[0].id, code="int main(){}",
             error_category="Correto", all_tests_passed=True,
-            student_id=aluno.id, submitted_at=datetime.utcnow(),
+            student_id=aluno.id, submitted_at=agora_utc(),
         ))
         db.commit()
         assert categorias_para_treinar(aluno, db) == []
@@ -217,7 +218,7 @@ class TestSuperados:
             student_id=aluno.id, error_category="Acesso Fora dos Limites: Off-by-One",
             titulo="Soma", enunciado="Some os n primeiros inteiros.",
             casos_teste=[{"input": "3", "expected_output": "6"}],
-            created_at=datetime.utcnow())
+            created_at=agora_utc())
         db.add(pendente)
         db.commit()
 
@@ -257,7 +258,7 @@ class TestSuperados:
         db.add(Submission(
             question_id=exam.questions[0].id, code="int main(){}",
             error_category="Erro Desconhecido", all_tests_passed=False,
-            student_id=aluno.id, submitted_at=datetime.utcnow(),
+            student_id=aluno.id, submitted_at=agora_utc(),
         ))
         db.commit()
         assert categorias_para_treinar(aluno, db) == []
@@ -342,7 +343,7 @@ class TestGeracao:
             db.add(ExercicioGerado(
                 student_id=aluno.id, error_category="Acesso Fora dos Limites: Off-by-One",
                 titulo=f"gerado {i}", enunciado="x" * 30, casos_teste=[{"input": "", "expected_output": "1"}],
-                resolvido=True, created_at=datetime.utcnow(),
+                resolvido=True, created_at=agora_utc(),
             ))
         db.commit()
 
@@ -354,7 +355,7 @@ class TestGeracao:
         from app.llm.exercise_generator import GERACOES_POR_DIA
         from app.services.treino_service import gerar_para_categoria
 
-        ontem = datetime.utcnow() - timedelta(days=2)
+        ontem = agora_utc() - timedelta(days=2)
         for i in range(GERACOES_POR_DIA):
             db.add(ExercicioGerado(
                 student_id=aluno.id, error_category="Acesso Fora dos Limites: Off-by-One",
@@ -388,7 +389,7 @@ class TestTreino:
             student_id=aluno.id, error_category="Acesso Fora dos Limites: Off-by-One",
             titulo="Soma", enunciado="Some os n primeiros inteiros.",
             casos_teste=[{"input": "3", "expected_output": "6"}],
-            required_structures=["For"], created_at=datetime.utcnow(),
+            required_structures=["For"], created_at=agora_utc(),
         )
         db.add(e)
         db.commit()
@@ -615,13 +616,13 @@ class TestPreGeracao:
         db.add(Submission(
             question_id=exam.questions[0].id, code="int main(){}",
             error_category="Tudo no Main", all_tests_passed=False,
-            student_id=aluno.id, submitted_at=datetime.utcnow(),
+            student_id=aluno.id, submitted_at=agora_utc(),
         ))
         exercicio = ExercicioGerado(
             student_id=aluno.id, error_category="Tudo no Main", titulo="Soma",
             enunciado="Some os n primeiros inteiros.",
             casos_teste=[{"input": "3", "expected_output": "6"}],
-            created_at=datetime.utcnow())
+            created_at=agora_utc())
         db.add(exercicio)
         db.commit()
         monkeypatch.setattr(treino_service, "evaluate_code",
@@ -663,7 +664,7 @@ class TestPreGeracao:
                 student_id=aluno.id, error_category="Outra Coisa",
                 titulo=f"g{i}", enunciado="x" * 30,
                 casos_teste=[{"input": "", "expected_output": "1"}],
-                resolvido=True, created_at=datetime.utcnow()))
+                resolvido=True, created_at=agora_utc()))
         db.commit()
 
         trilha(aluno, db)
@@ -708,7 +709,7 @@ class TestNovidadesDaTrilha:
             student_id=aluno.id, error_category="Acesso Fora dos Limites: Off-by-One",
             titulo="Soma", enunciado="Some os n primeiros inteiros.",
             casos_teste=[{"input": "3", "expected_output": "6"}],
-            created_at=datetime.utcnow())
+            created_at=agora_utc())
         db.add(exercicio)
         db.flush()
         db.add(Novidade(student_id=aluno.id, tipo="exercicio", exercicio_id=exercicio.id,

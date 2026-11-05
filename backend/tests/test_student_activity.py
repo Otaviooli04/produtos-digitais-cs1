@@ -1,7 +1,8 @@
 """Atividades do aluno: lista, submissão autenticada com histórico de tentativas,
 regras de disponibilidade (modo, janela e teto) e os painéis de progresso e de
 erros recorrentes."""
-from datetime import datetime, timedelta
+from datetime import timedelta
+from app.core.tempo import agora_utc
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -85,7 +86,7 @@ def tentativa_factory(db, prova):
             student_id=student_id,
             matricula="2026001",
             attempt_number=contador[chave],
-            submitted_at=quando or datetime.utcnow(),
+            submitted_at=quando or agora_utc(),
         )
         db.add(sub)
         db.commit()
@@ -104,7 +105,7 @@ def _treino(db, aluno_id, alvo, tentativas, quando=None, titulo="Soma dos pares"
     (passou, categoria), um segundo uma da outra a partir de `quando`."""
     from app.models.orm import ExercicioGerado, TentativaDeTreino
 
-    quando = quando or datetime.utcnow()
+    quando = quando or agora_utc()
     exercicio = ExercicioGerado(student_id=aluno_id, error_category=alvo, titulo=titulo,
                                 enunciado="Some os pares.", casos_teste=[],
                                 reportado=reportado)
@@ -219,14 +220,14 @@ class TestSubmissaoAutenticada:
 
 class TestDisponibilidade:
     def test_atividade_ainda_nao_aberta(self, client, db, token, prova):
-        prova.abre_em = datetime.utcnow() + timedelta(days=1)
+        prova.abre_em = agora_utc() + timedelta(days=1)
         db.commit()
         resp = _submeter(client, token, prova.id)
         assert resp.status_code == 403
         assert "não abriu" in resp.json()["detail"]
 
     def test_atividade_encerrada(self, client, db, token, prova):
-        prova.fecha_em = datetime.utcnow() - timedelta(hours=1)
+        prova.fecha_em = agora_utc() - timedelta(hours=1)
         db.commit()
         resp = _submeter(client, token, prova.id)
         assert resp.status_code == 403
@@ -257,7 +258,7 @@ class TestDisponibilidade:
         assert atividade["tentativas"] == 3
 
     def test_situacao_agendada_na_lista(self, client, db, token, prova):
-        prova.abre_em = datetime.utcnow() + timedelta(days=2)
+        prova.abre_em = agora_utc() + timedelta(days=2)
         db.commit()
         atividade = client.get("/aluno/atividades", headers=_auth(token)).json()[0]
         assert atividade["situacao"] == "agendada"
@@ -320,7 +321,7 @@ class TestProgresso:
 
     def test_evolucao_por_semana(self, client, token, prova, tentativa_factory):
         aluno_id = _aluno_id(client, token)
-        tentativa_factory(aluno_id, "1", "Saída Incorreta", quando=datetime.utcnow() - timedelta(days=14))
+        tentativa_factory(aluno_id, "1", "Saída Incorreta", quando=agora_utc() - timedelta(days=14))
         tentativa_factory(aluno_id, "1", "Correto")
         data = client.get("/aluno/progresso", headers=_auth(token)).json()
         assert len(data["evolucao"]) == 2
@@ -348,7 +349,7 @@ class TestProgresso:
     ):
         aluno_id = _aluno_id(client, token)
         # Meio-dia de hoje: perto da meia-noite UTC os envios cairiam em dias diferentes.
-        agora = datetime.utcnow().replace(hour=12, minute=0, second=0, microsecond=0)
+        agora = agora_utc().replace(hour=12, minute=0, second=0, microsecond=0)
         tentativa_factory(aluno_id, "1", "Correto", quando=agora - timedelta(seconds=30))
         _treino(db, aluno_id, "Laço Infinito",
                 [(False, "Laço Infinito"), (False, "Laço Infinito"), (True, "Correto")],
@@ -429,7 +430,7 @@ class TestErrosRecorrentes:
         self, client, token, prova, tentativa_factory,
     ):
         aluno_id = _aluno_id(client, token)
-        antigo = datetime.utcnow() - timedelta(days=30)
+        antigo = agora_utc() - timedelta(days=30)
         for _ in range(4):
             tentativa_factory(aluno_id, "1", "Laço Infinito", quando=antigo)
         for _ in range(10):
@@ -444,7 +445,7 @@ class TestErrosRecorrentes:
     def test_treino_soma_e_aparece_no_rotulo(self, client, db, token, prova, tentativa_factory):
         aluno_id = _aluno_id(client, token)
         tentativa_factory(aluno_id, "1", "Laço Infinito",
-                          quando=datetime.utcnow() - timedelta(hours=1))
+                          quando=agora_utc() - timedelta(hours=1))
         _treino(db, aluno_id, "Saída Incorreta", [(False, "Laço Infinito")])
 
         data = client.get("/aluno/erros-recorrentes", headers=_auth(token)).json()
@@ -459,7 +460,7 @@ class TestErrosRecorrentes:
 
     def test_erro_superado_sai_dos_ativos(self, client, db, token, prova, tentativa_factory):
         aluno_id = _aluno_id(client, token)
-        antes = datetime.utcnow() - timedelta(hours=1)
+        antes = agora_utc() - timedelta(hours=1)
         tentativa_factory(aluno_id, "1", "Laço Infinito", quando=antes)
         tentativa_factory(aluno_id, "2", "Saída Incorreta", quando=antes)
         _treino(db, aluno_id, "Laço Infinito", [(False, "Laço Infinito"), (True, "Correto")])
