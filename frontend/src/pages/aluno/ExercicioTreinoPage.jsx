@@ -156,7 +156,11 @@ function Conteudo({ exercicioId }) {
         <div>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Resultado</h2>
           <div className="space-y-3">
-            <RitmoDaTentativa avanco={resultado.avanco} sugerirPausa={resultado.sugerir_pausa} />
+            <RitmoDaTentativa
+              avanco={resultado.avanco}
+              sugerirPausa={resultado.sugerir_pausa}
+              semCasos={resultado.tentativa.tests_total === 0}
+            />
             <TentativaDetalhe tentativa={resultado.tentativa} structureCheck={resultado.structure_check} />
           </div>
         </div>

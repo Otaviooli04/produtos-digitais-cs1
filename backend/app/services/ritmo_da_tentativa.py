@@ -13,6 +13,8 @@ from itertools import pairwise
 ENVIOS_PARA_PAUSA = 3
 JANELA_DA_PAUSA = timedelta(minutes=5)
 MUDANCA_MINIMA = 20
+# Envios que o ritmo precisa olhar, com folga para falhas técnicas no meio.
+JANELA_DO_RITMO = 6
 
 
 @dataclass(frozen=True)
@@ -22,6 +24,9 @@ class EnvioDoRitmo:
     passou: bool
     passados: int
     total: int
+    # Falha técnica (Docker fora do ar, tempo esgotado do sistema) não é erro do
+    # aluno, como no resto do histórico: não entra na pausa nem no avanço.
+    falha: bool = False
 
 
 def avanco(anterior: EnvioDoRitmo | None, atual: EnvioDoRitmo) -> dict | None:
@@ -30,7 +35,7 @@ def avanco(anterior: EnvioDoRitmo | None, atual: EnvioDoRitmo) -> dict | None:
     Só compara quando as duas rodaram o mesmo conjunto de casos. Erro de
     compilação roda zero casos, e "passou em 3 a mais" depois de consertar o
     ponto e vírgula seria verdade sem dizer nada sobre a lógica."""
-    if anterior is None or anterior.passou:
+    if anterior is None or anterior.passou or anterior.falha or atual.falha:
         return None
     if atual.total == 0 or anterior.total != atual.total:
         return None
@@ -64,13 +69,17 @@ def tamanho_da_mudanca(antes: str, depois: str) -> int:
 def sugerir_pausa(envios: list[EnvioDoRitmo]) -> bool:
     """Os últimos envios, em ordem de chegada, viraram tentativa às cegas?
 
-    Três envios errados em até cinco minutos, cada um quase igual ao anterior.
-    Quem acerta não recebe pausa, e quem reescreveu o código está pensando,
-    não chutando."""
-    if len(envios) < ENVIOS_PARA_PAUSA:
+    Três envios errados em até cinco minutos, com o mesmo número de casos certos
+    e cada um quase igual ao anterior. Quem acerta não recebe pausa, quem
+    avançou ou reescreveu o código está pensando, não chutando, e a falha do
+    sistema fica de fora da conta."""
+    validos = [e for e in envios if not e.falha]
+    if len(validos) < ENVIOS_PARA_PAUSA:
         return False
-    ultimos = envios[-ENVIOS_PARA_PAUSA:]
+    ultimos = validos[-ENVIOS_PARA_PAUSA:]
     if any(e.passou or e.quando is None for e in ultimos):
+        return False
+    if len({e.passados for e in ultimos}) > 1:
         return False
     if ultimos[-1].quando - ultimos[0].quando > JANELA_DA_PAUSA:
         return False
@@ -81,7 +90,8 @@ def sugerir_pausa(envios: list[EnvioDoRitmo]) -> bool:
 
 
 def ritmo(envios: list[EnvioDoRitmo]) -> dict:
-    """O que a tela do resultado mostra sobre o envio mais recente da lista."""
+    """O que a tela do resultado mostra sobre o envio mais recente da lista.
+    Quem chama pode passar só os últimos: `JANELA_DO_RITMO` envios bastam."""
     if not envios:
         return {"avanco": None, "sugerir_pausa": False}
     anterior = envios[-2] if len(envios) > 1 else None

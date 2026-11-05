@@ -13,9 +13,10 @@ T0 = datetime(2026, 11, 5, 10, 0)
 CODIGO = "int main() {\n  for (i = 0; i < n; i++) soma += i;\n}"
 
 
-def _envio(passados=0, total=3, codigo=CODIGO, minutos=0, passou=None):
+def _envio(passados=0, total=3, codigo=CODIGO, minutos=0, passou=None, falha=False):
     return EnvioDoRitmo(codigo, T0 + timedelta(minutes=minutos),
-                        passados == total if passou is None else passou, passados, total)
+                        passados == total if passou is None else passou, passados, total,
+                        falha=falha)
 
 
 class TestAvanco:
@@ -32,6 +33,10 @@ class TestAvanco:
     def test_erro_de_compilacao_nao_compara(self):
         assert avanco(_envio(0, total=0), _envio(2)) is None
         assert avanco(_envio(2), _envio(0, total=0)) is None
+
+    def test_falha_tecnica_nao_compara(self):
+        assert avanco(_envio(1, falha=True), _envio(2)) is None
+        assert avanco(_envio(1), _envio(0, falha=True)) is None
 
     def test_anterior_que_ja_passava_nao_compara(self):
         assert avanco(_envio(3), _envio(3)) is None
@@ -69,6 +74,19 @@ class TestPausa:
         outro = "int main() {\n  int k = n;\n  while (k > 0) { soma = soma + k; k--; }\n}"
         assert sugerir_pausa([_envio(1), _envio(1, minutos=1, codigo=outro),
                               _envio(1, minutos=2)]) is False
+
+    def test_falha_tecnica_nao_conta_para_a_pausa(self):
+        falhas = [_envio(0, total=0, minutos=m, falha=True) for m in (0, 1, 2)]
+        assert sugerir_pausa(falhas) is False
+
+    def test_falha_tecnica_no_meio_e_ignorada(self):
+        envios = [_envio(1, minutos=0), _envio(0, total=0, minutos=1, falha=True),
+                  _envio(1, minutos=2), _envio(1, minutos=3)]
+        assert sugerir_pausa(envios) is True
+
+    def test_quem_mudou_de_resultado_nao_recebe_pausa(self):
+        envios = [_envio(1, minutos=0), _envio(2, minutos=1), _envio(2, minutos=2)]
+        assert sugerir_pausa(envios) is False
 
     def test_olha_so_os_ultimos_tres(self):
         envios = [_envio(3, minutos=0), _envio(1, minutos=10),

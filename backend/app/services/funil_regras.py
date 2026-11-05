@@ -106,10 +106,10 @@ def _por_item(tentativas: list[Tentativa]) -> dict[tuple[int, str, int], list[Te
     return series
 
 
-def erros_corrigidos(tentativas: list[Tentativa]) -> list[tuple[int, datetime]]:
-    """Aluno e momento do primeiro acerto de cada item que teve erro antes dele.
-    Um por item: errar de novo depois de acertar não abre outra correção."""
-    corrigidos = []
+def _acertos_depois_de_erro(tentativas: list[Tentativa]) -> list[Tentativa]:
+    """O primeiro acerto de cada item que teve erro antes dele. Um por item:
+    errar de novo depois de acertar não abre outra correção."""
+    acertos = []
     for serie in _por_item(tentativas).values():
         errou = False
         for t in serie:
@@ -117,9 +117,14 @@ def erros_corrigidos(tentativas: list[Tentativa]) -> list[tuple[int, datetime]]:
                 errou = True
             elif t.resultado == ACERTO:
                 if errou:
-                    corrigidos.append((t.aluno, t.momento))
+                    acertos.append(t)
                 break
-    return corrigidos
+    return acertos
+
+
+def erros_corrigidos(tentativas: list[Tentativa]) -> list[tuple[int, datetime]]:
+    """Aluno e momento de cada erro corrigido, a base da North Star."""
+    return [(t.aluno, t.momento) for t in _acertos_depois_de_erro(tentativas)]
 
 
 def tipo_do_item(t: Tentativa) -> str:
@@ -131,18 +136,10 @@ def tipo_do_item(t: Tentativa) -> str:
 
 
 def corrigidos_por_tipo(tentativas: list[Tentativa]) -> dict:
-    """A North Star repartida por onde o erro foi corrigido, com a mesma regra
-    de `erros_corrigidos`: um por item, no primeiro acerto depois de um erro."""
+    """A North Star repartida por onde o erro foi corrigido."""
     contagem = {"provas": 0, "listas": 0, "trilha": 0}
-    for serie in _por_item(tentativas).values():
-        errou = False
-        for t in serie:
-            if t.resultado == ERRO:
-                errou = True
-            elif t.resultado == ACERTO:
-                if errou:
-                    contagem[tipo_do_item(t)] += 1
-                break
+    for t in _acertos_depois_de_erro(tentativas):
+        contagem[tipo_do_item(t)] += 1
     return contagem
 
 

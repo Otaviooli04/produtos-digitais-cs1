@@ -318,7 +318,9 @@ export default function TurmaDetailPage() {
                     {titulo} ({doGrupo.length})
                   </h3>
                   {doGrupo.length === 0 ? (
-                    <p className="text-sm text-gray-400 py-4">{vazio}</p>
+                    <p className="text-sm text-gray-400 py-4">
+                      {search.trim() ? 'Nada encontrado para o filtro.' : vazio}
+                    </p>
                   ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {doGrupo.map(exam => {

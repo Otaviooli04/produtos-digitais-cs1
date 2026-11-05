@@ -3,7 +3,7 @@
  * quando os envios viraram tentativa às cegas, uma sugestão de pausa. A pausa
  * vem antes de qualquer comemoração, por isso aparece primeiro.
  */
-export default function RitmoDaTentativa({ avanco, sugerirPausa }) {
+export default function RitmoDaTentativa({ avanco, sugerirPausa, semCasos = false }) {
   const mais = avanco?.casos_a_mais ?? 0
 
   return (
@@ -13,8 +13,9 @@ export default function RitmoDaTentativa({ avanco, sugerirPausa }) {
           <p className="text-sm font-medium text-amber-900">Que tal uma pausa de um minuto?</p>
           <p className="text-xs text-amber-800 mt-1">
             Foram três envios em poucos minutos, com o código quase igual e o mesmo resultado.
-            Antes do próximo, releia o caso que falhou abaixo e tente dizer, com suas palavras,
-            o que o seu programa faz com aquela entrada.
+            {semCasos
+              ? ' Antes do próximo, leia com calma a mensagem do compilador abaixo e procure a linha que ela aponta.'
+              : ' Antes do próximo, releia o caso que falhou abaixo e tente dizer, com suas palavras, o que o seu programa faz com aquela entrada.'}
           </p>
         </div>
       )}

@@ -203,7 +203,11 @@ function QuestaoConteudo({ examId, numero }) {
       {resultado && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-gray-900">Resultado</h2>
-          <RitmoDaTentativa avanco={resultado.avanco} sugerirPausa={resultado.sugerir_pausa} />
+          <RitmoDaTentativa
+            avanco={resultado.avanco}
+            sugerirPausa={resultado.sugerir_pausa}
+            semCasos={resultado.tentativa.tests_total === 0}
+          />
           <TentativaDetalhe
             tentativa={resultado.tentativa}
             functionCheck={resultado.function_check}
