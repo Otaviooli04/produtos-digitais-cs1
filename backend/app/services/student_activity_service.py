@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.engine.evaluators.code_evaluator import evaluate_code
 from app.models.orm import Exam, Question, Student, Submission
 from app.services.calendario import situacao_da_atividade
+from app.services.ritmo_da_tentativa import EnvioDoRitmo, ritmo
 from app.services.historico_do_aluno import (
     CATEGORIA_CORRETA, ERRO, FALHA, LISTA, TRILHA, dias_seguidos, erros_do_aluno, evolucao,
     ler_historico, resolucoes, rotulos, superados, tendencias,
@@ -223,7 +224,14 @@ def submeter(student: Student, exam_id: int, question_number: str, code: str,
         "resolvida": _resolvida(anteriores + [submissao]),
         "structure_check": result.get("structure_check"),
         "function_check": result.get("function_check"),
+        **ritmo([_envio_do_ritmo(s) for s in anteriores + [submissao]]),
     }
+
+
+def _envio_do_ritmo(sub: Submission) -> EnvioDoRitmo:
+    passados, total = _testes(sub)
+    return EnvioDoRitmo(sub.code or "", sub.submitted_at, bool(sub.all_tests_passed),
+                        passados, total)
 
 
 def _agrupar_em_silencio(question_id: int, db: Session) -> None:

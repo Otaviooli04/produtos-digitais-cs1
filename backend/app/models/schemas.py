@@ -677,6 +677,13 @@ class ExplicacaoResponse(BaseModel):
     gerada_agora: bool
 
 
+class AvancoDaTentativa(BaseModel):
+    casos_a_mais: int
+    passados: int
+    passados_antes: int
+    total: int
+
+
 class AlunoSubmissaoResponse(BaseModel):
     tentativa: TentativaResponse
     tentativas: int
@@ -684,6 +691,8 @@ class AlunoSubmissaoResponse(BaseModel):
     resolvida: bool
     structure_check: Optional[StructureCheck] = None
     function_check: Optional[FunctionCheck] = None
+    avanco: Optional[AvancoDaTentativa] = None
+    sugerir_pausa: bool = False
 
 
 class HistoricoQuestaoResponse(BaseModel):
@@ -823,6 +832,8 @@ class TreinoSubmissaoResponse(BaseModel):
     tentativas: int
     resolvido: bool = False
     structure_check: Optional[StructureCheck] = None
+    avanco: Optional[AvancoDaTentativa] = None
+    sugerir_pausa: bool = False
 
 
 class ReportarExercicioRequest(BaseModel):

@@ -85,9 +85,9 @@ export default function ProgressoPage() {
               sub="questões e treinos resolvidos no primeiro envio"
             />
             <Kpi
-              label="Dias seguidos"
-              value={progresso.dias_seguidos}
-              sub={`${progresso.total_tentativas} tentativas no total${noTreino}`}
+              label="Erros superados"
+              value={superados.length}
+              sub={`erros que pararam de aparecer · ${progresso.total_tentativas} tentativas${noTreino}`}
             />
           </div>
 

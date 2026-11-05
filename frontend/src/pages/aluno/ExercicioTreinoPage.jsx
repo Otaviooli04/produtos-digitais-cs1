@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getExercicio, reportarExercicio, treinar } from '../../api/aluno'
 import Badge from '../../components/Badge'
+import RitmoDaTentativa from '../../components/RitmoDaTentativa'
 import Spinner from '../../components/Spinner'
 import TentativaDetalhe from '../../components/TentativaDetalhe'
 import { categoriaColor, formatarData } from '../../utils/atividade'
@@ -153,7 +154,10 @@ function Conteudo({ exercicioId }) {
       {resultado && (
         <div>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Resultado</h2>
-          <TentativaDetalhe tentativa={resultado.tentativa} structureCheck={resultado.structure_check} />
+          <div className="space-y-3">
+            <RitmoDaTentativa avanco={resultado.avanco} sugerirPausa={resultado.sugerir_pausa} />
+            <TentativaDetalhe tentativa={resultado.tentativa} structureCheck={resultado.structure_check} />
+          </div>
         </div>
       )}
 

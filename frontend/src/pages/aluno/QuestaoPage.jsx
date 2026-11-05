@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getAtividade, getTentativas, submeterResposta } from '../../api/aluno'
 import Badge from '../../components/Badge'
+import RitmoDaTentativa from '../../components/RitmoDaTentativa'
 import Spinner from '../../components/Spinner'
 import TentativaDetalhe from '../../components/TentativaDetalhe'
 import { categoriaColor, formatarData } from '../../utils/atividade'
@@ -201,6 +202,7 @@ function QuestaoConteudo({ examId, numero }) {
       {resultado && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-gray-900">Resultado</h2>
+          <RitmoDaTentativa avanco={resultado.avanco} sugerirPausa={resultado.sugerir_pausa} />
           <TentativaDetalhe
             tentativa={resultado.tentativa}
             functionCheck={resultado.function_check}

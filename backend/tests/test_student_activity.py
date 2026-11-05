@@ -173,6 +173,21 @@ class TestSubmissaoAutenticada:
         assert all(s.student_id is not None for s in subs)
         assert all(s.matricula == "2026001" for s in subs)
 
+    def test_resposta_traz_avanco_e_pausa(self, client, token, prova):
+        primeira = _submeter(client, token, prova.id, saida="errado").json()
+        assert primeira["avanco"] is None
+        assert primeira["sugerir_pausa"] is False
+
+        _submeter(client, token, prova.id, saida="errado")
+        terceira = _submeter(client, token, prova.id, saida="errado").json()
+        assert terceira["avanco"] == {
+            "casos_a_mais": 0, "passados": 0, "passados_antes": 0, "total": 1}
+        assert terceira["sugerir_pausa"] is True
+
+        certa = _submeter(client, token, prova.id, saida="par").json()
+        assert certa["avanco"]["casos_a_mais"] == 1
+        assert certa["sugerir_pausa"] is False
+
     def test_tentativa_anterior_continua_no_historico(self, client, db, token, prova):
         _submeter(client, token, prova.id, saida="errado")
         _submeter(client, token, prova.id, saida="par")

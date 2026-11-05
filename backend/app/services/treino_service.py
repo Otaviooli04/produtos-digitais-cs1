@@ -24,6 +24,7 @@ from app.engine.evaluators.code_evaluator import evaluate_code
 from app.llm.exercise_generator import GERACOES_POR_DIA, ExercicioInvalido, gerar_exercicio
 from app.models.orm import ExercicioGerado, Student, TentativaDeTreino
 from app.services.historico_do_aluno import Erro, erros_do_aluno, ler_historico, superados
+from app.services.ritmo_da_tentativa import EnvioDoRitmo, ritmo
 
 logger = logging.getLogger(__name__)
 
@@ -362,7 +363,14 @@ def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict
         "tentativas": len(anteriores) + 1,
         "resolvido": bool(exercicio.resolvido),
         "structure_check": resultado.get("structure_check"),
+        **ritmo([_envio_do_ritmo(t) for t in anteriores + [tentativa]]),
     }
+
+
+def _envio_do_ritmo(t: TentativaDeTreino) -> EnvioDoRitmo:
+    resultados = t.test_results or []
+    return EnvioDoRitmo(t.code or "", t.submitted_at, bool(t.all_tests_passed),
+                        sum(1 for r in resultados if r.get("passed")), len(resultados))
 
 
 def reportar(student: Student, exercicio_id: int, motivo: str, db: Session) -> dict:
