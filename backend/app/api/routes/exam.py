@@ -107,7 +107,6 @@ def get_exam(
     return _exam_to_response(get_exam_or_404(exam_id, db, professor_id=professor.id))
 
 
-
 LIMITE_DO_PDF = 10 * 1024 * 1024
 LIMITE_DO_ZIP = 20 * 1024 * 1024
 

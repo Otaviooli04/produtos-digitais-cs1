@@ -34,21 +34,34 @@ def _run_once(run_cmd: list[str], stdin: str):
 IMAGEM_GCC = "gcc@sha256:8d466d9001805b81ecc280645889c368ae28e75724e7ecba03a0336deda0faac"
 
 
+USUARIO_SEM_PRIVILEGIO = "65534:65534"  # nobody
+
+
+def _usuario_do_conteiner() -> str:
+    """O dono da pasta temporária, que é a única coisa montada. Se o backend
+    rodar como root (hospedagem), herdar o uid poria o aluno como root no
+    contêiner, então ele vira nobody e a pasta fica aberta para escrita."""
+    if os.getuid() == 0:
+        return USUARIO_SEM_PRIVILEGIO
+    return f"{os.getuid()}:{os.getgid()}"
+
+
 def _limites_do_conteiner() -> list[str]:
     """O código é de aluno: um fork em laço ou um malloc gigante não pode
-    derrubar a máquina, e nada roda como root dentro do contêiner. O usuário é
-    o dono da pasta temporária, que é a única coisa montada."""
+    derrubar a máquina, e nada roda como root dentro do contêiner."""
     return [
         "--network", "none",
         "--memory", "256m", "--memory-swap", "256m",
         "--pids-limit", "64", "--cpus", "1",
         "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
-        "--user", f"{os.getuid()}:{os.getgid()}",
+        "--user", _usuario_do_conteiner(),
     ]
 
 
 def compile_and_run(source_code: str, test_cases: list[dict]) -> dict:
     with tempfile.TemporaryDirectory() as temp_dir:
+        if os.getuid() == 0:
+            os.chmod(temp_dir, 0o777)
         source_path = os.path.join(temp_dir, "student_code.c")
         with open(source_path, "w", encoding="utf-8") as f:
             f.write(source_code)

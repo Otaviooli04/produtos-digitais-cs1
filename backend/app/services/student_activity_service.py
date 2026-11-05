@@ -195,8 +195,9 @@ def submeter(student: Student, exam_id: int, question_number: str, code: str,
     if exam.max_tentativas is not None:
         # Dois envios ao mesmo tempo contariam as mesmas tentativas e passariam
         # juntos do teto. A trava na linha do aluno enfileira os envios dele até
-        # o primeiro gravar. NO KEY não bloqueia quem só referencia o aluno
-        # (acessos, matrícula) durante a correção no Docker.
+        # o primeiro gravar, o que inclui a correção no Docker (segundos). NO KEY
+        # não bloqueia quem só referencia o aluno (acessos, matrícula), mas um
+        # UPDATE futuro na linha de Student esperaria a correção terminar.
         db.query(Student).filter(Student.id == student.id).with_for_update(key_share=True).one()
     anteriores = _tentativas_por_questao(student, db, [question.id]).get(question.id, [])
     if exam.max_tentativas is not None and len(anteriores) >= exam.max_tentativas:

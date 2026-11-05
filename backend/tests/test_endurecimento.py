@@ -109,3 +109,14 @@ def test_conteiner_com_limites_usuario_sem_root_e_imagem_fixa():
         assert "--cap-drop" in cmd
         assert dynamic_analyzer.IMAGEM_GCC in cmd
         assert "gcc:latest" not in cmd
+
+
+def test_backend_como_root_poe_o_aluno_como_nobody(monkeypatch, tmp_path):
+    monkeypatch.setattr(dynamic_analyzer.os, "getuid", lambda: 0)
+    monkeypatch.setattr(dynamic_analyzer.os, "chmod", lambda *a: None)
+    with patch("app.engine.dynamic_analyzer.subprocess.run", side_effect=[
+            make_subprocess_result(returncode=0), make_subprocess_result(stdout="ok")]) as run:
+        dynamic_analyzer.compile_and_run("int main(){}", [{"input": "", "expected_output": "ok"}])
+    for chamada in run.call_args_list:
+        cmd = chamada.args[0]
+        assert cmd[cmd.index("--user") + 1] == dynamic_analyzer.USUARIO_SEM_PRIVILEGIO
