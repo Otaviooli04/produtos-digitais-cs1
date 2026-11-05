@@ -7,6 +7,7 @@ import Spinner from '../../components/Spinner'
 import TentativaDetalhe from '../../components/TentativaDetalhe'
 import { categoriaColor, formatarData } from '../../utils/atividade'
 import { shortError } from '../../utils/errorLabels'
+import CodeTextarea from '../../components/CodeTextarea'
 
 const MODELO = '#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}'
 
@@ -104,7 +105,7 @@ function Conteudo({ exercicioId }) {
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Seu código em C</h2>
-        <textarea
+        <CodeTextarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
           spellCheck={false}

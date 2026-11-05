@@ -6,6 +6,7 @@ import RitmoDaTentativa from '../../components/RitmoDaTentativa'
 import Spinner from '../../components/Spinner'
 import TentativaDetalhe from '../../components/TentativaDetalhe'
 import { categoriaColor, formatarData } from '../../utils/atividade'
+import CodeTextarea from '../../components/CodeTextarea'
 
 const MODELO = '#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}'
 
@@ -164,7 +165,7 @@ function QuestaoConteudo({ examId, numero }) {
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <label className="block text-xs font-medium text-gray-500 mb-1.5">Seu código em C</label>
-        <textarea
+        <CodeTextarea
           rows={18}
           value={code}
           onChange={e => setCode(e.target.value)}

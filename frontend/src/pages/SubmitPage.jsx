@@ -4,6 +4,7 @@ import { getExam, submitCode } from '../api/exam'
 import Spinner from '../components/Spinner'
 import Badge from '../components/Badge'
 import FunctionCheckCard from '../components/FunctionCheckCard'
+import CodeTextarea from '../components/CodeTextarea'
 
 export default function SubmitPage() {
   const { id } = useParams()
@@ -79,7 +80,7 @@ export default function SubmitPage() {
 
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Código C</label>
-          <textarea
+          <CodeTextarea
             rows={14}
             value={code}
             onChange={e => setCode(e.target.value)}
