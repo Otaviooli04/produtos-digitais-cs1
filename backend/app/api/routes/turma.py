@@ -6,12 +6,13 @@ from app.models.database import get_db
 from app.models.orm import Professor
 from app.models.orm import Turma
 from app.models.schemas import (
-    FunilTurmaResponse, TurmaAnalyticsResponse, TurmaCreate, TurmaDetailResponse, TurmaResponse,
-    TurmaUpdate,
+    FunilTurmaResponse, ListaDeAquecimentoResponse, TurmaAnalyticsResponse, TurmaCreate,
+    TurmaDetailResponse, TurmaResponse, TurmaUpdate,
 )
 from app.services.funil_service import funil_da_turma
 from app.services.turma_service import (
-    create_turma, delete_turma, get_turma_analytics, get_turma_detail, list_turmas, update_turma,
+    adicionar_lista_de_aquecimento, create_turma, delete_turma, get_turma_analytics,
+    get_turma_detail, list_turmas, update_turma,
 )
 
 router = APIRouter(prefix="/turmas", tags=["turmas"])
@@ -55,6 +56,16 @@ def get_turma(
     if not detail:
         raise HTTPException(status_code=404, detail="Turma não encontrada.")
     return detail
+
+
+@router.post("/{turma_id}/lista-de-aquecimento", response_model=ListaDeAquecimentoResponse)
+def post_lista_de_aquecimento(
+    turma_id: int,
+    db: Session = Depends(get_db),
+    professor: Professor = Depends(get_current_professor),
+):
+    turma = _get_turma_or_404(turma_id, db, professor.id)
+    return ListaDeAquecimentoResponse(exam_id=adicionar_lista_de_aquecimento(turma, db).id)
 
 
 @router.put("/{turma_id}", response_model=TurmaDetailResponse)

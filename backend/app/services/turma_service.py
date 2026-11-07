@@ -9,7 +9,16 @@ APPROVAL_THRESHOLD = 0.60
 VARIACAO_RELEVANTE = 5.0
 from app.core.tempo import agora_utc
 from sqlalchemy.orm import Session
-from app.models.orm import Exam, Submission, Turma
+from app.models.orm import Exam, Question, Submission, TestCase, Turma
+
+# A lista de aquecimento (RF05) se reconhece pelo nome do arquivo, que o professor
+# não edita. É isso que evita a duplicata e mostra depois quais turmas a usaram.
+LISTA_DE_AQUECIMENTO = "lista-de-aquecimento"
+_TITULO_DO_AQUECIMENTO = "Lista de aquecimento"
+# Curta, mas com as armadilhas de quem começa: divisão inteira e casas decimais.
+# Acertar de primeira não conta como erro corrigido, que é o que o experimento mede.
+_ENUNCIADO_DO_AQUECIMENTO = "Leia duas notas e imprima a média com uma casa decimal."
+_CASOS_DO_AQUECIMENTO = (("8 7", "7.5"), ("10 5", "7.5"), ("6 6", "6.0"))
 
 # Alfabeto sem caracteres ambíguos (O/0, I/1), porque o código é ditado em sala.
 _ALFABETO_CODIGO = ''.join(c for c in string.ascii_uppercase + string.digits if c not in 'O0I1')
@@ -27,6 +36,35 @@ def gerar_codigo_acesso(db: Session) -> str:
 # Padrão de `update_turma` para "o campo não veio no corpo", que é diferente de
 # None: None limpa o campo, _MANTER deixa como está.
 _MANTER = object()
+
+
+def adicionar_lista_de_aquecimento(turma: Turma, db: Session) -> Exam:
+    """Cria a lista como rascunho, para o professor revisar e publicar. Se a turma
+    já tem a dela, devolve a que existe."""
+    existente = db.query(Exam).filter(
+        Exam.turma_id == turma.id, Exam.filename == LISTA_DE_AQUECIMENTO,
+    ).first()
+    if existente:
+        return existente
+    exam = Exam(
+        filename=LISTA_DE_AQUECIMENTO,
+        raw_text=_ENUNCIADO_DO_AQUECIMENTO,
+        created_at=agora_utc(),
+        turma_id=turma.id,
+        titulo=_TITULO_DO_AQUECIMENTO,
+        modo=Exam.MODO_TREINO,
+        publicada=False,
+    )
+    db.add(exam)
+    db.flush()
+    questao = Question(exam_id=exam.id, number="1", statement=_ENUNCIADO_DO_AQUECIMENTO)
+    db.add(questao)
+    db.flush()
+    db.add_all(TestCase(question_id=questao.id, input=entrada, expected_output=saida)
+               for entrada, saida in _CASOS_DO_AQUECIMENTO)
+    db.commit()
+    db.refresh(exam)
+    return exam
 
 
 def create_turma(nome: str, codigo: str, db: Session, professor_id: int | None = None,

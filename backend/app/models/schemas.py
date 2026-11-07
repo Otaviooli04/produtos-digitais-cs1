@@ -83,6 +83,10 @@ class TurmaUpdate(BaseModel):
     alunos_previstos: Optional[int] = Field(None, ge=1, le=1000)
 
 
+class ListaDeAquecimentoResponse(BaseModel):
+    exam_id: int
+
+
 class ExamSummary(BaseModel):
     id: int
     filename: str

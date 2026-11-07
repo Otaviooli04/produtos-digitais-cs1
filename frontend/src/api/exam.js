@@ -84,6 +84,9 @@ export const getTurmaAnalytics = (id) => api.get(`/turmas/${id}/analytics`)
 
 export const getTurmaFunil = (id) => api.get(`/turmas/${id}/funil`)
 
+export const adicionarListaDeAquecimento = (turmaId) =>
+  api.post(`/turmas/${turmaId}/lista-de-aquecimento`)
+
 export const getQuestionSubmissions = (examId, questionNumber) =>
   api.get(`/exam/${examId}/questions/${questionNumber}/submissions`)
 
