@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 from app.models.orm import Acesso
 
 # Só origens conhecidas entram no banco, para não guardar texto livre da URL.
-# Os tipos de aviso chegam nas fases 3 e 4.
-VIAS_ACEITAS = {"convite"}
+# Os tipos de aviso chegam na fase 4.
+VIAS_ACEITAS = {"convite", "prova_chegando"}
 JANELA_DO_ACESSO = timedelta(minutes=30)
 
 
