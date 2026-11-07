@@ -266,13 +266,16 @@ def _em_segundo_plano(alvo) -> None:
     threading.Thread(target=_worker, daemon=True).start()
 
 
-def preparar_proximo(student_id: int, categoria: str) -> None:
+def preparar_proximo(student_id: int, categoria: str, registrar_novidade: bool = True) -> None:
     """Deixa o próximo exercício da categoria pronto antes de o aluno pedir.
 
     É isto que tira a geração do caminho dele: com um exercício esperando, abrir
     a trilha custa uma consulta ao banco em vez dos nove segundos do Gemini mais
     os dois do Docker. Não faz nada quando já existe um pendente, quando o teto
-    do dia acabou ou quando já há geração em voo para a mesma chave."""
+    do dia acabou ou quando já há geração em voo para a mesma chave.
+
+    `registrar_novidade=False` é do cartão da prova chegando: ali o aluno já está
+    vendo o treino, e a novidade acenderia a bolinha só por abrir o Início."""
     chave = (student_id, categoria)
     with _trava:
         if chave in _em_voo:
@@ -295,7 +298,8 @@ def preparar_proximo(student_id: int, categoria: str) -> None:
             diagnostico = next(
                 (e.o_que_fazer for e in _erros(student, db) if e.categoria == categoria), "")
             exercicio = _gerar_e_salvar(student, categoria, diagnostico, db)
-            registrar_exercicio(exercicio, db)
+            if registrar_novidade:
+                registrar_exercicio(exercicio, db)
         finally:
             with _trava:
                 _em_voo.discard(chave)

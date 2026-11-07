@@ -768,3 +768,31 @@ class TestNovidadesDaTrilha:
         assert devolvido["id"] == exercicio.id
         assert devolvido["reaproveitado"] is True
         assert self._vista(db) is not None
+
+
+class TestPreparoSemNovidade:
+    """O cartão da prova chegando prepara o exercício sem acender a bolinha."""
+
+    def test_sem_novidade_gera_mas_nao_registra(
+        self, db, aluno, erros_do_aluno, gemini_ok, sem_thread
+    ):
+        from app.models.orm import Novidade
+        from app.services.novidades_service import contar
+        from app.services.treino_service import preparar_proximo
+
+        preparar_proximo(aluno.id, "Tudo no Main", registrar_novidade=False)
+        db.expire_all()
+        assert db.query(ExercicioGerado).filter_by(
+            student_id=aluno.id, error_category="Tudo no Main").count() == 1
+        assert db.query(Novidade).filter_by(student_id=aluno.id).count() == 0
+        assert contar(aluno, db) == 0
+
+    def test_por_padrao_continua_registrando(
+        self, db, aluno, erros_do_aluno, gemini_ok, sem_thread
+    ):
+        from app.models.orm import Novidade
+        from app.services.treino_service import preparar_proximo
+
+        preparar_proximo(aluno.id, "Tudo no Main")
+        db.expire_all()
+        assert db.query(Novidade).filter_by(student_id=aluno.id).count() == 1
