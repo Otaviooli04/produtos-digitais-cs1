@@ -26,7 +26,7 @@ backend/app/
   ml/cluster.py          — agrupamento (determinístico por assinatura de falha; UMAP/HDBSCAN = baseline/visualização)
   llm/feedback_generator.py — insights por grupo p/ o professor (Gemini, 1 chamada/questão, cacheada)
   llm/student_explainer.py  — ajuda em etapas p/ o aluno: pista geral, pista que aponta a parte e explicação (uma chamada sob demanda, cacheada, código do aluno entre marcadores, filtro contra solução)
-  services/              — orquestração (exam, submission, bulk, turma, jobs, student_activity, effort_report, funil_service e funil_regras, acesso, calendario, treino, historico_do_aluno, ritmo_da_tentativa, novidades, inicio)
+  services/              — orquestração (exam, submission, bulk, turma, jobs, student_activity, effort_report, funil_service e funil_regras, acesso, calendario, treino, historico_do_aluno, ritmo_da_tentativa, novidades, inicio, prova_chegando)
   models/                — orm.py (15 entidades) + schemas.py (Pydantic)
   migrations/            — Alembic (revisões 0001..0021)
 frontend/                — painel do professor (`/`) + app do aluno (`/aluno`) (React 19 + Vite + Tailwind v4)
