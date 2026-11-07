@@ -6,7 +6,7 @@ from app.auth.student_dependencies import get_current_student
 from app.auth.student_service import (
     authenticate_student, create_student_token, entrar_na_turma, register_student,
 )
-from app.core.limite import CADASTRO, conferir_login, por_ip
+from app.core.limite import CADASTRO, ENTRAR_NA_TURMA, conferir_login, por_aluno, por_ip
 from app.models.database import get_db
 from app.models.orm import Student
 from app.models.schemas import (
@@ -73,7 +73,8 @@ def change_password(
     db.commit()
 
 
-@router.post("/turmas/entrar", response_model=TurmaDoAlunoResponse)
+@router.post("/turmas/entrar", response_model=TurmaDoAlunoResponse,
+             dependencies=[Depends(por_aluno(ENTRAR_NA_TURMA))])
 def entrar(
     body: TurmaEntrarRequest,
     db: Session = Depends(get_db),

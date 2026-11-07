@@ -4,8 +4,8 @@ from fastapi.testclient import TestClient
 from app.auth.service import hash_password
 from app.auth.student_service import create_student_token
 from app.core.limite import (
-    CADASTRO, ENVIO_DO_ALUNO, LOGIN_POR_EMAIL, LOGIN_POR_IP, Limitador, Regra,
-    mensagem_de_espera,
+    CADASTRO, ENTRAR_NA_TURMA, ENVIO_DO_ALUNO, LOGIN_POR_EMAIL, LOGIN_POR_IP, Limitador, Regra,
+    limitador, mensagem_de_espera,
 )
 from app.api.routes import exam, student_activity, submission, treino
 from app.main import app
@@ -79,7 +79,8 @@ def test_mensagem_em_segundos_e_em_minutos():
 def test_regras_aprovadas_no_desenho():
     assert (LOGIN_POR_IP.maximo, LOGIN_POR_IP.janela) == (60, 60)
     assert (LOGIN_POR_EMAIL.maximo, LOGIN_POR_EMAIL.janela) == (10, 60)
-    assert (CADASTRO.maximo, CADASTRO.janela) == (30, 3600)
+    assert (CADASTRO.maximo, CADASTRO.janela) == (100, 3600)
+    assert (ENTRAR_NA_TURMA.maximo, ENTRAR_NA_TURMA.janela) == (10, 60)
     assert (ENVIO_DO_ALUNO.maximo, ENVIO_DO_ALUNO.janela) == (10, 60)
 
 
@@ -124,13 +125,15 @@ def test_login_do_professor_tambem_tem_limite(db, cliente):
     assert cliente.post("/auth/login", json=corpo).status_code == 429
 
 
-def test_cadastro_do_aluno_bloqueia_depois_de_30_por_ip(db, cliente):
-    for i in range(30):
-        r = cliente.post("/aluno/register", json={
-            "email": f"cad{i}@teste.local", "nome": "Aluno", "matricula": f"m{i}", "senha": "senha1234"})
-        assert r.status_code == 201
+def test_cadastro_do_aluno_bloqueia_depois_do_maximo_por_ip(db, cliente):
+    # Enche o contador direto: cem cadastros com bcrypt deixariam a suíte lenta.
+    for _ in range(CADASTRO.maximo - 1):
+        assert limitador.espera("testclient", CADASTRO) == 0
     r = cliente.post("/aluno/register", json={
-        "email": "cad30@teste.local", "nome": "Aluno", "matricula": "m30", "senha": "senha1234"})
+        "email": "cad-ultimo@teste.local", "nome": "Aluno", "matricula": "m1", "senha": "senha1234"})
+    assert r.status_code == 201
+    r = cliente.post("/aluno/register", json={
+        "email": "cad-bloqueado@teste.local", "nome": "Aluno", "matricula": "m2", "senha": "senha1234"})
     assert r.status_code == 429
 
 
@@ -145,6 +148,20 @@ def test_envio_do_aluno_conta_por_aluno_e_nao_por_ip(db, cliente):
         assert cliente.post(url, json=corpo, headers=cab_ana).status_code == 404
     assert cliente.post(url, json=corpo, headers=cab_ana).status_code == 429
     assert cliente.post(url, json=corpo, headers=cab_bia).status_code == 404
+
+
+def test_entrar_na_turma_bloqueia_chute_de_codigo_por_aluno(db, cliente):
+    ana = _aluno(db, "chute-ana@teste.local")
+    bia = _aluno(db, "chute-bia@teste.local")
+    corpo = {"codigo_acesso": "ZZZZZZ"}
+    cab_ana = {"Authorization": f"Bearer {create_student_token(ana.id)}"}
+    cab_bia = {"Authorization": f"Bearer {create_student_token(bia.id)}"}
+    for _ in range(10):
+        assert cliente.post("/aluno/turmas/entrar", json=corpo, headers=cab_ana).status_code == 404
+    r = cliente.post("/aluno/turmas/entrar", json=corpo, headers=cab_ana)
+    assert r.status_code == 429
+    assert int(r.headers["Retry-After"]) > 0
+    assert cliente.post("/aluno/turmas/entrar", json=corpo, headers=cab_bia).status_code == 404
 
 
 def test_pedido_sem_token_recebe_401_e_nao_gasta_o_limite(db, cliente):
@@ -200,7 +217,6 @@ def test_teto_descarta_a_chave_mais_antiga():
 
 
 def test_email_enorme_vira_chave_curta(db, cliente):
-    from app.core.limite import limitador
     cliente.post("/aluno/login", json={"email": "x" * 100_000 + "@teste.local", "senha": "errada123"})
     assert all(len(k) < 400 for k in limitador._pedidos)
 

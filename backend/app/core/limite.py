@@ -25,7 +25,9 @@ class Regra:
 
 LOGIN_POR_IP = Regra("login-ip", maximo=60, janela=60)
 LOGIN_POR_EMAIL = Regra("login-email", maximo=10, janela=60)
-CADASTRO = Regra("cadastro", maximo=30, janela=3600)
+# Uma turma cadastrando no mesmo laboratório costuma sair por um IP só.
+CADASTRO = Regra("cadastro", maximo=100, janela=3600)
+ENTRAR_NA_TURMA = Regra("entrar-turma", maximo=10, janela=60)
 ENVIO_DO_ALUNO = Regra("envio-aluno", maximo=10, janela=60)
 GEMINI_DO_ALUNO = Regra("gemini-aluno", maximo=10, janela=60)
 CORRECAO_DO_PROFESSOR = Regra("correcao-professor", maximo=30, janela=60)
