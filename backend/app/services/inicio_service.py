@@ -1,9 +1,11 @@
 """Início do aluno: o que chegou para ele, onde ele parou e o que vence logo.
 
-Monta o painel e não grava nada. As novidades vêm do `novidades_service`, e o
-resto sai do histórico unificado (`ler_historico`), o mesmo do progresso e da
-trilha, para os três concordarem sobre o que está resolvido. A regra mora em
-funções puras sobre registros simples, testadas sem banco."""
+Monta o painel e não grava nada na sessão dele. A única escrita que ele dispara
+é o exercício da prova chegando, preparado em thread própria. As novidades vêm
+do `novidades_service`, e o resto sai do histórico unificado (`ler_historico`),
+o mesmo do progresso e da trilha, para os três concordarem sobre o que está
+resolvido. A regra mora em funções puras sobre registros simples, testadas sem
+banco."""
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from app.core.tempo import agora_utc
@@ -14,9 +16,13 @@ from sqlalchemy.orm import Session
 from app.models.orm import Exam, ExercicioGerado, Student, Submission
 from app.services.calendario import situacao_da_atividade
 from app.services.funil_regras import ANTECEDENCIA_DA_PROVA
-from app.services.historico_do_aluno import ACERTO, FALHA, LISTA, TRILHA, Envio, ler_historico
+from app.services.historico_do_aluno import (
+    ACERTO, FALHA, LISTA, TRILHA, Envio, erros_do_aluno, ler_historico,
+)
 from app.services.novidades_service import novidades_do_aluno
+from app.services.prova_chegando import montar_cartao, primeiro_pendente, prova_na_janela
 from app.services.student_activity_service import titulo_da_atividade
+from app.services.treino_service import preparar_proximo
 
 
 # Quanto antes de fechar uma atividade aberta aparece em "Prazos próximos".
@@ -127,17 +133,38 @@ def painel(student: Student, db: Session, agora: datetime | None = None) -> dict
     agora = agora or agora_utc()
     turma_ids = [e.turma_id for e in student.enrollments]
     if not turma_ids:
-        return {"tem_turma": False, "novidades": [], "continuar": None, "prazos": []}
+        return {"tem_turma": False, "novidades": [], "prova_chegando": None, "continuar": None,
+                "prazos": []}
 
     envios = ler_historico(student, db)
     atividades, disponiveis = _atividades_e_questoes(student, turma_ids, envios, agora, db)
     disponiveis.update(_exercicios_abertos(student, db))
+    prazos = prazos_proximos(atividades, agora)
+    cartao = _prova_chegando(student, atividades, envios, agora)
+    if cartao:
+        prazos = [p for p in prazos if p["exam_id"] != cartao["exam_id"]]
     return {
         "tem_turma": True,
         "novidades": novidades_do_aluno(student, db),
+        "prova_chegando": cartao,
         "continuar": escolher_continuar(envios, disponiveis, proxima_atividade(atividades)),
-        "prazos": prazos_proximos(atividades, agora),
+        "prazos": prazos,
     }
+
+
+def _prova_chegando(student: Student, atividades: list[AtividadeDoPainel], envios: list[Envio],
+                    agora: datetime) -> dict | None:
+    """O cartão da prova chegando, com o exercício do primeiro erro pendente já a
+    caminho, sem novidade, porque o aluno está vendo o treino no próprio cartão."""
+    atividade = prova_na_janela(atividades, agora)
+    if not atividade:
+        return None
+    cartao = montar_cartao(atividade, erros_do_aluno(envios), envios)
+    if cartao:
+        pendente = primeiro_pendente(cartao)
+        if pendente:
+            preparar_proximo(student.id, pendente, registrar_novidade=False)
+    return cartao
 
 
 def _atividades_e_questoes(student: Student, turma_ids: list[int], envios: list[Envio],

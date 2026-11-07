@@ -9,8 +9,10 @@ import pytest
 
 from app.auth.service import create_access_token
 from app.auth.student_service import create_student_token
+from app.core.tempo import agora_utc
 from app.models.orm import (
     Enrollment, Exam, ExercicioGerado, Novidade, Question, QuestionCluster, Student, Submission,
+    TentativaDeTreino,
 )
 from app.services.historico_do_aluno import ACERTO, ERRO, FALHA, LISTA, TRILHA, Envio
 from app.services.inicio_service import (
@@ -255,7 +257,8 @@ class TestPainel:
         db.add(sozinho)
         db.commit()
         assert painel(sozinho, db, agora=AGORA) == {
-            "tem_turma": False, "novidades": [], "continuar": None, "prazos": []}
+            "tem_turma": False, "novidades": [], "prova_chegando": None, "continuar": None,
+            "prazos": []}
 
 
 class TestRotas:
@@ -305,3 +308,124 @@ class TestRotas:
                           headers=_auth(create_student_token(aluno.id))).json() == {"total": 2}
         assert client.get("/aluno/novidades/contagem",
                           headers=_auth(create_student_token(colega.id))).json() == {"total": 2}
+
+
+@pytest.fixture()
+def preparos(monkeypatch):
+    """Anota os preparos pedidos pelo painel. Sem isto, o painel abriria uma
+    thread com a sessão real e chamaria o Gemini."""
+    pedidos = []
+    monkeypatch.setattr(
+        "app.services.inicio_service.preparar_proximo",
+        lambda student_id, categoria, registrar_novidade=True: pedidos.append(
+            (student_id, categoria, registrar_novidade)),
+    )
+    return pedidos
+
+
+def _prova_agendada(db, exam_factory, turma_id, titulo="Prova 1", abre_em=AGORA + timedelta(days=2)):
+    exam = exam_factory(questions=[{"number": "1"}], titulo=titulo)
+    exam.turma_id = turma_id
+    exam.abre_em = abre_em
+    db.commit()
+    db.refresh(exam)
+    return exam
+
+
+def _acertou_na_trilha(db, aluno, categoria, quando=AGORA - timedelta(minutes=30)):
+    exercicio = ExercicioGerado(student_id=aluno.id, error_category=categoria, titulo="Soma",
+                                enunciado="Some os pares.")
+    db.add(exercicio)
+    db.flush()
+    db.add(TentativaDeTreino(
+        exercicio_id=exercicio.id, student_id=aluno.id, code="int main(){}",
+        all_tests_passed=True, error_category="Correto", attempt_number=1, submitted_at=quando))
+    db.commit()
+
+
+class TestProvaChegando:
+    def test_cartao_vem_e_a_prova_sai_dos_prazos(self, db, aluno, prova, exam_factory, preparos):
+        _errou(db, prova, aluno)
+        agendada = _prova_agendada(db, exam_factory, prova.turma_id)
+        resultado = painel(aluno, db, agora=AGORA)
+        assert resultado["prova_chegando"] == {
+            "exam_id": agendada.id, "titulo": "Prova 1", "turma_nome": "Turma Teste",
+            "abre_em": (AGORA + timedelta(days=2)).isoformat(),
+            "erros": [{"error_category": "Saída Incorreta", "feito": False}],
+        }
+        assert [p["exam_id"] for p in resultado["prazos"]] == [prova.id]
+
+    def test_segunda_prova_da_janela_fica_nos_prazos(self, db, aluno, prova, exam_factory, preparos):
+        _errou(db, prova, aluno)
+        primeira = _prova_agendada(db, exam_factory, prova.turma_id,
+                                   abre_em=AGORA + timedelta(days=1))
+        segunda = _prova_agendada(db, exam_factory, prova.turma_id, titulo="Prova 2")
+        resultado = painel(aluno, db, agora=AGORA)
+        assert resultado["prova_chegando"]["exam_id"] == primeira.id
+        assert {p["exam_id"] for p in resultado["prazos"]} == {prova.id, segunda.id}
+
+    def test_sem_erro_nao_ha_cartao_e_a_prova_fica_nos_prazos(
+        self, db, aluno, prova, exam_factory, preparos
+    ):
+        agendada = _prova_agendada(db, exam_factory, prova.turma_id)
+        resultado = painel(aluno, db, agora=AGORA)
+        assert resultado["prova_chegando"] is None
+        assert agendada.id in {p["exam_id"] for p in resultado["prazos"]}
+        assert preparos == []
+
+    def test_prova_de_outra_turma_nao_aparece(self, db, aluno, prova, exam_factory, preparos):
+        _errou(db, prova, aluno)
+        outra = exam_factory(questions=[{"number": "1"}], titulo="De outra turma")
+        outra.abre_em = AGORA + timedelta(days=2)
+        db.commit()
+        assert painel(aluno, db, agora=AGORA)["prova_chegando"] is None
+
+    def test_erros_de_outro_aluno_nao_entram(self, db, aluno, prova, exam_factory, preparos):
+        colega = _matricular(db, "bia@teste.com", prova.turma_id)
+        _errou(db, prova, colega)
+        _prova_agendada(db, exam_factory, prova.turma_id)
+        assert painel(aluno, db, agora=AGORA)["prova_chegando"] is None
+        assert painel(colega, db, agora=AGORA)["prova_chegando"]["erros"] == [
+            {"error_category": "Saída Incorreta", "feito": False}]
+
+    def test_prepara_o_primeiro_nao_feito_sem_novidade(
+        self, db, aluno, prova, exam_factory, preparos
+    ):
+        _errou(db, prova, aluno, "1")
+        _errou(db, prova, aluno, "2")
+        questao = next(q for q in prova.questions if q.number == "1")
+        db.add(Submission(question_id=questao.id, code="int main(){}", error_category="Tudo no Main",
+                          all_tests_passed=False, student_id=aluno.id, attempt_number=2,
+                          submitted_at=AGORA - timedelta(minutes=50)))
+        db.commit()
+        _acertou_na_trilha(db, aluno, "Saída Incorreta")
+        _prova_agendada(db, exam_factory, prova.turma_id)
+        erros = painel(aluno, db, agora=AGORA)["prova_chegando"]["erros"]
+        assert erros == [{"error_category": "Saída Incorreta", "feito": True},
+                         {"error_category": "Tudo no Main", "feito": False}]
+        assert preparos == [(aluno.id, "Tudo no Main", False)]
+
+    def test_tudo_feito_nao_prepara(self, db, aluno, prova, exam_factory, preparos):
+        _errou(db, prova, aluno)
+        _acertou_na_trilha(db, aluno, "Saída Incorreta")
+        _prova_agendada(db, exam_factory, prova.turma_id)
+        erros = painel(aluno, db, agora=AGORA)["prova_chegando"]["erros"]
+        assert erros == [{"error_category": "Saída Incorreta", "feito": True}]
+        assert preparos == []
+
+    def test_sem_prova_na_janela_nao_prepara(self, db, aluno, prova, preparos):
+        _errou(db, prova, aluno)
+        assert painel(aluno, db, agora=AGORA)["prova_chegando"] is None
+        assert preparos == []
+
+    def test_rota_devolve_o_cartao(self, client, db, aluno, prova, exam_factory, preparos):
+        agora = agora_utc()
+        _errou(db, prova, aluno, quando=agora - timedelta(hours=1))
+        agendada = _prova_agendada(db, exam_factory, prova.turma_id,
+                                   abre_em=agora + timedelta(days=2))
+        corpo = client.get("/aluno/inicio",
+                           headers=_auth(create_student_token(aluno.id))).json()
+        assert corpo["prova_chegando"]["exam_id"] == agendada.id
+        assert corpo["prova_chegando"]["erros"] == [
+            {"error_category": "Saída Incorreta", "feito": False}]
+
