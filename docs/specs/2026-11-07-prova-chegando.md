@@ -46,7 +46,7 @@ A medição sai do que o banco já guarda ou passa a guardar assim:
 
 | Pergunta | De onde sai |
 |---|---|
-| Quem fez o treino | `tentativas_de_treino` dentro da janela |
+| Quem fez o treino | `tentativas_de_treino` dentro da janela, venham ou não do cartão. A taxa usa como base os matriculados da turma da prova, como a meta do Plano de Growth |
 | Quem veio pelo cartão | `acessos.via = 'prova_chegando'`, valor novo em `VIAS_ACEITAS` |
 | Se errou menos depois | `submissions` da prova, por `error_category` |
 
@@ -82,7 +82,9 @@ O total e os feitos o front conta na lista.
 
 **`inicio_service.painel`.** Calcula o cartão, tira a prova dele de `prazos` e devolve o campo novo. Sem matrícula, o retorno atual ganha `prova_chegando: None`. A rota `GET /aluno/inicio` continua com `get_current_student` e continua delegando ao serviço. A posse vem de `_atividades_e_questoes`, que só lê atividades publicadas das turmas do aluno.
 
-**Exercício pronto antes do toque.** Quando o cartão tem um erro pendente, o `painel` chama `treino_service.preparar_proximo(student.id, categoria)` para o primeiro pendente. Essa função já não faz nada com exercício pendente na categoria, com o teto do dia esgotado ou com geração em voo. A chamada roda em thread própria, então o `painel` continua sem gravar nada na sessão dele, e a docstring do módulo passa a dizer isso.
+**Exercício pronto antes do toque.** Quando o cartão tem um erro pendente, o `painel` chama `treino_service.preparar_proximo(student.id, categoria, registrar_novidade=False)` para o primeiro erro da lista que não está feito. Essa função já não faz nada com exercício pendente na categoria, com o teto do dia esgotado ou com geração em voo. A chamada roda em thread própria, então o `painel` continua sem gravar nada na sessão dele, e a docstring do módulo passa a dizer isso.
+
+**Sem novidade para o exercício preparado pelo cartão.** Hoje `preparar_proximo` termina em `registrar_exercicio`, que grava uma novidade e acende a bolinha. Se isso valesse aqui, abrir o Início acenderia a bolinha e mostraria o mesmo treino duas vezes, além de sujar a medição do experimento 1, que conta novidades que chegaram. Por isso a função ganha o parâmetro `registrar_novidade: bool = True`, e só o `painel` passa `False`. Os outros usos continuam iguais. Uma novidade nascida por outro caminho, como a pré-geração depois de um envio, pode aparecer junto do cartão, e tudo bem, porque ela já existia e não vem dele.
 
 **Sem rota nova.** Treinar usa `POST /aluno/treino/gerar`, que já tem papel, posse pelo próprio aluno, teto de 8 gerações por dia e limite de requisições.
 
@@ -108,7 +110,7 @@ O total e os feitos o front conta na lista.
 
 **Funções puras (`erros_do_treino`).** Só ativos, na ordem de frequência, cortados em 3. Acerto na janela vira feito e vem primeiro. Acerto antes da janela não conta. Acerto com categoria igual ao alvo não conta. Erro superado na janela continua na lista como feito. Erro feito que reaparece continua feito. Sem erros, lista vazia. Acerto na trilha para outra categoria não marca esta.
 
-**Serviço e rota, com banco e `preparar_proximo` simulado.** O cartão vem em `GET /aluno/inicio` e sai de `prazos`, enquanto a outra prova da janela continua lá. Sem erro, sem cartão e com a prova em `prazos`. Sem matrícula, `null`. Prova de turma em que o aluno não está não aparece. Erros de outro aluno não entram. `preparar_proximo` é chamado com o primeiro pendente e não é chamado com tudo feito nem sem cartão. Sem token, 401.
+**Serviço e rota, com banco e `preparar_proximo` simulado.** O cartão vem em `GET /aluno/inicio` e sai de `prazos`, enquanto a outra prova da janela continua lá. Sem erro, sem cartão e com a prova em `prazos`. Sem matrícula, `null`. Prova de turma em que o aluno não está não aparece. Erros de outro aluno não entram. `preparar_proximo` é chamado com o primeiro erro não feito e com `registrar_novidade=False`, e não é chamado com tudo feito nem sem cartão. Exercício preparado com `registrar_novidade=False` não cria novidade nem muda a contagem da bolinha, enquanto a chamada padrão continua criando. Sem token, 401.
 
 **Via.** `prova_chegando` é gravada. Um valor fora da lista continua virando acesso sem origem. O aluno com acesso sem origem e depois `prova_chegando` na mesma semana continua em "sem aviso" no funil.
 
@@ -133,3 +135,4 @@ O total e os feitos o front conta na lista.
 6. **O exercício do primeiro pendente é preparado ao abrir o Início.** O primeiro toque tende a ser imediato, e os outros podem esperar a geração, cerca de 25 segundos no ensaio de 07/11. O gasto com o Gemini fica dentro do teto que já existe.
 7. **A prova do cartão sai de "Prazos próximos",** para não repetir a mesma informação na mesma tela.
 8. **Um erro feito não volta atrás dentro da janela.** O cartão é sobre o preparo que o aluno fez, e quem errou de novo já vê isso na tentativa e no progresso.
+9. **A pré-geração do cartão não cria novidade.** Sem isso, a bolinha acenderia só por abrir o Início, contra o desenho aprovado. Veio da revisão do spec.
