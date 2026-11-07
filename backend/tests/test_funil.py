@@ -263,6 +263,18 @@ class TestRetencaoPeloAcesso:
         assert ultima["voltaram_por_envio"] == 1
         assert ultima["taxa_por_envio"] == 33.3
 
+    def test_via_do_cartao_nao_apaga_o_sem_aviso(self, db, professor):
+        turma = _turma(db, professor)
+        ana = _aluno(db, "ana@teste.com", "Ana", [turma])
+        _acesso(db, ana, datetime(2026, 10, 14, 10))
+        _acesso(db, ana, datetime(2026, 10, 21, 10))
+        _acesso(db, ana, datetime(2026, 10, 21, 10, 5), via="prova_chegando")
+
+        ultima = funil_da_turma(turma, db, agora=AGORA)["retencao"]["ultima_completa"]
+
+        assert ultima["voltaram"] == 1
+        assert ultima["sem_aviso"] == 1
+
     def test_matriculas_por_origem(self, db, professor):
         turma = _turma(db, professor)
         _aluno(db, "ana@teste.com", "Ana", [turma], origem="convite")
