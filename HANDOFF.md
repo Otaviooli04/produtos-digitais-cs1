@@ -187,6 +187,10 @@ Gera a síntese pedagógica por grupo via Gemini (uma chamada por questão, com 
 
 JWT de professor: `routes.py` (register/login), `service.py` (hash bcrypt, emissão/validação de token), `dependencies.py` (injeta o professor logado), `ownership.py` (garante que o professor só acessa recursos das próprias turmas).
 
+### `app/core/limite.py` — limite de requisições
+
+Janela deslizante em memória, ligada nas rotas como dependência (`por_ip`, `por_aluno`, `por_professor`) ou por `conferir_login`. Passou do limite, a rota responde 429 com `Retry-After`. Cobre login, cadastro, entrada na turma e as rotas que disparam Docker ou Gemini. Vale para um processo só: com vários, o contador passa para um armazenamento comum. Atrás de um proxy, o uvicorn precisa de `--proxy-headers`, senão todos os alunos contam como o mesmo IP.
+
 ### `app/api/routes/` — endpoints
 
 - **`exam.py`** (~21 KB) — provas, questões, casos de teste, envio em lote, grupos, insights, resultados, alunos.
