@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { getInicio } from '../../api/aluno'
+import { Link, useNavigate } from 'react-router-dom'
+import { gerarExercicio, getInicio } from '../../api/aluno'
 import EntrarNaTurma from '../../components/EntrarNaTurma'
 import Spinner from '../../components/Spinner'
 import { modoLabel } from '../../utils/atividade'
@@ -43,6 +43,69 @@ function Novidades({ itens }) {
           </Link>
         ))}
       </div>
+    </section>
+  )
+}
+
+function ProvaChegando({ prova }) {
+  const navigate = useNavigate()
+  const [gerando, setGerando] = useState(null)
+  const [erro, setErro] = useState('')
+  const feitos = prova.erros.filter(e => e.feito).length
+  const tudoFeito = feitos === prova.erros.length
+
+  const treinar = async (categoria) => {
+    setErro('')
+    setGerando(categoria)
+    try {
+      const { data } = await gerarExercicio(categoria)
+      navigate(`/aluno/treino/${data.id}?via=prova_chegando`)
+    } catch (e) {
+      setErro(e.response?.data?.detail || 'Não foi possível abrir o treino agora.')
+      setGerando(null)
+    }
+  }
+
+  return (
+    <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+      <div className="min-w-0">
+        <h2 className="text-sm font-semibold text-gray-900 break-words">
+          {prova.titulo} abre {prazoRelativo(prova.abre_em)}
+        </h2>
+        <p className="text-sm text-gray-500 mt-0.5">
+          Um treino curto com o que mais trava você. Nada aqui vale nota.
+        </p>
+      </div>
+
+      <ul className="divide-y divide-gray-100">
+        {prova.erros.map(e => (
+          <li key={e.error_category} className="flex items-center justify-between gap-3 py-2">
+            <span className="text-sm text-gray-700 min-w-0 break-words">{shortError(e.error_category)}</span>
+            {e.feito ? (
+              <span className="text-xs font-medium text-green-700 shrink-0">✓ feito</span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => treinar(e.error_category)}
+                disabled={gerando !== null}
+                className="inline-flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-lg bg-purple-600 text-white font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+              >
+                {gerando === e.error_category && <Spinner className="w-4 h-4" />}
+                Treinar
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {gerando && (
+        <p className="text-xs text-gray-500">Montando o exercício. Pode levar alguns segundos.</p>
+      )}
+      {erro && <p className="text-xs text-red-600">{erro}</p>}
+
+      <p className="text-xs text-gray-400">
+        {tudoFeito ? 'Treino feito' : `${feitos} de ${prova.erros.length} feitos`}
+      </p>
     </section>
   )
 }
@@ -144,8 +207,8 @@ export default function InicioPage() {
     )
   }
 
-  const { novidades, continuar, prazos } = inicio
-  const tudoEmDia = novidades.length === 0 && !continuar && prazos.length === 0
+  const { novidades, prova_chegando: provaChegando, continuar, prazos } = inicio
+  const tudoEmDia = novidades.length === 0 && !provaChegando && !continuar && prazos.length === 0
 
   return (
     <div className="space-y-8">
@@ -157,6 +220,7 @@ export default function InicioPage() {
       </div>
 
       {novidades.length > 0 && <Novidades itens={novidades} />}
+      {provaChegando && <ProvaChegando prova={provaChegando} />}
       {continuar && <Continuar item={continuar} />}
       {prazos.length > 0 && <Prazos itens={prazos} />}
 
