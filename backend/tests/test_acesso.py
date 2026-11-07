@@ -53,10 +53,17 @@ class TestRegistrarAcesso:
         assert registrar_acesso(aluno.id, "convite", db, agora=AGORA + timedelta(minutes=6)) is False
         assert _vias(db, aluno) == [None, "convite"]
 
+    def test_cartao_da_prova_logo_depois_de_abrir_grava(self, db, aluno):
+        registrar_acesso(aluno.id, None, db, agora=AGORA)
+        assert registrar_acesso(aluno.id, "prova_chegando", db,
+                                agora=AGORA + timedelta(minutes=5)) is True
+        assert _vias(db, aluno) == [None, "prova_chegando"]
+
     @pytest.mark.parametrize("recebida, gravada", [
         (" Convite ", "convite"),
         ("", None),
         ("whatsapp", None),
+        ("prova_chegando", "prova_chegando"),
     ])
     def test_origem_normalizada(self, db, aluno, recebida, gravada):
         registrar_acesso(aluno.id, recebida, db, agora=AGORA)

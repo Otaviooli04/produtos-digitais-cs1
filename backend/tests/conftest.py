@@ -16,6 +16,7 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../.env"))
 from app.main import app as fastapi_app
 from app.auth.dependencies import get_current_professor
 from app.core.limite import limitador
+from app.services import treino_service
 from app.models.database import Base, get_db
 from app.models.orm import Exam, Professor, Question, QuestionCluster, Submission, TestCase, Turma
 import app.models.orm  # registra todos os modelos no metadata
@@ -53,6 +54,13 @@ def db():
 @pytest.fixture(autouse=True)
 def zerar_limite():
     limitador.limpar()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def zerar_preparos():
+    treino_service._em_voo.clear()
+    treino_service._falhou_em.clear()
     yield
 
 

@@ -901,9 +901,23 @@ class PrazoItem(BaseModel):
     quando: str
 
 
+class ErroDoTreinoCurto(BaseModel):
+    error_category: str
+    feito: bool
+
+
+class ProvaChegandoItem(BaseModel):
+    exam_id: int
+    titulo: str
+    turma_nome: str
+    abre_em: str
+    erros: List[ErroDoTreinoCurto] = []
+
+
 class InicioResponse(BaseModel):
     tem_turma: bool
     novidades: List[NovidadeItem] = []
+    prova_chegando: Optional[ProvaChegandoItem] = None
     continuar: Optional[ContinuarItem] = None
     prazos: List[PrazoItem] = []
 
