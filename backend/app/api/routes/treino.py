@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth.student_dependencies import get_current_student
+from app.core.limite import ENVIO_DO_ALUNO, GEMINI_DO_ALUNO, por_aluno
 from app.models.database import get_db
 from app.models.orm import Student
 from app.models.schemas import (
@@ -23,7 +24,8 @@ def get_trilha(
     return trilha(current, db)
 
 
-@router.post("/gerar", response_model=ExercicioDetalhe, status_code=201)
+@router.post("/gerar", response_model=ExercicioDetalhe, status_code=201,
+             dependencies=[Depends(por_aluno(GEMINI_DO_ALUNO))])
 def post_gerar(
     body: TreinoGerarRequest,
     db: Session = Depends(get_db),
@@ -52,7 +54,8 @@ def get_exercicio(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/{exercicio_id}/tentativas", response_model=TreinoSubmissaoResponse, status_code=201)
+@router.post("/{exercicio_id}/tentativas", response_model=TreinoSubmissaoResponse, status_code=201,
+             dependencies=[Depends(por_aluno(ENVIO_DO_ALUNO))])
 def post_tentativa(
     exercicio_id: int,
     body: TreinoSubmissaoRequest,

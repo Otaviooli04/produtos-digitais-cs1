@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.auth.service import hash_password, verify_password
@@ -6,6 +6,7 @@ from app.auth.student_dependencies import get_current_student
 from app.auth.student_service import (
     authenticate_student, create_student_token, entrar_na_turma, register_student,
 )
+from app.core.limite import CADASTRO, ENTRAR_NA_TURMA, conferir_login, por_aluno, por_ip
 from app.models.database import get_db
 from app.models.orm import Student
 from app.models.schemas import (
@@ -17,7 +18,8 @@ from app.services.acesso_service import registrar_acesso
 router = APIRouter(prefix="/aluno", tags=["aluno"])
 
 
-@router.post("/register", response_model=StudentTokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=StudentTokenResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(por_ip(CADASTRO))])
 def register(body: StudentCreate, db: Session = Depends(get_db)):
     try:
         student = register_student(body.email, body.nome, body.matricula, body.senha, db)
@@ -30,7 +32,8 @@ def register(body: StudentCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=StudentTokenResponse)
-def login(body: StudentLogin, db: Session = Depends(get_db)):
+def login(body: StudentLogin, request: Request, db: Session = Depends(get_db)):
+    conferir_login(request, body.email)
     student = authenticate_student(body.email, body.senha, db)
     if not student:
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos.")
@@ -70,7 +73,8 @@ def change_password(
     db.commit()
 
 
-@router.post("/turmas/entrar", response_model=TurmaDoAlunoResponse)
+@router.post("/turmas/entrar", response_model=TurmaDoAlunoResponse,
+             dependencies=[Depends(por_aluno(ENTRAR_NA_TURMA))])
 def entrar(
     body: TurmaEntrarRequest,
     db: Session = Depends(get_db),

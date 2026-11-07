@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth.student_dependencies import get_current_student
+from app.core.limite import ENVIO_DO_ALUNO, GEMINI_DO_ALUNO, por_aluno
 from app.models.database import get_db
 from app.models.orm import Student
 from app.models.schemas import (
@@ -47,6 +48,7 @@ def get_atividade(
     "/atividades/{exam_id}/questoes/{question_number}/submissoes",
     response_model=AlunoSubmissaoResponse,
     status_code=201,
+    dependencies=[Depends(por_aluno(ENVIO_DO_ALUNO))],
 )
 def post_submissao(
     exam_id: int,
@@ -83,7 +85,8 @@ def get_tentativas(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/tentativas/{submission_id}/ajuda", response_model=AjudaResponse)
+@router.post("/tentativas/{submission_id}/ajuda", response_model=AjudaResponse,
+             dependencies=[Depends(por_aluno(GEMINI_DO_ALUNO))])
 def post_ajuda(
     submission_id: int,
     body: AjudaRequest,

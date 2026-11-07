@@ -15,6 +15,7 @@ backend/app/
   main.py              — FastAPI, monta os routers
   api/routes/          — exam.py, submission.py, turma.py, jobs.py, student.py, student_activity.py
   auth/                — JWT de professor e de aluno (papel no token), posse de recursos
+  core/limite.py       — limite de requisições em memória (429 com Retry-After) no login, cadastro, entrada na turma e rotas de Docker e Gemini
   engine/
     dynamic_analyzer.py  — compila/roda C em Docker (gcc fixo pelo digest, --network none, memória, processos e CPU limitados, sem root, timeout)
     static_analyzer.py   — tree-sitter (tolerante a erros): estruturas, funções, off-by-one
