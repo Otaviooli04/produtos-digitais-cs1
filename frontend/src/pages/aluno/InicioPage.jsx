@@ -87,11 +87,11 @@ function Prazos({ itens }) {
           <Link
             key={p.exam_id}
             to={`/aluno/atividades/${p.exam_id}`}
-            className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-gray-50 transition-colors"
+            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 px-5 py-3 hover:bg-gray-50 transition-colors"
           >
             <div className="min-w-0">
               <p className="text-sm text-gray-900 truncate">{p.titulo}</p>
-              <p className="text-xs text-gray-400">{p.turma_nome}</p>
+              <p className="text-xs text-gray-400 truncate">{p.turma_nome}</p>
             </div>
             <p className={`text-xs font-medium shrink-0 ${p.tipo === 'fecha' ? 'text-yellow-700' : 'text-purple-600'}`}>
               {modoLabel(p.modo)} · {p.tipo} {prazoRelativo(p.quando)}

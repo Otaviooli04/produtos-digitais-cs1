@@ -18,15 +18,23 @@ export default function CodeTextarea({ value, onChange, onKeyDown, className = '
   const [medidas, setMedidas] = useState(null)
 
   // A numeração copia fonte, altura de linha e recuo de cima (padding mais
-  // borda) do próprio campo, que muda de tamanho entre as telas.
+  // borda) do próprio campo, que muda de tamanho entre as telas. Mede de novo
+  // quando o campo muda, porque girar o celular cruza o ponto em que a fonte troca.
   useLayoutEffect(() => {
-    if (!ref.current) return
-    const css = getComputedStyle(ref.current)
-    setMedidas({
-      fontSize: css.fontSize,
-      lineHeight: css.lineHeight,
-      paddingTop: `${parseFloat(css.paddingTop) + parseFloat(css.borderTopWidth)}px`,
-    })
+    const campo = ref.current
+    if (!campo) return
+    const medir = () => {
+      const css = getComputedStyle(campo)
+      setMedidas({
+        fontSize: css.fontSize,
+        lineHeight: css.lineHeight,
+        paddingTop: `${parseFloat(css.paddingTop) + parseFloat(css.borderTopWidth)}px`,
+      })
+    }
+    medir()
+    const observador = new ResizeObserver(medir)
+    observador.observe(campo)
+    return () => observador.disconnect()
   }, [])
 
   const sincronizar = () => {

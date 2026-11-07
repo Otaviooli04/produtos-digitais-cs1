@@ -94,7 +94,7 @@ function Conteudo({ exercicioId }) {
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Enunciado</h2>
-        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{exercicio.enunciado}</p>
+        <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{exercicio.enunciado}</p>
         <div className="flex flex-wrap gap-2 mt-3 text-xs text-gray-400">
           <span>{exercicio.total_testes} caso{exercicio.total_testes !== 1 ? 's' : ''} de teste</span>
           {exercicio.required_structures?.length > 0 && (
@@ -110,7 +110,7 @@ function Conteudo({ exercicioId }) {
           onChange={(e) => setCode(e.target.value)}
           spellCheck={false}
           rows={14}
-          className="w-full font-mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400"
+          className="w-full font-mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400 max-h-[55vh] sm:max-h-none"
         />
         {erro && <p className="mt-2 text-xs text-red-600">{erro}</p>}
         <div className="flex items-center gap-2 mt-3">

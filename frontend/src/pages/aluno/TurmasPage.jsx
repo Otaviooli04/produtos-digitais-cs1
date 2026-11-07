@@ -60,7 +60,7 @@ export default function TurmasPage() {
         <p className="mt-1 text-sm text-gray-500">Escolha uma turma para ver as atividades dela.</p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
         {turmas.map(t => <TurmaCard key={t.id} turma={t} />)}
       </div>
 

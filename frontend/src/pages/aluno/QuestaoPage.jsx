@@ -25,7 +25,7 @@ function ItemHistorico({ tentativa, aberto, onToggle }) {
         onClick={onToggle}
         className="w-full flex items-center justify-between gap-3 px-5 py-3 hover:bg-gray-50 transition-colors text-left"
       >
-        <span className="flex items-center gap-2 min-w-0">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
           <span className="text-xs text-gray-400 shrink-0">#{tentativa.attempt_number}</span>
           <Badge color={categoriaColor(tentativa.error_category)}>{tentativa.error_category}</Badge>
           <span className="text-xs text-gray-400 truncate">{formatarData(tentativa.submitted_at)}</span>
@@ -143,7 +143,7 @@ function QuestaoConteudo({ examId, numero }) {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{questao.statement}</p>
+        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{questao.statement}</p>
         <div className="mt-3 space-y-1">
           {questao.required_structures?.length > 0 && (
             <p className="text-xs text-gray-400">
@@ -169,7 +169,7 @@ function QuestaoConteudo({ examId, numero }) {
           onChange={e => setCode(e.target.value)}
           spellCheck={false}
           disabled={!podeEnviar}
-          className="w-full text-sm font-mono rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y bg-gray-50 disabled:opacity-60"
+          className="w-full text-sm font-mono rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y bg-gray-50 disabled:opacity-60 max-h-[55vh] sm:max-h-none"
         />
 
         {!podeEnviar && (

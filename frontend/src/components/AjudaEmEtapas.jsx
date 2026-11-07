@@ -45,14 +45,14 @@ export default function AjudaEmEtapas({ tentativa }) {
           className={`rounded-lg px-4 py-2.5 border ${i === 0 ? 'bg-purple-50 border-purple-200' : 'bg-white border-purple-100'}`}
         >
           <p className="text-xs font-medium text-purple-800 mb-0.5">{i === 0 ? 'Dica' : 'Outra pista'}</p>
-          <p className="text-xs text-purple-700 whitespace-pre-wrap">{pista}</p>
+          <p className="text-xs text-purple-700 whitespace-pre-wrap break-words">{pista}</p>
         </div>
       ))}
 
       {explicacao && (
         <div className="rounded-lg bg-purple-50 border border-purple-100 px-4 py-2.5">
           <p className="text-xs font-medium text-purple-800 mb-0.5">Explicando o seu código</p>
-          <p className="text-xs text-purple-700 whitespace-pre-wrap">{explicacao}</p>
+          <p className="text-xs text-purple-700 whitespace-pre-wrap break-words">{explicacao}</p>
         </div>
       )}
 
