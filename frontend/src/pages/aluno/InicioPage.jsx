@@ -72,7 +72,8 @@ function ProvaChegando({ prova }) {
         <h2 className="text-sm font-semibold text-gray-900 break-words">
           {prova.titulo} abre {prazoRelativo(prova.abre_em)}
         </h2>
-        <p className="text-sm text-gray-500 mt-0.5">
+        {prova.turma_nome && <p className="text-xs text-gray-400 truncate">{prova.turma_nome}</p>}
+        <p className="text-sm text-gray-500 mt-1">
           Um treino curto com o que mais trava você. Nada aqui vale nota.
         </p>
       </div>
@@ -99,7 +100,7 @@ function ProvaChegando({ prova }) {
       </ul>
 
       {gerando && (
-        <p className="text-xs text-gray-500">Montando o exercício. Pode levar alguns segundos.</p>
+        <p className="text-xs text-gray-500">Montando o exercício. Pode levar até meio minuto.</p>
       )}
       {erro && <p className="text-xs text-red-600">{erro}</p>}
 
