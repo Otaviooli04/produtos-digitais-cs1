@@ -1037,8 +1037,8 @@ por:
 Rodar, de `frontend/`: `rtk proxy ./node_modules/.bin/eslint . 2>&1 | tail -3`
 Esperado: nenhum erro
 
-Rodar, de `frontend/`: `npm run build 2>&1 | tail -1`
-Esperado: `built in`
+Rodar, de `frontend/`: `npm run build 2>&1 | tail -4`
+Esperado: `built in` em alguma das últimas linhas, porque um aviso de tamanho do Vite pode vir depois
 
 - [ ] **Passo 5: commitar**
 
