@@ -29,6 +29,7 @@ Um treino curto com o que mais trava você. Nada aqui vale nota.
 1 de 3 feitos
 ```
 
+- O nome da turma aparece abaixo do título, porque a prova sai de "Prazos próximos", onde ele estava.
 - O tempo usa o `prazoRelativo` que o cartão de prazos já usa.
 - **Treinar** chama `POST /aluno/treino/gerar` com a categoria e abre `/aluno/treino/{id}?via=prova_chegando`. Enquanto espera, aquele botão mostra o carregando e os outros ficam desativados. Se a chamada falhar, o cartão mostra o `detail` da resposta, inclusive o do teto de gerações e o do limite de requisições.
 - **Tudo feito.** O cartão fica até a prova abrir, com "Treino feito" no lugar de "3 de 3 feitos". Sem prêmio nem animação.
@@ -132,7 +133,8 @@ O total e os feitos o front conta na lista.
 3. **Calcular na hora, sem tabela.** Abordagem A, aprovada por ele. A lista pode mudar se o aluno errar algo novo durante a janela, e tudo bem, porque ela continua sobre os erros atuais dele.
 4. **Só guardar os dados,** como no experimento 1.
 5. **A janela só vale antes de a prova abrir.** Depois disso o aluno está fazendo a prova, e treinar não é mais preparo.
-6. **O exercício do primeiro pendente é preparado ao abrir o Início.** O primeiro toque tende a ser imediato, e os outros podem esperar a geração, cerca de 25 segundos no ensaio de 07/11. O gasto com o Gemini fica dentro do teto que já existe.
+6. **O exercício do primeiro pendente é preparado ao abrir o Início.** A partir da segunda abertura, o primeiro toque tende a ser imediato. Os outros erros, e o toque antes de o preparo terminar, esperam a geração, cerca de 25 segundos no ensaio de 07/11, e nesse último caso gastam uma geração a mais. O teto de 8 por dia só conta exercício gravado, então o preparo tem proteções próprias, porque o Início é a página de entrada: depois de uma falha a chave espera 10 minutos, e só 4 preparos rodam ao mesmo tempo, já que cada um segura uma conexão do banco durante o Gemini e o Docker.
 7. **A prova do cartão sai de "Prazos próximos",** para não repetir a mesma informação na mesma tela.
-8. **Um erro feito não volta atrás dentro da janela.** O cartão é sobre o preparo que o aluno fez, e quem errou de novo já vê isso na tentativa e no progresso.
+8. **Um erro feito não volta atrás dentro da janela,** mesmo que apareça de novo. O cartão é sobre o preparo que o aluno fez, e quem errou de novo já vê isso na tentativa e no progresso. A exceção é reportar o exercício do acerto: exercício reportado deixa de contar em todo o histórico, e o erro volta a pendente.
 9. **A pré-geração do cartão não cria novidade.** Sem isso, a bolinha acenderia só por abrir o Início, contra o desenho aprovado. Veio da revisão do spec.
+10. **`GET /aluno/inicio` não ganha regra de limite de requisições.** Ele agora pode disparar o Gemini em segundo plano, o que o checklist de segurança trata como achado. Só que a `InicioPage` troca a tela inteira pela mensagem de erro em qualquer falha, então um 429 derrubaria o Início por causa de uma conveniência, e usar a regra do Gemini gastaria a cota do Treinar. A proteção fica no disparo: decisão 6.
