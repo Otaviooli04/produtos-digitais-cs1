@@ -122,7 +122,7 @@ export default function ProgressoPage() {
           </div>
 
           {progresso.por_modo?.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
               {progresso.por_modo.map(item => <ProgressoDoModo key={item.modo} item={item} />)}
             </div>
           )}

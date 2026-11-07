@@ -59,7 +59,7 @@ export default function TentativaDetalhe({
               </span>
             )}
           </div>
-          <p className="text-sm text-green-900 leading-relaxed whitespace-pre-wrap">
+          <p className="text-sm text-green-900 leading-relaxed whitespace-pre-wrap break-words">
             {tentativa.resposta_do_professor}
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function TentativaDetalhe({
                 <p className={`text-xs font-semibold mb-1.5 ${tr.passed ? 'text-green-700' : 'text-red-700'}`}>
                   {tr.passed ? '✓ Correto' : '✗ Incorreto'}
                 </p>
-                <div className="grid sm:grid-cols-3 gap-2 text-xs font-mono">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono break-words">
                   <div><span className="text-gray-400">entrada: </span><span className="text-gray-700">{tr.input || '(vazia)'}</span></div>
                   <div><span className="text-gray-400">esperado: </span><span className="text-gray-700">{tr.expected_output}</span></div>
                   <div><span className="text-gray-400">obtido: </span><span className={tr.passed ? 'text-green-700' : 'text-red-700'}>{tr.actual_output}</span></div>
@@ -109,7 +109,7 @@ export default function TentativaDetalhe({
       {mostrarCodigo && tentativa.code && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h3 className="text-sm font-medium text-gray-700 mb-2">Código enviado</h3>
-          <pre className="text-xs font-mono bg-gray-900 rounded-lg p-3 overflow-x-auto text-gray-100 whitespace-pre-wrap">{tentativa.code}</pre>
+          <pre className="text-xs font-mono bg-gray-900 rounded-lg p-3 overflow-x-auto text-gray-100 whitespace-pre">{tentativa.code}</pre>
         </div>
       )}
     </div>

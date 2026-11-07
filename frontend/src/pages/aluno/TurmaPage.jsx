@@ -18,7 +18,7 @@ function Grupo({ titulo, vazio, atividades }) {
       {atividades.length === 0 ? (
         <p className="text-sm text-gray-400">{vazio}</p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
           {atividades.map(a => <AtividadeCard key={a.exam_id} atividade={a} />)}
         </div>
       )}
