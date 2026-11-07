@@ -150,7 +150,7 @@ export default function ExamDashboard() {
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-6">
         <div className="min-w-0">
-          <p className="text-xs text-gray-400 mb-0.5">{modoLabel(exam.modo)} #{id} · {exam.filename}</p>
+          <p className="text-xs text-gray-400 mb-0.5">{modoLabel(exam.modo)} #{id} · {exam.titulo || exam.filename}</p>
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="text-xl font-semibold text-gray-900 truncate">{nomeDaAtividade}</h1>
             <Badge color={exam.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(exam.modo)}</Badge>

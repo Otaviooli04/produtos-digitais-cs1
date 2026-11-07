@@ -66,7 +66,7 @@ export default function ResultsPage() {
         <span className="text-gray-600">Resultados</span>
       </div>
 
-      <h1 className="text-xl font-semibold text-gray-900 mb-6">Resultados de {data.filename}</h1>
+      <h1 className="text-xl font-semibold text-gray-900 mb-6">Resultados de {data.titulo || data.filename}</h1>
 
       {esforco && esforco.total_submissoes > 0 && (
         <div className="mb-6 bg-white rounded-xl border border-gray-200 p-5">

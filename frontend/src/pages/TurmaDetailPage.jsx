@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getTurma, getTurmaAnalytics, deleteExam } from '../api/exam'
+import { adicionarListaDeAquecimento, getTurma, getTurmaAnalytics, deleteExam } from '../api/exam'
 import Spinner from '../components/Spinner'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ListControls from '../components/ListControls'
@@ -68,6 +68,20 @@ export default function TurmaDetailPage() {
   const [copiado, setCopiado] = useState(false)
   const [conviteCopiado, setConviteCopiado] = useState(false)
   const [recargaFunil, setRecargaFunil] = useState(0)
+  const [adicionandoAquecimento, setAdicionandoAquecimento] = useState(false)
+  const [erroAquecimento, setErroAquecimento] = useState('')
+
+  const adicionarAquecimento = async () => {
+    setErroAquecimento('')
+    setAdicionandoAquecimento(true)
+    try {
+      const { data } = await adicionarListaDeAquecimento(turmaId)
+      navigate(`/exam/${data.exam_id}`)
+    } catch {
+      setErroAquecimento('Não foi possível adicionar a lista de aquecimento. Tente de novo.')
+      setAdicionandoAquecimento(false)
+    }
+  }
 
   const copiarCodigo = async () => {
     if (!turma?.codigo_acesso) return
@@ -183,6 +197,16 @@ export default function TurmaDetailPage() {
               {turma.codigo}
             </span>
           </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {!turma.exams.some(e => e.filename === 'lista-de-aquecimento') && (
+              <button
+                onClick={adicionarAquecimento}
+                disabled={adicionandoAquecimento}
+                className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                {adicionandoAquecimento ? 'Adicionando...' : 'Adicionar lista de aquecimento'}
+              </button>
+            )}
           <button
             onClick={() => navigate(`/turma/${turmaId}/upload`)}
             className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
@@ -192,7 +216,9 @@ export default function TurmaDetailPage() {
             </svg>
             Nova atividade
           </button>
+          </div>
         </div>
+        {erroAquecimento && <p className="mt-2 text-right text-xs text-red-600">{erroAquecimento}</p>}
       </div>
 
       {/* Entrada dos alunos na turma */}

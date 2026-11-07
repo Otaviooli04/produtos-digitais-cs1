@@ -323,6 +323,7 @@ def get_exam_results(exam: Exam) -> dict:
     return {
         "exam_id": exam.id,
         "filename": exam.filename,
+        "titulo": exam.titulo,
         "questions": questions,
     }
 
