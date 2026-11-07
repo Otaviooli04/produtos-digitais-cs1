@@ -796,3 +796,97 @@ class TestPreparoSemNovidade:
         preparar_proximo(aluno.id, "Tudo no Main")
         db.expire_all()
         assert db.query(Novidade).filter_by(student_id=aluno.id).count() == 1
+
+
+class TestProtecoesDoPreparo:
+    """O teto de gerações só conta exercício gravado, e a chave em voo é por aluno."""
+
+    @pytest.fixture()
+    def gemini_falha(self, monkeypatch):
+        from app.llm.exercise_generator import ExercicioInvalido
+
+        chamadas = []
+
+        def fake(categoria, diagnostico, exemplos):
+            chamadas.append(categoria)
+            raise ExercicioInvalido("a solução de referência não compila")
+
+        monkeypatch.setattr("app.services.treino_service.gerar_exercicio", fake)
+        return chamadas
+
+    @pytest.fixture()
+    def como_o_worker(self, monkeypatch, db):
+        """Roda na hora e engole a falha, como o `_worker` faz em produção."""
+        def rodar(alvo):
+            try:
+                alvo(db)
+            except Exception:  # noqa: BLE001
+                pass
+
+        monkeypatch.setattr("app.services.treino_service._em_segundo_plano", rodar)
+
+    def test_falha_nao_repete_o_gemini_durante_a_espera(
+        self, db, aluno, erros_do_aluno, gemini_falha, como_o_worker
+    ):
+        from app.services.treino_service import preparar_proximo
+
+        preparar_proximo(aluno.id, "Tudo no Main")
+        db.rollback()
+        preparar_proximo(aluno.id, "Tudo no Main")
+        assert gemini_falha == ["Tudo no Main"]
+
+    def test_depois_da_espera_tenta_de_novo(
+        self, db, aluno, erros_do_aluno, gemini_falha, como_o_worker
+    ):
+        from app.services import treino_service
+
+        chave = (aluno.id, "Tudo no Main")
+        treino_service._falhou_em[chave] = (
+            agora_utc() - treino_service.ESPERA_DEPOIS_DA_FALHA - timedelta(seconds=1))
+        treino_service.preparar_proximo(aluno.id, "Tudo no Main")
+        assert gemini_falha == ["Tudo no Main"]
+
+    def test_sucesso_limpa_a_falha_antiga(
+        self, db, aluno, erros_do_aluno, gemini_ok, sem_thread
+    ):
+        from app.services import treino_service
+
+        chave = (aluno.id, "Tudo no Main")
+        treino_service._falhou_em[chave] = (
+            agora_utc() - treino_service.ESPERA_DEPOIS_DA_FALHA - timedelta(seconds=1))
+        treino_service.preparar_proximo(aluno.id, "Tudo no Main")
+        assert chave not in treino_service._falhou_em
+
+    def test_maximo_de_preparos_ao_mesmo_tempo(self, db, aluno, monkeypatch):
+        from app.services import treino_service
+
+        disparos = []
+        monkeypatch.setattr(treino_service, "_em_segundo_plano",
+                            lambda alvo: disparos.append(alvo))
+        for i in range(treino_service.MAXIMO_DE_PREPAROS + 1):
+            treino_service.preparar_proximo(aluno.id, f"Categoria {i}")
+        assert len(disparos) == treino_service.MAXIMO_DE_PREPAROS
+
+    def test_thread_que_nao_abre_libera_a_chave(self, db, aluno, monkeypatch):
+        from app.services import treino_service
+
+        def sem_thread_disponivel(alvo):
+            raise RuntimeError("can't start new thread")
+
+        monkeypatch.setattr(treino_service, "_em_segundo_plano", sem_thread_disponivel)
+        treino_service.preparar_proximo(aluno.id, "Tudo no Main")
+        assert (aluno.id, "Tudo no Main") not in treino_service._em_voo
+
+    def test_tem_pendente_ignora_resolvido_e_reportado(self, db, aluno):
+        from app.services.treino_service import tem_pendente
+
+        def _exercicio(**campos):
+            db.add(ExercicioGerado(student_id=aluno.id, error_category="Tudo no Main",
+                                   titulo="Soma", enunciado="Some.", **campos))
+            db.commit()
+
+        _exercicio(resolvido=True)
+        _exercicio(reportado=True)
+        assert tem_pendente(aluno.id, "Tudo no Main", db) is False
+        _exercicio()
+        assert tem_pendente(aluno.id, "Tudo no Main", db) is True

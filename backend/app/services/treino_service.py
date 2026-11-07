@@ -16,7 +16,7 @@ Três decisões de produto moram aqui:
 import logging
 import threading
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 from app.core.tempo import agora_utc
 
 from sqlalchemy.orm import Session
@@ -245,6 +245,24 @@ def conferir_casos(dados: dict) -> list[dict]:
 _em_voo: set[tuple[int, str]] = set()
 _trava = threading.Lock()
 
+# O teto de gerações só conta exercício gravado, então geração que falha pagaria
+# o Gemini a cada abertura do Início. Depois de uma falha, a chave espera.
+ESPERA_DEPOIS_DA_FALHA = timedelta(minutes=10)
+_falhou_em: dict[tuple[int, str], datetime] = {}
+# Cada preparo segura uma conexão do banco durante o Gemini e o Docker. Pré-geração
+# é conveniência: passando disso, o aluno prepara na próxima abertura ou gera ao tocar.
+MAXIMO_DE_PREPAROS = 4
+
+
+def tem_pendente(student_id: int, categoria: str, db: Session) -> bool:
+    """Se já há exercício esperando o aluno nessa categoria."""
+    return db.query(ExercicioGerado.id).filter(
+        ExercicioGerado.student_id == student_id,
+        ExercicioGerado.error_category == categoria,
+        ExercicioGerado.resolvido.is_(False),
+        ExercicioGerado.reportado.is_(False),
+    ).first() is not None
+
 
 def _em_segundo_plano(alvo) -> None:
     """Roda `alvo(db)` numa thread com sessão própria.
@@ -272,13 +290,17 @@ def preparar_proximo(student_id: int, categoria: str, registrar_novidade: bool =
     É isto que tira a geração do caminho dele: com um exercício esperando, abrir
     a trilha custa uma consulta ao banco em vez dos nove segundos do Gemini mais
     os dois do Docker. Não faz nada quando já existe um pendente, quando o teto
-    do dia acabou ou quando já há geração em voo para a mesma chave.
+    do dia acabou ou quando já há geração em voo para a mesma chave. Também não
+    faz nada durante a espera depois de uma falha nem com o máximo de preparos
+    em andamento.
 
     `registrar_novidade=False` é do cartão da prova chegando: ali o aluno já está
     vendo o treino, e a novidade acenderia a bolinha só por abrir o Início."""
     chave = (student_id, categoria)
     with _trava:
-        if chave in _em_voo:
+        falhou = _falhou_em.get(chave)
+        if (chave in _em_voo or len(_em_voo) >= MAXIMO_DE_PREPAROS
+                or (falhou and agora_utc() - falhou < ESPERA_DEPOIS_DA_FALHA)):
             return
         _em_voo.add(chave)
 
@@ -287,24 +309,31 @@ def preparar_proximo(student_id: int, categoria: str, registrar_novidade: bool =
             student = db.get(Student, student_id)
             if not student:
                 return
-            pendente = db.query(ExercicioGerado).filter(
-                ExercicioGerado.student_id == student_id,
-                ExercicioGerado.error_category == categoria,
-                ExercicioGerado.resolvido.is_(False),
-                ExercicioGerado.reportado.is_(False),
-            ).first()
-            if pendente or _restantes_hoje(student, db) <= 0:
+            if tem_pendente(student_id, categoria, db) or _restantes_hoje(student, db) <= 0:
                 return
             diagnostico = next(
                 (e.o_que_fazer for e in _erros(student, db) if e.categoria == categoria), "")
             exercicio = _gerar_e_salvar(student, categoria, diagnostico, db)
             if registrar_novidade:
                 registrar_exercicio(exercicio, db)
+            with _trava:
+                _falhou_em.pop(chave, None)
+        except Exception:
+            with _trava:
+                _falhou_em[chave] = agora_utc()
+            raise
         finally:
             with _trava:
                 _em_voo.discard(chave)
 
-    _em_segundo_plano(_tarefa)
+    try:
+        _em_segundo_plano(_tarefa)
+    except RuntimeError:
+        # Sem thread disponível, o preparo fica para a próxima abertura. A chave
+        # precisa sair, porque quem a tira é a própria tarefa, que não vai rodar.
+        logger.exception("Não consegui abrir a thread da pré-geração")
+        with _trava:
+            _em_voo.discard(chave)
 
 
 # ── treino ───────────────────────────────────────────────────────────────────
