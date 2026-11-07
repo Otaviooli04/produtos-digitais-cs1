@@ -49,6 +49,10 @@ class TestAdicionar:
         db.expire_all()
         assert db.get(Exam, exam_id).publicada is True
 
+    def test_resultados_trazem_o_titulo(self, client):
+        exam_id = _adicionar(client, _turma(client)).json()["exam_id"]
+        assert client.get(f"/exam/{exam_id}/results").json()["titulo"] == "Lista de aquecimento"
+
     def test_repetir_nao_duplica(self, client, db):
         turma_id = _turma(client)
         primeira = _adicionar(client, turma_id).json()["exam_id"]

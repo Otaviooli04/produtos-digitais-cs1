@@ -11,8 +11,8 @@ from app.core.tempo import agora_utc
 from sqlalchemy.orm import Session
 from app.models.orm import Exam, Question, Submission, TestCase, Turma
 
-# A lista de aquecimento (RF05) se reconhece pelo nome do arquivo, que o professor
-# não edita. É isso que evita a duplicata e mostra depois quais turmas a usaram.
+# A lista de aquecimento (RF05) se reconhece pelo nome do arquivo, que nenhuma tela
+# edita. É isso que evita a duplicata e mostra depois quais turmas a usaram.
 LISTA_DE_AQUECIMENTO = "lista-de-aquecimento"
 _TITULO_DO_AQUECIMENTO = "Lista de aquecimento"
 # Curta, mas com as armadilhas de quem começa: divisão inteira e casas decimais.

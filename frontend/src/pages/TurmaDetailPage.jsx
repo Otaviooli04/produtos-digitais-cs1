@@ -69,14 +69,16 @@ export default function TurmaDetailPage() {
   const [conviteCopiado, setConviteCopiado] = useState(false)
   const [recargaFunil, setRecargaFunil] = useState(0)
   const [adicionandoAquecimento, setAdicionandoAquecimento] = useState(false)
+  const [erroAquecimento, setErroAquecimento] = useState('')
 
   const adicionarAquecimento = async () => {
+    setErroAquecimento('')
     setAdicionandoAquecimento(true)
     try {
       const { data } = await adicionarListaDeAquecimento(turmaId)
       navigate(`/exam/${data.exam_id}`)
     } catch {
-      setError('Não foi possível adicionar a lista de aquecimento.')
+      setErroAquecimento('Não foi possível adicionar a lista de aquecimento. Tente de novo.')
       setAdicionandoAquecimento(false)
     }
   }
@@ -216,6 +218,7 @@ export default function TurmaDetailPage() {
           </button>
           </div>
         </div>
+        {erroAquecimento && <p className="mt-2 text-right text-xs text-red-600">{erroAquecimento}</p>}
       </div>
 
       {/* Entrada dos alunos na turma */}

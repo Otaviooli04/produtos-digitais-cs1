@@ -430,6 +430,7 @@ class QuestionResults(BaseModel):
 class ExamResultsResponse(BaseModel):
     exam_id: int
     filename: str
+    titulo: Optional[str] = None
     questions: List[QuestionResults]
 
 
