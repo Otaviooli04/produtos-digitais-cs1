@@ -429,3 +429,24 @@ class TestProvaChegando:
         assert corpo["prova_chegando"]["erros"] == [
             {"error_category": "Saída Incorreta", "feito": False}]
 
+    def test_com_exercicio_ja_pronto_nao_prepara(self, db, aluno, prova, exam_factory, preparos):
+        _errou(db, prova, aluno)
+        db.add(ExercicioGerado(student_id=aluno.id, error_category="Saída Incorreta",
+                               titulo="Soma", enunciado="Some os pares."))
+        db.commit()
+        _prova_agendada(db, exam_factory, prova.turma_id)
+        assert painel(aluno, db, agora=AGORA)["prova_chegando"]["erros"] == [
+            {"error_category": "Saída Incorreta", "feito": False}]
+        assert preparos == []
+
+    def test_acerto_em_exercicio_reportado_nao_marca_feito(
+        self, db, aluno, prova, exam_factory, preparos
+    ):
+        _errou(db, prova, aluno)
+        _acertou_na_trilha(db, aluno, "Saída Incorreta")
+        db.query(ExercicioGerado).filter_by(student_id=aluno.id).update({"reportado": True})
+        db.commit()
+        _prova_agendada(db, exam_factory, prova.turma_id)
+        assert painel(aluno, db, agora=AGORA)["prova_chegando"]["erros"] == [
+            {"error_category": "Saída Incorreta", "feito": False}]
+

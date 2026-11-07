@@ -122,6 +122,24 @@ class TestErrosDoTreino:
         envios = [_errou("A", -300), _acertou("A", -200), _acertou("A", 5)]
         assert _lista(envios) == [{"error_category": "A", "feito": True}]
 
+    def test_corte_em_3_com_feitos_e_pendentes(self):
+        envios = [_errou("A", -40), _errou("A", -39), _errou("B", -38), _errou("C", -37),
+                  _errou("D", -36), _acertou("C", 5), _acertou("D", 6)]
+        assert _lista(envios) == [
+            {"error_category": "C", "feito": True},
+            {"error_category": "D", "feito": True},
+            {"error_category": "A", "feito": False},
+        ]
+
+    def test_quatro_feitos_mostram_so_3(self):
+        envios = [_errou(c, -40) for c in "ABCD"] + [
+            _acertou(c, i + 1) for i, c in enumerate("ABCD")]
+        assert [e["error_category"] for e in _lista(envios)] == ["A", "B", "C"]
+
+    def test_feitos_em_ordem_do_acerto(self):
+        envios = [_errou("A", -40), _errou("B", -39), _acertou("B", 5), _acertou("A", 6)]
+        assert [e["error_category"] for e in _lista(envios)] == ["B", "A"]
+
 
 class TestCartao:
     def test_monta_o_cartao(self):

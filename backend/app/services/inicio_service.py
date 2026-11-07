@@ -22,7 +22,7 @@ from app.services.historico_do_aluno import (
 from app.services.novidades_service import novidades_do_aluno
 from app.services.prova_chegando import montar_cartao, primeiro_pendente, prova_na_janela
 from app.services.student_activity_service import titulo_da_atividade
-from app.services.treino_service import preparar_proximo
+from app.services.treino_service import preparar_proximo, tem_pendente
 
 
 # Quanto antes de fechar uma atividade aberta aparece em "Prazos próximos".
@@ -140,7 +140,7 @@ def painel(student: Student, db: Session, agora: datetime | None = None) -> dict
     atividades, disponiveis = _atividades_e_questoes(student, turma_ids, envios, agora, db)
     disponiveis.update(_exercicios_abertos(student, db))
     prazos = prazos_proximos(atividades, agora)
-    cartao = _prova_chegando(student, atividades, envios, agora)
+    cartao = _prova_chegando(student, atividades, envios, agora, db)
     if cartao:
         prazos = [p for p in prazos if p["exam_id"] != cartao["exam_id"]]
     return {
@@ -153,7 +153,7 @@ def painel(student: Student, db: Session, agora: datetime | None = None) -> dict
 
 
 def _prova_chegando(student: Student, atividades: list[AtividadeDoPainel], envios: list[Envio],
-                    agora: datetime) -> dict | None:
+                    agora: datetime, db: Session) -> dict | None:
     """O cartão da prova chegando, com o exercício do primeiro erro pendente já a
     caminho, sem novidade, porque o aluno está vendo o treino no próprio cartão."""
     atividade = prova_na_janela(atividades, agora)
@@ -162,7 +162,7 @@ def _prova_chegando(student: Student, atividades: list[AtividadeDoPainel], envio
     cartao = montar_cartao(atividade, erros_do_aluno(envios), envios)
     if cartao:
         pendente = primeiro_pendente(cartao)
-        if pendente:
+        if pendente and not tem_pendente(student.id, pendente, db):
             preparar_proximo(student.id, pendente, registrar_novidade=False)
     return cartao
 
