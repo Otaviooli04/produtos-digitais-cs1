@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import Spinner from './Spinner'
+import Botao from './ui/Botao'
+import Card from './ui/Card'
 import { inputLocalParaIso, isoParaInputLocal } from '../utils/atividade'
 
 /**
@@ -40,8 +42,6 @@ export default function DisponibilidadeCard({ exam, onSave }) {
     }
   }
 
-  const campo = 'w-full text-sm rounded-lg border border-noite/20 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violeta focus:border-transparent'
-
   const resumo = [
     exam.modo === 'treino' ? 'Lista' : 'Prova',
     exam.abre_em || exam.fecha_em ? 'com janela' : 'sem janela',
@@ -49,37 +49,31 @@ export default function DisponibilidadeCard({ exam, onSave }) {
   ].join(' · ')
 
   return (
-    <div className="mb-5 rounded-xl border border-noite/20 bg-white px-5 py-4">
+    <Card className="py-4!">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-noite">Disponibilidade para o aluno</p>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-noite">Disponibilidade para o aluno</p>
           <p className="text-xs text-cinza-texto mt-0.5">{resumo}</p>
         </div>
-        <button
-          onClick={() => setAberto(a => !a)}
-          className="text-sm px-3 py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda transition-colors"
-        >
+        <Botao variante="secundario" onClick={() => setAberto(a => !a)}>
           {aberto ? 'Fechar' : 'Configurar'}
-        </button>
+        </Botao>
       </div>
 
       {aberto && (
-        <div className="mt-4 space-y-4 border-t border-noite/10 pt-4">
+        <div className="space-y-4 border-t-2 border-noite/10 pt-4">
           <div>
-            <label className="block text-xs font-medium text-cinza-texto mb-1.5">Modo</label>
+            <label className="block text-xs font-bold text-cinza-texto mb-1.5">Modo</label>
             <div className="flex gap-2">
               {[['treino', 'Lista'], ['prova', 'Prova']].map(([valor, rotulo]) => (
-                <button
+                <Botao
                   key={valor}
+                  variante={modo === valor ? 'primario' : 'secundario'}
                   onClick={() => setModo(valor)}
-                  className={`text-sm px-4 py-1.5 rounded-lg border transition-colors ${
-                    modo === valor
-                      ? 'bg-violeta text-white border-violeta'
-                      : 'border-noite/20 text-cinza-texto hover:bg-lavanda'
-                  }`}
+                  aria-pressed={modo === valor}
                 >
                   {rotulo}
-                </button>
+                </Botao>
               ))}
             </div>
             <p className="mt-1.5 text-xs text-cinza-texto">
@@ -91,38 +85,36 @@ export default function DisponibilidadeCard({ exam, onSave }) {
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <label className="block text-xs font-medium text-cinza-texto mb-1.5">Abre em</label>
-              <input type="datetime-local" value={abreEm} onChange={e => setAbreEm(e.target.value)} className={campo} />
+              <label className="block text-xs font-bold text-cinza-texto mb-1.5">Abre em</label>
+              <input type="datetime-local" value={abreEm} onChange={e => setAbreEm(e.target.value)} className="campo" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-cinza-texto mb-1.5">Fecha em</label>
-              <input type="datetime-local" value={fechaEm} onChange={e => setFechaEm(e.target.value)} className={campo} />
+              <label className="block text-xs font-bold text-cinza-texto mb-1.5">Fecha em</label>
+              <input type="datetime-local" value={fechaEm} onChange={e => setFechaEm(e.target.value)} className="campo" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-cinza-texto mb-1.5">Tentativas por questão</label>
+              <label className="block text-xs font-bold text-cinza-texto mb-1.5">Tentativas por questão</label>
               <input
                 type="number"
                 min="1"
                 value={maxTentativas}
                 onChange={e => setMaxTentativas(e.target.value)}
                 placeholder="ilimitadas"
-                className={campo}
+                className="campo"
               />
             </div>
           </div>
 
           {erro && <p className="text-xs text-erro">{erro}</p>}
 
-          <button
-            onClick={salvar}
-            disabled={salvando}
-            className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 transition-colors"
-          >
-            {salvando && <Spinner className="w-4 h-4" />}
-            Salvar
-          </button>
+          <div>
+            <Botao onClick={salvar} disabled={salvando}>
+              {salvando && <Spinner className="w-4 h-4" />}
+              Salvar
+            </Botao>
+          </div>
         </div>
       )}
-    </div>
+    </Card>
   )
 }

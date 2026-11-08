@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import Spinner from './Spinner'
+import Botao from './ui/Botao'
+import Card from './ui/Card'
 
 /**
  * O portão entre a atividade montada e a atividade visível para o aluno.
@@ -28,14 +30,14 @@ export default function PublicacaoCard({ exam, onSave }) {
   }
 
   return (
-    <div
-      className={`mb-5 rounded-xl border px-5 py-4 ${
-        publicada ? 'border-sucesso/30 bg-sucesso-fundo' : 'border-aviso/30 bg-aviso-fundo'
+    <Card
+      className={`py-4! gap-0! ${
+        publicada ? 'border-sucesso! bg-sucesso-fundo!' : 'border-aviso! bg-aviso-fundo!'
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
-          <p className={`text-sm font-medium ${publicada ? 'text-sucesso' : 'text-aviso'}`}>
+          <p className={`text-sm font-bold ${publicada ? 'text-sucesso' : 'text-aviso'}`}>
             {publicada ? 'Publicada para a turma' : 'Rascunho, invisível para o aluno'}
           </p>
           <p className={`text-xs mt-0.5 ${publicada ? 'text-sucesso' : 'text-aviso'}`}>
@@ -51,19 +53,15 @@ export default function PublicacaoCard({ exam, onSave }) {
           {erro && <p className="mt-2 text-xs text-erro">{erro}</p>}
         </div>
 
-        <button
+        <Botao
+          variante={publicada ? 'secundario' : 'primario'}
           onClick={alternar}
           disabled={salvando || (!publicada && !podePublicar)}
-          className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-            publicada
-              ? 'border border-noite/20 bg-white text-cinza-texto hover:bg-lavanda'
-              : 'bg-sucesso text-white hover:bg-sucesso'
-          }`}
         >
           {salvando && <Spinner className="w-3.5 h-3.5" />}
           {publicada ? 'Voltar para rascunho' : 'Publicar para a turma'}
-        </button>
+        </Botao>
       </div>
-    </div>
+    </Card>
   )
 }
