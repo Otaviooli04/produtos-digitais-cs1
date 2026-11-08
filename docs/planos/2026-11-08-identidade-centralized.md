@@ -36,7 +36,8 @@
 | `Link` com visual de botão | `<Botao to="...">` |
 | Botão só com ícone | `<button>` com `min-h-11 min-w-11` e `aria-label`, sem borda até o hover |
 | `<input>`, `<select>`, `<textarea>` de formulário | `className="campo"`. O editor de código continua com `CodeTextarea` |
-| Estado vazio com borda tracejada | `<Card className="border-dashed border-noite/30 text-center">` |
+| Estado vazio com borda tracejada | `<Card className="border-dashed border-noite/30! text-center">` |
+| Mudar padding, gap ou cor de borda de um `Card` por `className` | sufixo `!` do Tailwind v4 (`p-0!`, `gap-0!`, `p-10!`, `border-noite/30!`), senão o padrão do `Card` vence no CSS gerado |
 | Aviso de erro (`bg-erro-fundo border ...`) | manter o fundo, `rounded-botao`, `border-2 border-erro` |
 | `rounded-full` em barra | usar `<Progresso>` quando for barra de progresso. `BarList` tem marcação própria |
 | Fundo de página `bg-lavanda` em `min-h-screen` | `bg-white` |
@@ -126,7 +127,10 @@ O front não tem suíte. A conferência de cada tarefa é lint, build e o crité
 | T10 | abas continuam, padrão Respostas | bate |
 | T11 | duas colunas em `lg`, ordem atual no celular | bate |
 | T12 | telas sem SVG solto e sem card antigo | bate |
-| T13 a T16 | mesma conferência da T12 nos arquivos da tarefa | bate |
+| T13 | telas sem SVG solto e sem card antigo, card da turma abre no Panorama | bate |
+| T14 | telas sem SVG solto e sem card antigo, `pre` de exemplo legível sobre `bg-noite` | bate |
+| T15 | tabelas sem estourar em 360 px, cores vindas de `CORES_CATEGORICAS` | bate |
+| T16 | modais acima do menu e do `JobDock`, sem card antigo | bate |
 | T17 | todas as varreduras do spec zeradas | bate |
 
 ---
@@ -299,7 +303,7 @@ Lint e build. Depois: `git add frontend/package.json frontend/package-lock.json 
 
 **Arquivos:**
 - Alterar: todos os `.jsx` de `frontend/src` que usam as classes antigas
-- Script descartável, fora do repositório: `/tmp/claude-1000/-home-otavio-produtos-digitais-cs1/cd1d6d8f-effe-467b-b7c6-8301edfde197/scratchpad/trocar_cores.py`
+- Script descartável, em qualquer pasta fora do repositório: `trocar_cores.py`
 
 **Interfaces:**
 - Consome: tokens da Task 1.
@@ -402,6 +406,10 @@ Em `frontend/`: `python3 -I <caminho do script> src`.
 Em `src/components/CodeBlock.jsx`, no objeto do tema `dark`, trocar `gutter: 'text-cinza-texto'` por `gutter: 'text-white/40'` e `hotGutter: 'text-erro'` por `hotGutter: 'text-codigo-erro'`, só na linha do tema escuro.
 
 Em `src/components/TentativaDetalhe.jsx`, no `pre` de erro de compilação (`bg-noite` com `text-erro`), trocar `text-erro` por `text-codigo-erro`.
+
+Em `src/pages/BulkSubmitPage.jsx`, dentro do bloco `bg-noite` por volta das linhas 128 a 131, trocar os dois `text-cinza-texto` por `text-white/60`.
+
+Em `src/components/CodeTextarea.jsx`, na coluna de numeração de linhas (por volta da linha 123), trocar `text-cinza-texto` por `text-white/60`, porque a Task 11 deixa o editor com fundo `bg-noite`.
 
 Na bolinha de novidades de `AlunoLayout.jsx` nada a fazer, a Task 5 refaz.
 
@@ -596,7 +604,7 @@ Lint e build. Depois `git add frontend/src/components` e `git commit -m "feat(id
 
 **Interfaces:**
 - Consome: `Logo`, `getExam`, `getTurma`.
-- Produz: `useContextoProfessor()` retorna `{ turma: { id, nome } | null, atividade: { id, nome } | null }`. `avisarContextoMudou()` e `CONTEXTO_MUDOU`. Links de turma com `?secao=panorama`, `?secao=atividades`, `?secao=desempenho`.
+- Produz: `useContextoProfessor()` retorna `{ turma: { id, nome } | null, atividade: { id, nome } | null }`. `avisarContextoMudou()`, exportada. A constante `CONTEXTO_MUDOU` é interna ao hook. Links de turma com `?secao=panorama`, `?secao=atividades`, `?secao=desempenho`.
 
 - [ ] **Passo 1: criar o hook**
 
@@ -612,8 +620,8 @@ export function avisarContextoMudou() {
   window.dispatchEvent(new Event(CONTEXTO_MUDOU))
 }
 
-function nomeDaAtividade(exam) {
-  return exam.titulo || (exam.filename || '').replace(/\.[^.]+$/, '')
+function nomeDaAtividade(exam, id) {
+  return exam.titulo || (exam.filename || '').replace(/\.[^.]+$/, '') || `Atividade ${id}`
 }
 
 // A página da turma ou da atividade também busca esses dados. A busca duplicada
@@ -639,7 +647,7 @@ export default function useContextoProfessor() {
     const busca = examId
       ? getExam(examId).then(({ data }) => ({
           turma: data.turma_id ? { id: data.turma_id, nome: data.turma_nome } : null,
-          atividade: { id: examId, nome: nomeDaAtividade(data) },
+          atividade: { id: examId, nome: nomeDaAtividade(data, examId) },
         }))
       : getTurma(turmaId).then(({ data }) => ({
           turma: { id: turmaId, nome: data.nome },
@@ -1089,7 +1097,7 @@ A `section` externa vira `<Card as="section" principal>`. O `h2` usa `className=
   return (
     <section className="space-y-3">
       <RotuloSecao as="h2">Prazos próximos</RotuloSecao>
-      <Card className="p-0 gap-0 divide-y-2 divide-noite/10 overflow-hidden">
+      <Card className="p-0! gap-0! divide-y-2 divide-noite/10 overflow-hidden">
         {itens.map(p => (
           <Link
             key={p.exam_id}
@@ -1110,7 +1118,7 @@ A `section` externa vira `<Card as="section" principal>`. O `h2` usa `className=
 
 - [ ] **Passo 6: trocar o final de `InicioPage`**
 
-Na tela sem turma, `h1` usa `titulo-pagina`. Nos estados de erro e `tudoEmDia`, a `div` tracejada vira `<Card className="border-dashed border-noite/30 text-center p-10">`. O link de `tudoEmDia` vira `<Botao to="/aluno/treino" className="self-center">Bora treinar!</Botao>`. O `return` principal fica:
+Na tela sem turma, `h1` usa `titulo-pagina`. Nos estados de erro e `tudoEmDia`, a `div` tracejada vira `<Card className="border-dashed border-noite/30! text-center p-10!">`. O link de `tudoEmDia` vira `<Botao to="/aluno/treino" className="self-center">Bora treinar!</Botao>`. O `return` principal fica:
 
 ```jsx
   return (
@@ -1137,7 +1145,7 @@ Na tela sem turma, `h1` usa `titulo-pagina`. Nos estados de erro e `tudoEmDia`, 
       )}
 
       {tudoEmDia && (
-        <Card className="border-dashed border-noite/30 text-center p-10">
+        <Card className="border-dashed border-noite/30! text-center p-10!">
           <p className="text-cinza-texto">Tudo em dia. Que tal treinar?</p>
           <Botao to="/aluno/treino" className="self-center">Bora treinar!</Botao>
         </Card>
@@ -1198,7 +1206,7 @@ Substituir o cabeçalho e o bloco "Código de acesso" por um único `<PainelDest
 
 - Linha de caminho "Turmas ›" em `lg:hidden`, fora do painel.
 - No painel: `h1 titulo-pagina` com `turma.nome`, `Tag` com `turma.codigo`. Depois: rótulo em `text-white/80` "Código de acesso da turma", o código em `font-titulo font-extrabold text-2xl`, e a frase existente "Passe o código ou o convite com link...".
-- Linha de ações, com `flex flex-wrap gap-2`: `Copiar código`, `Copiar convite`, `Ver área do aluno` como `<Botao variante="secundario">`, com os mesmos `onClick`, `disabled`, `to` e `target`. Quando a seção for `atividades`, os botões "Adicionar lista de aquecimento" e "Nova atividade" aparecem no cabeçalho da seção, não no painel.
+- Linha de ações, com `flex flex-wrap gap-2`: `Copiar código`, `Copiar convite`, `Ver área do aluno`, `Adicionar lista de aquecimento` (mesma condição de hoje) e `Nova atividade`, como `<Botao variante="secundario">`, com os mesmos `onClick`, `disabled`, `to` e `target`. O `erroAquecimento` fica logo abaixo da linha, em `text-white font-bold`.
 
 O corpo vira, com `hidden` para não remontar nada e não refazer buscas:
 
@@ -1208,7 +1216,7 @@ O corpo vira, com `hidden` para não remontar nada e não refazer buscas:
 </div>
 
 <div hidden={secao !== 'atividades'} className="space-y-4">
-  {/* cabeçalho: RotuloSecao "Atividades" à esquerda, e à direita "Adicionar lista de aquecimento" e "Nova atividade" (mesmas condições, handlers e textos), mais erroAquecimento */}
+  <RotuloSecao as="h2">Atividades</RotuloSecao>
   {/* bloco atual de Atividades, a partir de turma.exams.length === 0 */}
 </div>
 
@@ -1218,8 +1226,6 @@ O corpo vira, com `hidden` para não remontar nada e não refazer buscas:
   {/* TrajetoriaDeErros */}
 </div>
 ```
-
-O atributo `hidden` perde para classes `flex` ou `grid` no mesmo elemento. Por isso os três `div` acima não recebem classe de `display`.
 
 Aplicar a receita ao restante: card de atividade clicável vira `<Card principal>`, `KpiCard` usa `<Card>` com valor em `font-titulo font-extrabold text-3xl`. `PassRateBar` usa `<Progresso valor={rate} rotulo="Taxa de aprovação" />` e continua com o número em texto. `ConfirmDialog` permanece.
 
@@ -1265,11 +1271,11 @@ Na navegação que segue a exclusão da atividade (por volta da linha 71), acres
 
 - [ ] **Passo 4: resto da página e cartões**
 
-Aplicar a receita em `ExamDashboard`, `PublicacaoCard`, `DisponibilidadeCard`. Card de questão vira `<Card principal>`. Modais continuam.
+Aplicar a receita em `ExamDashboard`, `PublicacaoCard`, `DisponibilidadeCard`. Card de questão vira `<Card principal>`. Modais continuam. No estado vazio, trocar `<Logo className="w-10 h-10 mx-auto mb-3 opacity-30" />` por `<ClipboardList className="w-10 h-10 mx-auto mb-3 text-cinza-texto" />` e remover o `import Logo`.
 
 - [ ] **Passo 5: `ExamUploadPage.jsx`**
 
-Caminho em `lg:hidden` com link para `?secao=atividades`. Área de envio vira `<Card className="border-dashed border-noite/30">`. Ícone `Upload` no lugar do SVG. Receita no restante.
+Caminho em `lg:hidden` com link para `?secao=atividades`. Área de envio vira `<Card className="border-dashed border-noite/30!">`. Ícone `Upload` no lugar do SVG. Receita no restante.
 
 - [ ] **Passo 6: conferir e commitar**
 
@@ -1310,13 +1316,13 @@ Lint e build. Depois `git add frontend/src` e `git commit -m "feat(identidade): 
 
 - [ ] **Passo 1: duas colunas sem mudar a ordem no celular**
 
-Nas duas páginas, o contêiner principal do conteúdo depois do cabeçalho vira `grid gap-6 lg:grid-cols-2 items-start`. Em ordem no DOM, três filhos, cada um com `min-w-0`:
+Nas duas páginas, criar um `div` com `grid gap-6 lg:grid-cols-2 items-start`, envolvendo os blocos abaixo, com três `div` novos como filhos, cada um com `min-w-0 space-y-6`, nesta ordem no DOM:
 
-1. Enunciado, casos e requisitos: `lg:col-start-1 lg:row-start-1`
-2. Editor, envio, resultado e ajuda: `lg:col-start-2 lg:row-start-1 lg:row-span-2`
-3. Histórico de tentativas, quando existir: `lg:col-start-1 lg:row-start-2`
+1. O card do enunciado (casos e requisitos dentro dele): `lg:col-start-1 lg:row-start-1`
+2. O card do editor e o bloco "Resultado", com a ajuda, juntos num só `div`: `lg:col-start-2 lg:row-start-1 lg:row-span-2`
+3. O bloco "Tentativas anteriores", quando existir: `lg:col-start-1 lg:row-start-2`
 
-Conferir no arquivo que essa já é a ordem do DOM de hoje. Se algum bloco estiver noutra posição, manter a ordem atual no celular e posicionar pela classe de coluna.
+Ficam fora do grid: cabeçalho e caminho antes dele, e a linha de questão anterior e próxima depois dele. Em `ExercicioTreinoPage`, o aviso "reaproveitado" e o caminho também ficam antes do grid.
 
 - [ ] **Passo 2: componentes do resultado**
 
@@ -1330,7 +1336,7 @@ Conferir no arquivo que essa já é a ordem do DOM de hoje. Se algum bloco estiv
 
 - [ ] **Passo 3: receita no resto e botão principal**
 
-"Enviar nova tentativa" e o primeiro envio viram `<Botao type="submit">`, textos iguais. `h1` em `titulo-pagina`. "← voltar" vira `ArrowLeft` mais texto.
+"Enviar nova tentativa" e o primeiro envio viram `<Botao onClick={...}>`, com o mesmo `onClick` e `disabled` de hoje e textos iguais. `h1` em `titulo-pagina`. "← voltar" vira `ArrowLeft` mais texto.
 
 - [ ] **Passo 4: conferir e commitar**
 
@@ -1368,7 +1374,7 @@ Lint e build. Depois `git add frontend/src` e `git commit -m "feat(identidade): 
 
 - [ ] **Passo 1: aplicar a receita**
 
-Card de turma é `<Card principal>` clicável, abrindo no Panorama, sem `?secao=`. Botões de editar e excluir só com ícone (`Pencil`, `Trash2`), com `aria-label`. "Nova turma" com `<Botao><Plus className="w-4 h-4" />...`, mesmo texto de hoje.
+Linha de caminho de `ProfilePage` em `lg:hidden`, com `ChevronRight`. Card de turma é `<Card principal>` clicável, abrindo no Panorama, sem `?secao=`. Botões de editar e excluir só com ícone (`Pencil`, `Trash2`), com `aria-label`. "Nova turma" com `<Botao><Plus className="w-4 h-4" />...`, mesmo texto de hoje.
 
 - [ ] **Passo 2: conferir e commitar**
 
@@ -1441,9 +1447,11 @@ Lint e build. Depois `git add frontend/src` e `git commit -m "feat(identidade): 
 
 `grep -rnE 'linear-gradient|bg-gradient|shadow-(sm|md|lg|xl)|shadow"|shadow ' src --include=*.jsx`
 
-`grep -rnE '<svg' src --include=*.jsx` deve mostrar só `Logo.jsx`.
+`grep -rnE '<svg' src --include=*.jsx` deve mostrar só `Logo.jsx` e `Spinner.jsx`.
 
 `grep -rnE '✓|←|›' src --include=*.jsx` deve mostrar nada que seja ícone. Aspas de citação e texto corrido podem ficar, e o separador `›` usa `ChevronRight`.
+
+A verificação em navegador fica fora desta tarefa. Quem executa o `sdd` faz, depois deste lote e antes do `fechamento`, a lista da seção Testes do spec: backend com 625 testes, navegador em 360, 390 e 1280 px como professor e como aluno sem estouro nem erro no console, os casos-limite, contraste, foco de teclado e o ensaio com Docker e Gemini reais.
 
 - [ ] **Passo 2: documentar**
 

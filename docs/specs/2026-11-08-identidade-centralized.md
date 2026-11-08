@@ -97,7 +97,7 @@ Nenhuma alteração.
 - `Layout.jsx`: menu lateral, gaveta e `JobDock`.
 - `components/MenuLateral.jsx`: desenha os grupos. Usa o hook abaixo.
 - `hooks/useContextoProfessor.js`: lê a rota com `useMatch` e busca a turma (`getTurma`) ou a atividade (`getExam`, que traz `turma_id` e `turma_nome`). Falha na busca, ou atividade sem turma, só esconde o grupo correspondente, porque a própria página mostra o erro.
-- Renomear turma ou atividade dispara o evento `CONTEXTO_MUDOU`, que o hook escuta, no mesmo padrão de `NOVIDADES_MUDARAM`. Assim o menu não fica com o nome velho.
+- Renomear uma atividade dispara o evento `CONTEXTO_MUDOU`, que o hook escuta, no mesmo padrão de `NOVIDADES_MUDARAM`. Assim o menu não fica com o nome velho. Turma só é renomeada na lista de turmas, onde o menu não mostra o grupo dela.
 - `AlunoLayout.jsx`: troca apenas a marcação. Os três `useEffect` ficam como estão.
 - `JobDock` fica acima das abas e abaixo de modais.
 
