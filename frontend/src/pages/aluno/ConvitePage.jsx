@@ -50,36 +50,36 @@ export default function ConvitePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-lavanda flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <Logo className="w-8 h-8" />
-          <span className="font-semibold text-gray-900">Analytics CS1</span>
+          <span className="font-semibold text-noite">Analytics CS1</span>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <div className="bg-white rounded-2xl border border-noite/20 p-8 text-center">
           {situacao === 'entrando' && (
             <div className="flex flex-col items-center gap-3">
-              <Spinner className="w-6 h-6 text-purple-600" />
-              <p className="text-sm text-gray-500">Entrando na turma...</p>
+              <Spinner className="w-6 h-6 text-violeta" />
+              <p className="text-sm text-cinza-texto">Entrando na turma...</p>
             </div>
           )}
           {situacao === 'invalido' && (
             <>
-              <p className="text-sm text-gray-700 mb-4">
+              <p className="text-sm text-cinza-texto mb-4">
                 Este convite não vale mais. Peça o código ao professor.
               </p>
-              <Link to="/aluno/turmas" className="text-sm text-purple-600 hover:underline font-medium">
+              <Link to="/aluno/turmas" className="text-sm text-violeta hover:underline font-medium">
                 Ir para minhas turmas
               </Link>
             </>
           )}
           {situacao === 'falhou' && (
             <>
-              <p className="text-sm text-gray-700 mb-4">Não foi possível entrar na turma agora.</p>
+              <p className="text-sm text-cinza-texto mb-4">Não foi possível entrar na turma agora.</p>
               <button
                 onClick={tentarDeNovo}
-                className="text-sm px-4 py-2 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700 transition-colors"
+                className="text-sm px-4 py-2 rounded-xl bg-violeta text-white font-medium hover:bg-violeta-escuro transition-colors"
               >
                 Tentar de novo
               </button>

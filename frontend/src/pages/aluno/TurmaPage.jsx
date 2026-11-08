@@ -14,9 +14,9 @@ const GRUPOS = [
 function Grupo({ titulo, vazio, atividades }) {
   return (
     <section>
-      <h2 className="text-sm font-semibold text-gray-900 mb-3">{titulo}</h2>
+      <h2 className="text-sm font-semibold text-noite mb-3">{titulo}</h2>
       {atividades.length === 0 ? (
-        <p className="text-sm text-gray-400">{vazio}</p>
+        <p className="text-sm text-cinza-texto">{vazio}</p>
       ) : (
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
           {atividades.map(a => <AtividadeCard key={a.exam_id} atividade={a} />)}
@@ -60,7 +60,7 @@ export default function TurmaPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Spinner className="w-6 h-6 text-purple-600" />
+        <Spinner className="w-6 h-6 text-violeta" />
       </div>
     )
   }
@@ -68,8 +68,8 @@ export default function TurmaPage() {
   if (!turma) {
     return (
       <div className="space-y-3">
-        <Link to="/aluno/turmas" className="text-xs text-gray-400 hover:text-gray-600">← Turmas</Link>
-        <p className="text-sm text-red-600">{erro}</p>
+        <Link to="/aluno/turmas" className="text-xs text-cinza-texto hover:text-cinza-texto">← Turmas</Link>
+        <p className="text-sm text-erro">{erro}</p>
       </div>
     )
   }
@@ -79,18 +79,18 @@ export default function TurmaPage() {
   return (
     <div className="space-y-8">
       <div>
-        <Link to="/aluno/turmas" className="text-xs text-gray-400 hover:text-gray-600">← Turmas</Link>
-        <h1 className="mt-2 text-xl font-semibold text-gray-900">{turma.nome}</h1>
-        <p className="mt-1 text-xs text-gray-400">
+        <Link to="/aluno/turmas" className="text-xs text-cinza-texto hover:text-cinza-texto">← Turmas</Link>
+        <h1 className="mt-2 text-xl font-semibold text-noite">{turma.nome}</h1>
+        <p className="mt-1 text-xs text-cinza-texto">
           {turma.professor_nome || 'sem professor'}
           {turma.codigo && <span className="font-mono"> · {turma.codigo}</span>}
         </p>
       </div>
 
       {atividades.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed border-gray-200 p-10 text-center">
-          <p className="text-sm text-gray-500">Nenhuma atividade ainda.</p>
-          <p className="text-xs text-gray-400 mt-1">
+        <div className="bg-white rounded-xl border border-dashed border-noite/20 p-10 text-center">
+          <p className="text-sm text-cinza-texto">Nenhuma atividade ainda.</p>
+          <p className="text-xs text-cinza-texto mt-1">
             O professor ainda não publicou nada nesta turma.
           </p>
         </div>

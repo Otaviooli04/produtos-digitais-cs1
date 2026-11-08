@@ -18,7 +18,7 @@ export default function AjudaEmEtapas({ tentativa }) {
 
   if (tentativa.ajuda_bloqueada) {
     return (
-      <p className="mt-3 text-xs text-gray-500">A dica fica disponível quando a prova fechar.</p>
+      <p className="mt-3 text-xs text-cinza-texto">A dica fica disponível quando a prova fechar.</p>
     )
   }
 
@@ -42,17 +42,17 @@ export default function AjudaEmEtapas({ tentativa }) {
       {pistas.map((pista, i) => (
         <div
           key={i}
-          className={`rounded-lg px-4 py-2.5 border ${i === 0 ? 'bg-purple-50 border-purple-200' : 'bg-white border-purple-100'}`}
+          className={`rounded-lg px-4 py-2.5 border ${i === 0 ? 'bg-lavanda border-violeta/30' : 'bg-white border-violeta/15'}`}
         >
-          <p className="text-xs font-medium text-purple-800 mb-0.5">{i === 0 ? 'Dica' : 'Outra pista'}</p>
-          <p className="text-xs text-purple-700 whitespace-pre-wrap break-words">{pista}</p>
+          <p className="text-xs font-medium text-violeta mb-0.5">{i === 0 ? 'Dica' : 'Outra pista'}</p>
+          <p className="text-xs text-violeta whitespace-pre-wrap break-words">{pista}</p>
         </div>
       ))}
 
       {explicacao && (
-        <div className="rounded-lg bg-purple-50 border border-purple-100 px-4 py-2.5">
-          <p className="text-xs font-medium text-purple-800 mb-0.5">Explicando o seu código</p>
-          <p className="text-xs text-purple-700 whitespace-pre-wrap break-words">{explicacao}</p>
+        <div className="rounded-lg bg-lavanda border border-violeta/15 px-4 py-2.5">
+          <p className="text-xs font-medium text-violeta mb-0.5">Explicando o seu código</p>
+          <p className="text-xs text-violeta whitespace-pre-wrap break-words">{explicacao}</p>
         </div>
       )}
 
@@ -61,12 +61,12 @@ export default function AjudaEmEtapas({ tentativa }) {
           <button
             onClick={abrirProxima}
             disabled={carregando}
-            className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-40 transition-colors"
+            className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-violeta/30 text-violeta hover:bg-lavanda disabled:opacity-40 transition-colors"
           >
             {carregando && <Spinner className="w-3.5 h-3.5" />}
             {carregando ? 'Pensando…' : PROXIMO[nivel]}
           </button>
-          {erro && <p className="mt-1.5 text-xs text-red-600">{erro}</p>}
+          {erro && <p className="mt-1.5 text-xs text-erro">{erro}</p>}
         </div>
       )}
     </div>

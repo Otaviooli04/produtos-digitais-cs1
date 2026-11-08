@@ -20,22 +20,22 @@ function formatarFuncao(fn) {
 
 function ItemHistorico({ tentativa, aberto, onToggle }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-noite/20 overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-3 px-5 py-3 hover:bg-gray-50 transition-colors text-left"
+        className="w-full flex items-center justify-between gap-3 px-5 py-3 hover:bg-lavanda transition-colors text-left"
       >
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-          <span className="text-xs text-gray-400 shrink-0">#{tentativa.attempt_number}</span>
+          <span className="text-xs text-cinza-texto shrink-0">#{tentativa.attempt_number}</span>
           <Badge color={categoriaColor(tentativa.error_category)}>{tentativa.error_category}</Badge>
-          <span className="text-xs text-gray-400 truncate">{formatarData(tentativa.submitted_at)}</span>
+          <span className="text-xs text-cinza-texto truncate">{formatarData(tentativa.submitted_at)}</span>
         </span>
-        <span className="text-xs text-gray-400 shrink-0">
+        <span className="text-xs text-cinza-texto shrink-0">
           {tentativa.tests_total > 0 && `${tentativa.tests_passed}/${tentativa.tests_total} testes · `}
           {aberto ? 'ocultar' : 'ver'}
         </span>
       </button>
-      <div className={`border-t border-gray-100 p-4 bg-gray-50${aberto ? '' : ' hidden'}`}>
+      <div className={`border-t border-noite/10 p-4 bg-lavanda${aberto ? '' : ' hidden'}`}>
         <TentativaDetalhe tentativa={tentativa} mostrarCodigo />
       </div>
     </div>
@@ -113,13 +113,13 @@ function QuestaoConteudo({ examId, numero }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Spinner className="w-6 h-6 text-purple-600" />
+        <Spinner className="w-6 h-6 text-violeta" />
       </div>
     )
   }
 
   if (!questao) {
-    return <p className="text-sm text-red-600">{error || 'Questão não encontrada.'}</p>
+    return <p className="text-sm text-erro">{error || 'Questão não encontrada.'}</p>
   }
 
   const anteriores = (historico?.tentativas || []).filter(
@@ -128,11 +128,11 @@ function QuestaoConteudo({ examId, numero }) {
   return (
     <div className="space-y-5">
       <div>
-        <Link to={`/aluno/atividades/${examId}`} className="text-xs text-gray-400 hover:text-gray-600">
+        <Link to={`/aluno/atividades/${examId}`} className="text-xs text-cinza-texto hover:text-cinza-texto">
           ← {atividade.titulo}
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold text-gray-900">Questão {questao.number}</h1>
+          <h1 className="text-xl font-semibold text-noite">Questão {questao.number}</h1>
           {questao.resolvida && <Badge color="green">Resolvida</Badge>}
           {questao.tentativas_restantes != null && (
             <Badge color={questao.tentativas_restantes > 0 ? 'gray' : 'red'}>
@@ -142,38 +142,38 @@ function QuestaoConteudo({ examId, numero }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{questao.statement}</p>
+      <div className="bg-white rounded-xl border border-noite/20 p-5">
+        <p className="text-sm text-cinza-texto leading-relaxed whitespace-pre-wrap break-words">{questao.statement}</p>
         <div className="mt-3 space-y-1">
           {questao.required_structures?.length > 0 && (
-            <p className="text-xs text-gray-400">
-              Estruturas obrigatórias: <span className="text-purple-600">{questao.required_structures.join(', ')}</span>
+            <p className="text-xs text-cinza-texto">
+              Estruturas obrigatórias: <span className="text-violeta">{questao.required_structures.join(', ')}</span>
             </p>
           )}
           {questao.forbidden_structures?.length > 0 && (
-            <p className="text-xs text-red-400">Proibido: {questao.forbidden_structures.join(', ')}</p>
+            <p className="text-xs text-erro">Proibido: {questao.forbidden_structures.join(', ')}</p>
           )}
           {questao.required_functions?.length > 0 && (
-            <p className="text-xs text-gray-400">
-              Funções exigidas: <span className="text-purple-600">{questao.required_functions.map(formatarFuncao).join(', ')}</span>
+            <p className="text-xs text-cinza-texto">
+              Funções exigidas: <span className="text-violeta">{questao.required_functions.map(formatarFuncao).join(', ')}</span>
             </p>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <label className="block text-xs font-medium text-gray-500 mb-1.5">Seu código em C</label>
+      <div className="bg-white rounded-xl border border-noite/20 p-5">
+        <label className="block text-xs font-medium text-cinza-texto mb-1.5">Seu código em C</label>
         <CodeTextarea
           rows={18}
           value={code}
           onChange={e => setCode(e.target.value)}
           spellCheck={false}
           disabled={!podeEnviar}
-          className="w-full text-sm font-mono rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y bg-gray-50 disabled:opacity-60 max-h-[55vh] sm:max-h-none"
+          className="w-full text-sm font-mono rounded-lg border border-noite/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violeta focus:border-transparent resize-y bg-lavanda disabled:opacity-60 max-h-[55vh] sm:max-h-none"
         />
 
         {!podeEnviar && (
-          <p className="mt-2 text-xs text-amber-600">
+          <p className="mt-2 text-xs text-aviso">
             {semTentativas
               ? 'Você usou todas as tentativas desta questão.'
               : atividade.situacao === 'agendada'
@@ -183,7 +183,7 @@ function QuestaoConteudo({ examId, numero }) {
         )}
 
         {error && (
-          <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-700">
+          <div className="mt-3 rounded-lg bg-erro-fundo border border-erro/30 px-4 py-2.5 text-sm text-erro">
             {error}
           </div>
         )}
@@ -191,7 +191,7 @@ function QuestaoConteudo({ examId, numero }) {
         <button
           onClick={handleEnviar}
           disabled={enviando || !podeEnviar || !code.trim()}
-          className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm px-4 py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
+          className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm px-4 py-3 rounded-xl bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
         >
           {enviando && <Spinner className="w-4 h-4" />}
           {enviando ? 'Avaliando…' : questao.tentativas > 0 ? 'Enviar nova tentativa' : 'Enviar resposta'}
@@ -200,7 +200,7 @@ function QuestaoConteudo({ examId, numero }) {
 
       {resultado && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-900">Resultado</h2>
+          <h2 className="text-sm font-semibold text-noite">Resultado</h2>
           <RitmoDaTentativa
             avanco={resultado.avanco}
             sugerirPausa={resultado.sugerir_pausa}
@@ -213,7 +213,7 @@ function QuestaoConteudo({ examId, numero }) {
           {vizinhas.proxima && resultado.resolvida && (
             <button
               onClick={() => navigate(`/aluno/atividades/${examId}/questoes/${vizinhas.proxima}`)}
-              className="w-full text-sm px-4 py-2.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+              className="w-full text-sm px-4 py-2.5 rounded-xl bg-violeta text-white hover:bg-violeta-escuro transition-colors"
             >
               Ir para a questão {vizinhas.proxima}
             </button>
@@ -223,7 +223,7 @@ function QuestaoConteudo({ examId, numero }) {
 
       {anteriores.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-900">
+          <h2 className="text-sm font-semibold text-noite">
             Tentativas anteriores ({anteriores.length})
           </h2>
           {anteriores.map(t => (
@@ -241,7 +241,7 @@ function QuestaoConteudo({ examId, numero }) {
         {vizinhas.anterior ? (
           <Link
             to={`/aluno/atividades/${examId}/questoes/${vizinhas.anterior}`}
-            className="text-sm px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+            className="text-sm px-4 py-2 rounded-xl border border-noite/20 text-cinza-texto hover:bg-lavanda transition-colors"
           >
             ← Questão {vizinhas.anterior}
           </Link>
@@ -249,7 +249,7 @@ function QuestaoConteudo({ examId, numero }) {
         {vizinhas.proxima && (
           <Link
             to={`/aluno/atividades/${examId}/questoes/${vizinhas.proxima}`}
-            className="text-sm px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+            className="text-sm px-4 py-2 rounded-xl border border-noite/20 text-cinza-texto hover:bg-lavanda transition-colors"
           >
             Questão {vizinhas.proxima} →
           </Link>

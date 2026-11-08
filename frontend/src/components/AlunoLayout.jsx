@@ -6,7 +6,7 @@ import Logo from './Logo'
 
 const linkClass = ({ isActive }) =>
   `text-sm px-3 py-2.5 sm:py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-    isActive ? 'bg-purple-50 text-purple-700 font-medium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+    isActive ? 'bg-lavanda text-violeta font-medium' : 'text-cinza-texto hover:text-cinza-texto hover:bg-lavanda'
   }`
 
 function LinkInicio({ novidades }) {
@@ -16,7 +16,7 @@ function LinkInicio({ novidades }) {
         Início
         {novidades > 0 && (
           <span
-            className="min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-purple-600 text-white text-[10px] font-semibold leading-[1.125rem] text-center"
+            className="min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-violeta text-white text-[10px] font-semibold leading-[1.125rem] text-center"
           >
             <span aria-hidden="true">{novidades > 9 ? '9+' : novidades}</span>
             <span className="sr-only">{`${novidades} novidade${novidades === 1 ? '' : 's'}`}</span>
@@ -80,13 +80,13 @@ export default function AlunoLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 sm:sticky sm:top-0 z-10">
+    <div className="min-h-screen bg-lavanda">
+      <nav className="bg-white border-b border-noite/20 sm:sticky sm:top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-5">
             <Link to="/aluno" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
               <Logo className="w-7 h-7" />
-              <span className="font-semibold text-gray-900 text-sm">Analytics CS1</span>
+              <span className="font-semibold text-noite text-sm">Analytics CS1</span>
             </Link>
             <div className="hidden sm:flex items-center gap-1">
               <LinkInicio novidades={novidades} />
@@ -99,23 +99,23 @@ export default function AlunoLayout() {
           {aluno && (
             <div className="flex items-center gap-3">
               <NavLink to="/aluno/perfil" className="flex items-center gap-2 p-1 -m-1 hover:opacity-80 transition-opacity">
-                <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center">
-                  <span className="text-xs font-semibold text-purple-600">
+                <div className="w-7 h-7 rounded-full bg-lavanda flex items-center justify-center">
+                  <span className="text-xs font-semibold text-violeta">
                     {aluno.nome?.[0]?.toUpperCase()}
                   </span>
                 </div>
-                <span className="text-sm text-gray-700 hidden sm:block">{aluno.nome}</span>
+                <span className="text-sm text-cinza-texto hidden sm:block">{aluno.nome}</span>
               </NavLink>
               <button
                 onClick={handleLogout}
-                className="text-xs px-3 py-2.5 sm:py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                className="text-xs px-3 py-2.5 sm:py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:text-cinza-texto hover:bg-lavanda transition-colors"
               >
                 Sair
               </button>
             </div>
           )}
         </div>
-        <div className="sm:hidden border-t border-gray-100 px-2 py-1.5 flex gap-1 overflow-x-auto">
+        <div className="sm:hidden border-t border-noite/10 px-2 py-1.5 flex gap-1 overflow-x-auto">
           <LinkInicio novidades={novidades} />
           <NavLink to="/aluno/turmas" className={linkClass}>Turmas</NavLink>
           <NavLink to="/aluno/treino" className={linkClass}>Treino</NavLink>

@@ -59,43 +59,43 @@ function Conteudo({ exercicioId }) {
   }
 
   if (loading) {
-    return <div className="flex justify-center py-16"><Spinner className="w-6 h-6 text-purple-600" /></div>
+    return <div className="flex justify-center py-16"><Spinner className="w-6 h-6 text-violeta" /></div>
   }
   if (!exercicio) {
-    return <p className="text-sm text-red-600">{erro || 'Exercício não encontrado.'}</p>
+    return <p className="text-sm text-erro">{erro || 'Exercício não encontrado.'}</p>
   }
 
   const anteriores = (exercicio.tentativas_lista || []).slice(resultado ? 1 : 0)
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2 text-sm text-gray-400">
-        <Link to="/aluno/treino" className="hover:text-gray-600">Treino</Link>
+      <div className="flex items-center gap-2 text-sm text-cinza-texto">
+        <Link to="/aluno/treino" className="hover:text-cinza-texto">Treino</Link>
         <span>›</span>
-        <span className="text-gray-600 truncate">{exercicio.titulo}</span>
+        <span className="text-cinza-texto truncate">{exercicio.titulo}</span>
       </div>
 
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold text-gray-900">{exercicio.titulo}</h1>
+          <h1 className="text-xl font-semibold text-noite">{exercicio.titulo}</h1>
           {exercicio.resolvido && <Badge color="green">resolvido</Badge>}
         </div>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-cinza-texto mt-1">
           Treino para {shortError(exercicio.error_category)} · tentativas ilimitadas · não vale nota
         </p>
       </div>
 
       {exercicio.reaproveitado && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-blue-800">
+        <div className="rounded-xl border border-violeta/30 bg-lavanda px-4 py-2.5 text-xs text-violeta">
           Este exercício já estava aberto na sua trilha. Resolver o que está pendente
           vale mais do que acumular exercício novo.
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Enunciado</h2>
-        <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{exercicio.enunciado}</p>
-        <div className="flex flex-wrap gap-2 mt-3 text-xs text-gray-400">
+      <div className="bg-white rounded-xl border border-noite/20 p-5">
+        <h2 className="text-xs font-medium text-cinza-texto uppercase tracking-wide mb-2">Enunciado</h2>
+        <p className="text-sm text-cinza-texto whitespace-pre-wrap break-words leading-relaxed">{exercicio.enunciado}</p>
+        <div className="flex flex-wrap gap-2 mt-3 text-xs text-cinza-texto">
           <span>{exercicio.total_testes} caso{exercicio.total_testes !== 1 ? 's' : ''} de teste</span>
           {exercicio.required_structures?.length > 0 && (
             <span>· obrigatório: {exercicio.required_structures.join(', ')}</span>
@@ -103,36 +103,36 @@ function Conteudo({ exercicioId }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Seu código em C</h2>
+      <div className="bg-white rounded-xl border border-noite/20 p-5">
+        <h2 className="text-xs font-medium text-cinza-texto uppercase tracking-wide mb-2">Seu código em C</h2>
         <CodeTextarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
           spellCheck={false}
           rows={14}
-          className="w-full font-mono text-xs bg-gray-900 text-gray-100 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400 max-h-[55vh] sm:max-h-none"
+          className="w-full font-mono text-xs bg-noite text-codigo-texto rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-violeta max-h-[55vh] sm:max-h-none"
         />
-        {erro && <p className="mt-2 text-xs text-red-600">{erro}</p>}
+        {erro && <p className="mt-2 text-xs text-erro">{erro}</p>}
         <div className="flex items-center gap-2 mt-3">
           <button
             onClick={enviar}
             disabled={enviando || !code.trim()}
-            className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 transition-colors"
+            className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 transition-colors"
           >
             {enviando && <Spinner className="w-4 h-4" />}
             {enviando ? 'Executando…' : 'Enviar tentativa'}
           </button>
           <button
             onClick={() => setReportando(r => !r)}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-xs text-cinza-texto hover:text-cinza-texto transition-colors"
           >
             Este exercício está errado
           </button>
         </div>
 
         {reportando && (
-          <div className="mt-3 rounded-lg border border-gray-200 p-3">
-            <p className="text-xs text-gray-500 mb-2">
+          <div className="mt-3 rounded-lg border border-noite/20 p-3">
+            <p className="text-xs text-cinza-texto mb-2">
               O exercício foi gerado automaticamente e não passou pelo professor. Diga
               o que está errado que ele sai da sua trilha.
             </p>
@@ -140,11 +140,11 @@ function Conteudo({ exercicioId }) {
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Ex.: o enunciado não diz o formato da saída."
-              className="w-full text-sm rounded-lg border border-gray-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-200"
+              className="w-full text-sm rounded-lg border border-noite/20 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-violeta/30"
             />
             <button
               onClick={reportar}
-              className="mt-2 text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+              className="mt-2 text-xs px-3 py-1.5 rounded-lg border border-erro/30 text-erro hover:bg-erro-fundo transition-colors"
             >
               Tirar da trilha
             </button>
@@ -154,7 +154,7 @@ function Conteudo({ exercicioId }) {
 
       {resultado && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Resultado</h2>
+          <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">Resultado</h2>
           <div className="space-y-3">
             <RitmoDaTentativa
               avanco={resultado.avanco}
@@ -168,23 +168,23 @@ function Conteudo({ exercicioId }) {
 
       {anteriores.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">
             Tentativas anteriores
           </h2>
           <div className="space-y-2">
             {anteriores.map(t => (
-              <details key={t.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <summary className="flex items-center gap-2 px-5 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
-                  <span className="text-xs text-gray-400">#{t.attempt_number}</span>
+              <details key={t.id} className="bg-white rounded-xl border border-noite/20 overflow-hidden">
+                <summary className="flex items-center gap-2 px-5 py-3 cursor-pointer hover:bg-lavanda transition-colors">
+                  <span className="text-xs text-cinza-texto">#{t.attempt_number}</span>
                   <Badge color={categoriaColor(t.error_category)}>{t.error_category}</Badge>
-                  <span className="text-xs text-gray-400 truncate">{formatarData(t.submitted_at)}</span>
+                  <span className="text-xs text-cinza-texto truncate">{formatarData(t.submitted_at)}</span>
                   {t.tests_total > 0 && (
-                    <span className="ml-auto text-xs text-gray-400">
+                    <span className="ml-auto text-xs text-cinza-texto">
                       {t.tests_passed}/{t.tests_total} testes
                     </span>
                   )}
                 </summary>
-                <div className="border-t border-gray-100 p-4 bg-gray-50">
+                <div className="border-t border-noite/10 p-4 bg-lavanda">
                   <TentativaDetalhe tentativa={t} mostrarCodigo />
                 </div>
               </details>

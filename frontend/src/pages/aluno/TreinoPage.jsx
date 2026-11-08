@@ -38,7 +38,7 @@ export default function TreinoPage() {
   }
 
   if (loading) {
-    return <div className="flex justify-center py-16"><Spinner className="w-6 h-6 text-purple-600" /></div>
+    return <div className="flex justify-center py-16"><Spinner className="w-6 h-6 text-violeta" /></div>
   }
 
   const categorias = trilha?.categorias ?? []
@@ -50,26 +50,26 @@ export default function TreinoPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Treino</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <h1 className="text-xl font-semibold text-noite">Treino</h1>
+        <p className="text-sm text-cinza-texto mt-0.5">
           Exercícios feitos para o erro que você mais repete. Tentativas ilimitadas,
           e nada daqui entra na sua nota.
         </p>
       </div>
 
       {erro && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-aviso/30 bg-aviso-fundo px-4 py-3 text-sm text-aviso">
           {erro}
         </div>
       )}
 
       {categorias.length === 0 && superados.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-cinza-texto">
           <p className="text-sm">A trilha começa a partir dos seus erros.</p>
           <p className="text-xs mt-1">
             Resolva alguma questão da sua turma e volte aqui.
           </p>
-          <Link to="/aluno/turmas" className="inline-block mt-4 text-sm text-purple-600 hover:text-purple-700">
+          <Link to="/aluno/turmas" className="inline-block mt-4 text-sm text-violeta hover:text-violeta">
             Ver minhas turmas
           </Link>
         </div>
@@ -77,7 +77,7 @@ export default function TreinoPage() {
         <>
           {pendentes.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">
                 Para resolver
               </h2>
               <div className="space-y-2">
@@ -88,30 +88,30 @@ export default function TreinoPage() {
 
           {categorias.length > 0 ? (
             <div>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">
                 O que você mais erra
               </h2>
               <div className="space-y-2">
                 {categorias.map(c => (
-                  <div key={c.error_category} className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div key={c.error_category} className="bg-white rounded-xl border border-noite/20 p-5">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge color="red">{shortError(c.error_category)}</Badge>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-cinza-texto">
                         {c.ocorrencias}× nas suas tentativas
                       </span>
                       {c.exercicios_resolvidos > 0 && (
-                        <span className="text-xs text-green-600">
+                        <span className="text-xs text-sucesso">
                           · {c.exercicios_resolvidos} treino{c.exercicios_resolvidos !== 1 ? 's' : ''} resolvido{c.exercicios_resolvidos !== 1 ? 's' : ''}
                         </span>
                       )}
                     </div>
                     {c.o_que_fazer && (
-                      <p className="text-sm text-gray-600 mt-2">{c.o_que_fazer}</p>
+                      <p className="text-sm text-cinza-texto mt-2">{c.o_que_fazer}</p>
                     )}
                     <button
                       onClick={() => gerar(c.error_category)}
                       disabled={gerando != null}
-                      className="mt-3 inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                      className="mt-3 inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 transition-colors"
                     >
                       {gerando === c.error_category && <Spinner className="w-3.5 h-3.5" />}
                       {c.tem_pendente ? 'Continuar treinando' : 'Treinar isso'}
@@ -121,10 +121,10 @@ export default function TreinoPage() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-dashed border-gray-200 p-8 text-center">
-              <p className="text-sm text-gray-500">Você superou todos os erros que repetia.</p>
-              <p className="text-xs text-gray-400 mt-1">Resolva uma questão da sua turma e volte aqui.</p>
-              <Link to="/aluno/turmas" className="inline-block mt-4 text-sm text-purple-600 hover:text-purple-700">
+            <div className="bg-white rounded-xl border border-dashed border-noite/20 p-8 text-center">
+              <p className="text-sm text-cinza-texto">Você superou todos os erros que repetia.</p>
+              <p className="text-xs text-cinza-texto mt-1">Resolva uma questão da sua turma e volte aqui.</p>
+              <Link to="/aluno/turmas" className="inline-block mt-4 text-sm text-violeta hover:text-violeta">
                 Ver minhas turmas
               </Link>
             </div>
@@ -132,20 +132,20 @@ export default function TreinoPage() {
 
           {superados.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">
                 Erros que você superou
               </h2>
               <div className="space-y-2">
                 {superados.map(s => (
-                  <div key={s.error_category} className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div key={s.error_category} className="bg-white rounded-xl border border-noite/20 p-5">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge color="green">{shortError(s.error_category)}</Badge>
-                      <span className="text-xs text-gray-400">superado em {dataCurta(s.superado_em)}</span>
+                      <span className="text-xs text-cinza-texto">superado em {dataCurta(s.superado_em)}</span>
                     </div>
                     <button
                       onClick={() => gerar(s.error_category)}
                       disabled={gerando != null}
-                      className="mt-3 inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-40 transition-colors"
+                      className="mt-3 inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-violeta/30 text-violeta hover:bg-lavanda disabled:opacity-40 transition-colors"
                     >
                       {gerando === s.error_category && <Spinner className="w-3.5 h-3.5" />}
                       Treinar de novo
@@ -158,7 +158,7 @@ export default function TreinoPage() {
 
           {resolvidos.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">
                 Já resolvidos
               </h2>
               <div className="space-y-2">
@@ -167,7 +167,7 @@ export default function TreinoPage() {
             </div>
           )}
 
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-cinza-texto">
             {trilha.geracoes_restantes_hoje > 0
               ? `Você pode gerar mais ${trilha.geracoes_restantes_hoje} exercício${trilha.geracoes_restantes_hoje !== 1 ? 's' : ''} hoje. Treinar nos que já estão aqui é ilimitado.`
               : 'Você atingiu o limite de exercícios novos por hoje. Treinar nos que já estão aqui continua liberado.'}
@@ -182,16 +182,16 @@ function CartaoExercicio({ exercicio }) {
   return (
     <Link
       to={`/aluno/treino/${exercicio.id}`}
-      className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-purple-300 hover:shadow-sm transition-all"
+      className="block bg-white rounded-xl border border-noite/20 p-4 hover:border-violeta/50 hover:shadow-sm transition-all"
     >
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-medium text-gray-900">{exercicio.titulo}</span>
+        <span className="text-sm font-medium text-noite">{exercicio.titulo}</span>
         {exercicio.resolvido && <Badge color="green">resolvido</Badge>}
-        <span className="ml-auto text-xs text-gray-400">
+        <span className="ml-auto text-xs text-cinza-texto">
           {exercicio.tentativas} tentativa{exercicio.tentativas !== 1 ? 's' : ''}
         </span>
       </div>
-      <p className="text-xs text-gray-400 mt-1">{shortError(exercicio.error_category)}</p>
+      <p className="text-xs text-cinza-texto mt-1">{shortError(exercicio.error_category)}</p>
     </Link>
   )
 }

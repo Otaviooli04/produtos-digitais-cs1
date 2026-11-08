@@ -36,19 +36,19 @@ export default function RespostaAoGrupo({ resposta, respostaEm, insight, alunos,
 
   if (!aberto) {
     return (
-      <div className="mt-3 pt-3 border-t border-gray-100">
+      <div className="mt-3 pt-3 border-t border-noite/10">
         {resposta ? (
           <div className="flex gap-2">
-            <div className="w-0.5 bg-green-300 rounded-full shrink-0" />
+            <div className="w-0.5 bg-sucesso/30 rounded-full shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-green-700 mb-0.5">
+              <p className="text-xs font-medium text-sucesso mb-0.5">
                 Seu retorno para este grupo
-                {respostaEm && <span className="font-normal text-gray-400"> · enviado</span>}
+                {respostaEm && <span className="font-normal text-cinza-texto"> · enviado</span>}
               </p>
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{resposta}</p>
+              <p className="text-sm text-cinza-texto leading-relaxed whitespace-pre-wrap">{resposta}</p>
               <button
                 onClick={() => setAberto(true)}
-                className="mt-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                className="mt-1.5 text-xs text-cinza-texto hover:text-cinza-texto transition-colors"
               >
                 Editar
               </button>
@@ -57,10 +57,10 @@ export default function RespostaAoGrupo({ resposta, respostaEm, insight, alunos,
         ) : (
           <button
             onClick={() => setAberto(true)}
-            className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+            className="text-xs px-3 py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda transition-colors"
           >
             Responder ao grupo
-            {alunos > 0 && <span className="text-gray-400"> · {alunos} aluno{alunos !== 1 ? 's' : ''}</span>}
+            {alunos > 0 && <span className="text-cinza-texto"> · {alunos} aluno{alunos !== 1 ? 's' : ''}</span>}
           </button>
         )}
       </div>
@@ -68,8 +68,8 @@ export default function RespostaAoGrupo({ resposta, respostaEm, insight, alunos,
   }
 
   return (
-    <div className="mt-3 pt-3 border-t border-gray-100">
-      <p className="text-xs text-gray-500 mb-1.5">
+    <div className="mt-3 pt-3 border-t border-noite/10">
+      <p className="text-xs text-cinza-texto mb-1.5">
         O que você escrever aqui chega a todo aluno deste grupo, na tentativa mais
         recente dele. Diga o que retomar, não a solução.
       </p>
@@ -79,22 +79,22 @@ export default function RespostaAoGrupo({ resposta, respostaEm, insight, alunos,
         rows={4}
         autoFocus
         placeholder="Ex.: vale rever a condição de parada do laço antes de enviar de novo."
-        className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-300"
+        className="w-full text-sm rounded-lg border border-noite/20 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violeta/30 focus:border-violeta/50"
       />
       {insight && texto !== insight && (
         <button
           onClick={() => setTexto(insight)}
-          className="mt-1.5 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+          className="mt-1.5 text-xs text-violeta hover:text-violeta transition-colors"
         >
           Usar a descrição do Gemini como ponto de partida
         </button>
       )}
-      {erro && <p className="mt-1.5 text-xs text-red-600">{erro}</p>}
+      {erro && <p className="mt-1.5 text-xs text-erro">{erro}</p>}
       <div className="flex items-center gap-2 mt-2">
         <button
           onClick={salvar}
           disabled={salvando}
-          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 transition-colors"
         >
           {salvando && <Spinner className="w-3 h-3" />}
           {texto.trim() ? 'Enviar ao grupo' : 'Apagar resposta'}
@@ -102,7 +102,7 @@ export default function RespostaAoGrupo({ resposta, respostaEm, insight, alunos,
         <button
           onClick={cancelar}
           disabled={salvando}
-          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+          className="text-xs px-3 py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda transition-colors"
         >
           Cancelar
         </button>

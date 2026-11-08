@@ -30,21 +30,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-lavanda flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <Logo className="w-8 h-8" />
-          <span className="font-semibold text-gray-900">Analytics CS1</span>
+          <span className="font-semibold text-noite">Analytics CS1</span>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-8">
+        <div className="bg-white rounded-2xl border border-noite/20 p-8">
           <SeletorPerfil atual="professor" contexto="login" />
-          <h1 className="text-lg font-semibold text-gray-900 mb-1">Entrar</h1>
-          <p className="text-sm text-gray-400 mb-6">Suas turmas e correções</p>
+          <h1 className="text-lg font-semibold text-noite mb-1">Entrar</h1>
+          <p className="text-sm text-cinza-texto mb-6">Suas turmas e correções</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">E-mail</label>
+              <label className="block text-xs font-medium text-cinza-texto mb-1.5">E-mail</label>
               <input
                 type="email"
                 value={email}
@@ -52,12 +52,12 @@ export default function LoginPage() {
                 placeholder="professor@unifei.edu.br"
                 autoComplete="email"
                 required
-                className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full text-sm rounded-lg border border-noite/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violeta focus:border-transparent"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Senha</label>
+              <label className="block text-xs font-medium text-cinza-texto mb-1.5">Senha</label>
               <input
                 type="password"
                 value={senha}
@@ -65,12 +65,12 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 autoComplete="current-password"
                 required
-                className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full text-sm rounded-lg border border-noite/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violeta focus:border-transparent"
               />
             </div>
 
             {error && (
-              <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-700">
+              <div className="rounded-lg bg-erro-fundo border border-erro/30 px-4 py-2.5 text-sm text-erro">
                 {error}
               </div>
             )}
@@ -78,15 +78,15 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full text-sm py-2.5 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-full text-sm py-2.5 rounded-xl bg-violeta text-white font-medium hover:bg-violeta-escuro disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Entrando…' : 'Entrar'}
             </button>
           </form>
 
-          <p className="mt-5 text-center text-xs text-gray-400">
+          <p className="mt-5 text-center text-xs text-cinza-texto">
             Sem conta?{' '}
-            <Link to="/register" className="text-purple-600 hover:underline font-medium">
+            <Link to="/register" className="text-violeta hover:underline font-medium">
               Criar cadastro
             </Link>
           </p>

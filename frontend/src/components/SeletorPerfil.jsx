@@ -35,10 +35,10 @@ export default function SeletorPerfil({ atual, contexto = 'login' }) {
   const destinos = DESTINOS[contexto]
 
   return (
-    <div className="flex gap-1 p-1 mb-6 bg-gray-100 rounded-xl">
+    <div className="flex gap-1 p-1 mb-6 bg-lavanda rounded-xl">
       {PERFIS.map(({ chave, rotulo }) => {
         const ativo = chave === atual
-        const cor = ativo ? 'text-purple-600' : 'text-gray-400'
+        const cor = ativo ? 'text-violeta' : 'text-cinza-texto'
         return (
           <Link
             key={chave}
@@ -46,8 +46,8 @@ export default function SeletorPerfil({ atual, contexto = 'login' }) {
             aria-current={ativo ? 'page' : undefined}
             className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2 rounded-lg transition-all ${
               ativo
-                ? 'bg-white text-purple-700 font-medium shadow-sm ring-1 ring-black/5'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white text-violeta font-medium shadow-sm ring-1 ring-black/5'
+                : 'text-cinza-texto hover:text-cinza-texto'
             }`}
           >
             {chave === 'aluno'

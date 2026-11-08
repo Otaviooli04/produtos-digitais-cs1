@@ -40,7 +40,7 @@ export default function DisponibilidadeCard({ exam, onSave }) {
     }
   }
 
-  const campo = 'w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent'
+  const campo = 'w-full text-sm rounded-lg border border-noite/20 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violeta focus:border-transparent'
 
   const resumo = [
     exam.modo === 'treino' ? 'Lista' : 'Prova',
@@ -49,24 +49,24 @@ export default function DisponibilidadeCard({ exam, onSave }) {
   ].join(' · ')
 
   return (
-    <div className="mb-5 rounded-xl border border-gray-200 bg-white px-5 py-4">
+    <div className="mb-5 rounded-xl border border-noite/20 bg-white px-5 py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-gray-900">Disponibilidade para o aluno</p>
-          <p className="text-xs text-gray-400 mt-0.5">{resumo}</p>
+          <p className="text-sm font-medium text-noite">Disponibilidade para o aluno</p>
+          <p className="text-xs text-cinza-texto mt-0.5">{resumo}</p>
         </div>
         <button
           onClick={() => setAberto(a => !a)}
-          className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+          className="text-sm px-3 py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda transition-colors"
         >
           {aberto ? 'Fechar' : 'Configurar'}
         </button>
       </div>
 
       {aberto && (
-        <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+        <div className="mt-4 space-y-4 border-t border-noite/10 pt-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">Modo</label>
+            <label className="block text-xs font-medium text-cinza-texto mb-1.5">Modo</label>
             <div className="flex gap-2">
               {[['treino', 'Lista'], ['prova', 'Prova']].map(([valor, rotulo]) => (
                 <button
@@ -74,15 +74,15 @@ export default function DisponibilidadeCard({ exam, onSave }) {
                   onClick={() => setModo(valor)}
                   className={`text-sm px-4 py-1.5 rounded-lg border transition-colors ${
                     modo === valor
-                      ? 'bg-purple-600 text-white border-purple-600'
-                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      ? 'bg-violeta text-white border-violeta'
+                      : 'border-noite/20 text-cinza-texto hover:bg-lavanda'
                   }`}
                 >
                   {rotulo}
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-xs text-gray-400">
+            <p className="mt-1.5 text-xs text-cinza-texto">
               {modo === 'treino'
                 ? 'O aluno pratica quando quiser e vê o diagnóstico de cada tentativa.'
                 : 'Use a janela e o teto de tentativas abaixo para controlar a avaliação.'}
@@ -91,15 +91,15 @@ export default function DisponibilidadeCard({ exam, onSave }) {
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Abre em</label>
+              <label className="block text-xs font-medium text-cinza-texto mb-1.5">Abre em</label>
               <input type="datetime-local" value={abreEm} onChange={e => setAbreEm(e.target.value)} className={campo} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Fecha em</label>
+              <label className="block text-xs font-medium text-cinza-texto mb-1.5">Fecha em</label>
               <input type="datetime-local" value={fechaEm} onChange={e => setFechaEm(e.target.value)} className={campo} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Tentativas por questão</label>
+              <label className="block text-xs font-medium text-cinza-texto mb-1.5">Tentativas por questão</label>
               <input
                 type="number"
                 min="1"
@@ -111,12 +111,12 @@ export default function DisponibilidadeCard({ exam, onSave }) {
             </div>
           </div>
 
-          {erro && <p className="text-xs text-red-600">{erro}</p>}
+          {erro && <p className="text-xs text-erro">{erro}</p>}
 
           <button
             onClick={salvar}
             disabled={salvando}
-            className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 transition-colors"
+            className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 transition-colors"
           >
             {salvando && <Spinner className="w-4 h-4" />}
             Salvar

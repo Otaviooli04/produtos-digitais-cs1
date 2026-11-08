@@ -21,20 +21,20 @@ export default function TentativaDetalhe({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="rounded-xl border border-noite/20 bg-white p-5">
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <Badge color={categoriaColor(tentativa.error_category)}>
             {tentativa.error_category || 'Sem diagnóstico'}
           </Badge>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-cinza-texto">
             Tentativa {tentativa.attempt_number} · {formatarData(tentativa.submitted_at)}
           </span>
         </div>
-        <p className="text-sm text-gray-700">{tentativa.pedagogical_diagnosis}</p>
+        <p className="text-sm text-cinza-texto">{tentativa.pedagogical_diagnosis}</p>
         {tentativa.actionable_feedback && (
-          <div className="mt-3 rounded-lg bg-blue-50 border border-blue-100 px-4 py-2.5">
-            <p className="text-xs font-medium text-blue-800 mb-0.5">O que fazer</p>
-            <p className="text-xs text-blue-700">{tentativa.actionable_feedback}</p>
+          <div className="mt-3 rounded-lg bg-lavanda border border-violeta/15 px-4 py-2.5">
+            <p className="text-xs font-medium text-violeta mb-0.5">O que fazer</p>
+            <p className="text-xs text-violeta">{tentativa.actionable_feedback}</p>
           </div>
         )}
 
@@ -47,19 +47,19 @@ export default function TentativaDetalhe({
           diagnóstico, para não se confundir com o que a máquina escreveu. O aluno
           não sabe (nem precisa saber) que o texto foi escrito para um grupo. */}
       {tentativa.resposta_do_professor && (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-5">
+        <div className="rounded-xl border border-sucesso/30 bg-sucesso-fundo p-5">
           <div className="flex items-center gap-2 mb-1.5">
-            <svg className="w-4 h-4 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 text-sucesso" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <h3 className="text-sm font-medium text-green-900">Retorno do seu professor</h3>
+            <h3 className="text-sm font-medium text-sucesso">Retorno do seu professor</h3>
             {tentativa.resposta_do_professor_em && (
-              <span className="text-xs text-green-700/70">
+              <span className="text-xs text-sucesso/70">
                 {formatarData(tentativa.resposta_do_professor_em)}
               </span>
             )}
           </div>
-          <p className="text-sm text-green-900 leading-relaxed whitespace-pre-wrap break-words">
+          <p className="text-sm text-sucesso leading-relaxed whitespace-pre-wrap break-words">
             {tentativa.resposta_do_professor}
           </p>
         </div>
@@ -68,37 +68,37 @@ export default function TentativaDetalhe({
       {functionCheck && !functionCheck.compliant && <FunctionCheckCard check={functionCheck} />}
 
       {tentativa.compile_error && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Erro de compilação</h3>
-          <pre className="text-xs font-mono bg-gray-900 rounded-lg p-3 overflow-x-auto text-red-400 whitespace-pre-wrap">{tentativa.compile_error}</pre>
+        <div className="rounded-xl border border-noite/20 bg-white p-5">
+          <h3 className="text-sm font-medium text-cinza-texto mb-2">Erro de compilação</h3>
+          <pre className="text-xs font-mono bg-noite rounded-lg p-3 overflow-x-auto text-codigo-erro whitespace-pre-wrap">{tentativa.compile_error}</pre>
         </div>
       )}
 
       {tentativa.warnings && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Avisos do compilador</h3>
-          <pre className="text-xs font-mono bg-gray-900 rounded-lg p-3 overflow-x-auto text-yellow-400 whitespace-pre-wrap">{tentativa.warnings}</pre>
+        <div className="rounded-xl border border-noite/20 bg-white p-5">
+          <h3 className="text-sm font-medium text-cinza-texto mb-2">Avisos do compilador</h3>
+          <pre className="text-xs font-mono bg-noite rounded-lg p-3 overflow-x-auto text-codigo-aviso whitespace-pre-wrap">{tentativa.warnings}</pre>
         </div>
       )}
 
       {tentativa.test_results?.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">
+        <div className="rounded-xl border border-noite/20 bg-white p-5">
+          <h3 className="text-sm font-medium text-cinza-texto mb-3">
             Testes: {tentativa.tests_passed}/{tentativa.tests_total} passaram
           </h3>
           <div className="space-y-2">
             {tentativa.test_results.map((tr, i) => (
               <div
                 key={i}
-                className={`rounded-lg border px-4 py-3 ${tr.passed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}
+                className={`rounded-lg border px-4 py-3 ${tr.passed ? 'bg-sucesso-fundo border-sucesso/30' : 'bg-erro-fundo border-erro/30'}`}
               >
-                <p className={`text-xs font-semibold mb-1.5 ${tr.passed ? 'text-green-700' : 'text-red-700'}`}>
+                <p className={`text-xs font-semibold mb-1.5 ${tr.passed ? 'text-sucesso' : 'text-erro'}`}>
                   {tr.passed ? '✓ Correto' : '✗ Incorreto'}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono break-words">
-                  <div><span className="text-gray-400">entrada: </span><span className="text-gray-700">{tr.input || '(vazia)'}</span></div>
-                  <div><span className="text-gray-400">esperado: </span><span className="text-gray-700">{tr.expected_output}</span></div>
-                  <div><span className="text-gray-400">obtido: </span><span className={tr.passed ? 'text-green-700' : 'text-red-700'}>{tr.actual_output}</span></div>
+                  <div><span className="text-cinza-texto">entrada: </span><span className="text-cinza-texto">{tr.input || '(vazia)'}</span></div>
+                  <div><span className="text-cinza-texto">esperado: </span><span className="text-cinza-texto">{tr.expected_output}</span></div>
+                  <div><span className="text-cinza-texto">obtido: </span><span className={tr.passed ? 'text-sucesso' : 'text-erro'}>{tr.actual_output}</span></div>
                 </div>
               </div>
             ))}
@@ -107,9 +107,9 @@ export default function TentativaDetalhe({
       )}
 
       {mostrarCodigo && tentativa.code && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Código enviado</h3>
-          <pre className="text-xs font-mono bg-gray-900 rounded-lg p-3 overflow-x-auto text-gray-100 whitespace-pre">{tentativa.code}</pre>
+        <div className="rounded-xl border border-noite/20 bg-white p-5">
+          <h3 className="text-sm font-medium text-cinza-texto mb-2">Código enviado</h3>
+          <pre className="text-xs font-mono bg-noite rounded-lg p-3 overflow-x-auto text-codigo-texto whitespace-pre">{tentativa.code}</pre>
         </div>
       )}
     </div>

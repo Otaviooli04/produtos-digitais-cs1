@@ -34,7 +34,7 @@ const textoSucesso = (sucesso) => (sucesso.chegaram === 0
 
 function Meta({ atingida, children }) {
   return (
-    <span className={`text-xs font-medium ${atingida ? 'text-emerald-600' : 'text-gray-400'}`}>
+    <span className={`text-xs font-medium ${atingida ? 'text-sucesso' : 'text-cinza-texto'}`}>
       {children}
     </span>
   )
@@ -42,14 +42,14 @@ function Meta({ atingida, children }) {
 
 function EtapaCard({ titulo, valor, detalhe, extra, meta, atingida }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-1">
+    <div className="bg-white rounded-xl border border-noite/20 p-5 flex flex-col gap-1">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{titulo}</p>
+        <p className="text-xs text-cinza-texto font-medium uppercase tracking-wide">{titulo}</p>
         {meta && <Meta atingida={atingida}>{meta}</Meta>}
       </div>
-      <p className="text-2xl font-bold text-gray-900">{valor}</p>
-      {detalhe && <p className="text-xs text-gray-500">{detalhe}</p>}
-      {extra && <p className="text-xs text-gray-500">{extra}</p>}
+      <p className="text-2xl font-bold text-noite">{valor}</p>
+      {detalhe && <p className="text-xs text-cinza-texto">{detalhe}</p>}
+      {extra && <p className="text-xs text-cinza-texto">{extra}</p>}
     </div>
   )
 }
@@ -60,23 +60,23 @@ function AlunosEmRisco({ saude }) {
     ...saude.amarelo.map(a => ({ ...a, cor: 'yellow', rotulo: 'Amarelo' })),
   ]
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
+    <div className="bg-white rounded-xl border border-noite/20 p-5">
       <div className="flex items-baseline justify-between gap-2 mb-3">
-        <h3 className="text-sm font-semibold text-gray-700">Alunos em risco</h3>
+        <h3 className="text-sm font-semibold text-cinza-texto">Alunos em risco</h3>
         <Meta atingida={saude.taxa_vermelho != null && saude.taxa_vermelho < saude.meta}>
           {pct(saude.taxa_vermelho)} em vermelho · meta abaixo de {saude.meta}%
         </Meta>
       </div>
       {alunos.length === 0 ? (
-        <p className="text-sm text-gray-500">Nenhum aluno em risco agora.</p>
+        <p className="text-sm text-cinza-texto">Nenhum aluno em risco agora.</p>
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-noite/10">
           {alunos.map(a => (
             <li key={a.student_id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
               <Badge color={a.cor}>{a.rotulo}</Badge>
-              <span className="flex-1 min-w-0 truncate text-gray-900">{a.nome}</span>
-              <span className="text-gray-500">{a.motivo}</span>
-              <span className="text-xs text-gray-400">
+              <span className="flex-1 min-w-0 truncate text-noite">{a.nome}</span>
+              <span className="text-cinza-texto">{a.motivo}</span>
+              <span className="text-xs text-cinza-texto">
                 {a.ultimo_envio ? `último envio em ${formatarData(a.ultimo_envio)}` : 'nunca enviou'}
               </span>
             </li>
@@ -98,19 +98,19 @@ function Painel({ funil }) {
   return (
     <>
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-1">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Erros corrigidos</p>
-          <p className="text-2xl font-bold text-gray-900">{ns.semana_atual}</p>
-          <p className="text-xs text-gray-500">nesta semana · {ns.total} desde o início</p>
+        <div className="bg-white rounded-xl border border-noite/20 p-5 flex flex-col gap-1">
+          <p className="text-xs text-cinza-texto font-medium uppercase tracking-wide">Erros corrigidos</p>
+          <p className="text-2xl font-bold text-noite">{ns.semana_atual}</p>
+          <p className="text-xs text-cinza-texto">nesta semana · {ns.total} desde o início</p>
           {ns.por_tipo && (
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-cinza-texto mt-2">
               Onde foram corrigidos: {ns.por_tipo.provas} nas provas, {ns.por_tipo.listas} nas listas
               e {ns.por_tipo.trilha} na trilha de treino.
             </p>
           )}
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-5 lg:col-span-2">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Erros corrigidos por semana</h3>
+        <div className="bg-white rounded-xl border border-noite/20 p-5 lg:col-span-2">
+          <h3 className="text-sm font-semibold text-cinza-texto mb-4">Erros corrigidos por semana</h3>
           <BarList
             items={ns.semanas.map(s => ({
               label: rotuloSemana(s.semana),
@@ -151,13 +151,13 @@ function Painel({ funil }) {
         />
       </div>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-cinza-texto">
         Hábito na semana de {rotuloSemana(semana.semana)}: {pct(semana.taxa_sem_prova_marcada)} voltaram sem prova marcada, {pct(semana.taxa_sem_aviso)} abriram sem aviso e {pct(semana.taxa_por_conta_propria)} enviaram em listas ou na trilha.
       </p>
 
       <AlunosEmRisco saude={saude} />
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-cinza-texto">
         {media == null
           ? 'Proteção: ainda não há questão resolvida para medir.'
           : `Proteção: ${media} tentativas até acertar, em média, e ${pct(protecao.acerto_de_primeira)} de acerto de primeira.`}
@@ -179,13 +179,13 @@ export default function FunilDaTurma({ turmaId, recarga = 0 }) {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Funil da turma</h2>
+      <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide">Funil da turma</h2>
       {estado.carregando ? (
-        <div className="flex justify-center py-8"><Spinner className="w-5 h-5 text-purple-600" /></div>
+        <div className="flex justify-center py-8"><Spinner className="w-5 h-5 text-violeta" /></div>
       ) : estado.erro ? (
-        <p className="text-sm text-red-600">Não foi possível carregar o funil.</p>
+        <p className="text-sm text-erro">Não foi possível carregar o funil.</p>
       ) : estado.funil.aquisicao.matriculados === 0 ? (
-        <p className="text-sm text-gray-500">O funil aparece quando os alunos entrarem pelo código da turma.</p>
+        <p className="text-sm text-cinza-texto">O funil aparece quando os alunos entrarem pelo código da turma.</p>
       ) : (
         <Painel funil={estado.funil} />
       )}

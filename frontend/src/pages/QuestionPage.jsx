@@ -263,34 +263,34 @@ export default function QuestionPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
-        <Link to={`/exam/${id}`} className="hover:text-gray-600">Atividade #{id}</Link>
+      <div className="flex items-center gap-2 text-sm text-cinza-texto mb-6">
+        <Link to={`/exam/${id}`} className="hover:text-cinza-texto">Atividade #{id}</Link>
         <span>›</span>
-        <span className="text-gray-600">Questão {num}</span>
+        <span className="text-cinza-texto">Questão {num}</span>
       </div>
 
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">Q{num}</span>
+          <span className="text-xs font-semibold text-violeta bg-lavanda px-2 py-0.5 rounded-md">Q{num}</span>
           <Link
             to={`/exam/${id}/questions/${num}/testcases`}
-            className="text-xs px-2.5 py-1 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+            className="text-xs px-2.5 py-1 rounded-md border border-noite/20 text-cinza-texto hover:bg-lavanda transition-colors"
           >
             + Test cases
           </Link>
         </div>
-        {question && <p className="text-sm text-gray-700 mt-1">{question.statement}</p>}
+        {question && <p className="text-sm text-cinza-texto mt-1">{question.statement}</p>}
       </div>
 
-      <div className="flex gap-1 border-b border-gray-200 mb-6">
+      <div className="flex gap-1 border-b border-noite/20 mb-6">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
               tab === t.key
-                ? 'border-purple-600 text-purple-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'border-violeta text-violeta'
+                : 'border-transparent text-cinza-texto hover:text-cinza-texto'
             }`}
           >
             {t.label}
@@ -303,11 +303,11 @@ export default function QuestionPage() {
         <div>
           {subLoading && (
             <div className="flex justify-center py-16">
-              <Spinner className="w-6 h-6 text-purple-600" />
+              <Spinner className="w-6 h-6 text-violeta" />
             </div>
           )}
           {!subLoading && submissions?.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-12">Nenhuma submissão ainda.</p>
+            <p className="text-sm text-cinza-texto text-center py-12">Nenhuma submissão ainda.</p>
           )}
           {submissions && submissions.length > 0 && (
             <div className="space-y-4">
@@ -318,16 +318,16 @@ export default function QuestionPage() {
                 </Badge>
               </div>
 
-              <div className="w-full bg-gray-100 rounded-full h-1.5">
+              <div className="w-full bg-lavanda rounded-full h-1.5">
                 <div
-                  className="h-1.5 rounded-full bg-purple-500 transition-all"
+                  className="h-1.5 rounded-full bg-violeta transition-all"
                   style={{ width: `${passRate}%` }}
                 />
               </div>
 
               {errorDist.length > 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
-                  <p className="text-xs font-medium text-gray-500 mb-3">Distribuição de erros</p>
+                <div className="bg-white rounded-xl border border-noite/20 p-5">
+                  <p className="text-xs font-medium text-cinza-texto mb-3">Distribuição de erros</p>
                   <BarList items={errorDist} />
                 </div>
               )}
@@ -342,11 +342,11 @@ export default function QuestionPage() {
               />
 
               {visibleSubs.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-8">Nenhuma resposta corresponde à busca.</p>
+                <p className="text-sm text-cinza-texto text-center py-8">Nenhuma resposta corresponde à busca.</p>
               )}
 
               {visibleSubs.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
+              <div className="bg-white rounded-xl border border-noite/20 divide-y divide-noite/10">
                 {visibleSubs.map(s => (
                   <div key={s.id} className="p-4">
                     <div
@@ -357,13 +357,13 @@ export default function QuestionPage() {
                         {s.all_tests_passed ? 'Correto' : s.compile_error ? 'Erro compilação' : s.error_category || 'Parcial'}
                       </Badge>
                       {s.matricula && (
-                        <span className="text-xs font-medium text-gray-700">{s.matricula}</span>
+                        <span className="text-xs font-medium text-cinza-texto">{s.matricula}</span>
                       )}
-                      <span className="text-xs text-gray-400 ml-auto">
+                      <span className="text-xs text-cinza-texto ml-auto">
                         {new Date(s.submitted_at).toLocaleString('pt-BR')}
                       </span>
                       <svg
-                        className={`w-4 h-4 text-gray-400 transition-transform ${expanded[s.id] ? 'rotate-180' : ''}`}
+                        className={`w-4 h-4 text-cinza-texto transition-transform ${expanded[s.id] ? 'rotate-180' : ''}`}
                         fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -372,14 +372,14 @@ export default function QuestionPage() {
                     {expanded[s.id] && (
                       <div className="mt-3 space-y-2">
                         {s.pedagogical_diagnosis && (
-                          <p className="text-xs text-gray-600">{s.pedagogical_diagnosis}</p>
+                          <p className="text-xs text-cinza-texto">{s.pedagogical_diagnosis}</p>
                         )}
                         {s.actionable_feedback && (
-                          <p className="text-xs text-gray-500 italic">{s.actionable_feedback}</p>
+                          <p className="text-xs text-cinza-texto italic">{s.actionable_feedback}</p>
                         )}
                         <CodeBlock code={s.code} highlight={compileErrorLines(s.compile_error, s.code)} />
                         {s.compile_error && (
-                          <pre className="text-xs font-mono bg-red-50 rounded-lg p-3 text-red-600 overflow-x-auto whitespace-pre-wrap">
+                          <pre className="text-xs font-mono bg-erro-fundo rounded-lg p-3 text-erro overflow-x-auto whitespace-pre-wrap">
                             {s.compile_error}
                           </pre>
                         )}
@@ -387,14 +387,14 @@ export default function QuestionPage() {
                           <button
                             onClick={() => handleReevaluate(s.id)}
                             disabled={reevaluatingId === s.id}
-                            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-noite/20 text-cinza-texto hover:bg-lavanda disabled:opacity-40 transition-colors"
                           >
                             {reevaluatingId === s.id && <Spinner className="w-3 h-3" />}
                             Reavaliar
                           </button>
                           <button
                             onClick={() => setDeleteSub(s)}
-                            className="text-xs px-2.5 py-1.5 rounded-md border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                            className="text-xs px-2.5 py-1.5 rounded-md border border-erro/30 text-erro hover:bg-erro-fundo transition-colors"
                           >
                             Excluir
                           </button>
@@ -415,20 +415,20 @@ export default function QuestionPage() {
         <div className="space-y-4">
           {!clusterResult && groupsLoading && (
             <div className="flex justify-center py-16">
-              <Spinner className="w-6 h-6 text-purple-600" />
+              <Spinner className="w-6 h-6 text-violeta" />
             </div>
           )}
 
           {!clusterResult && !groupsLoading && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-sm text-gray-600 mb-4">
+            <div className="bg-white rounded-xl border border-noite/20 p-5">
+              <p className="text-sm text-cinza-texto mb-4">
                 Os grupos de dificuldade são calculados automaticamente ao enviar as submissões
                 em lote. Esta questão ainda não tem grupos — você pode gerá-los agora.
               </p>
               <button
                 onClick={runClusterOnly}
                 disabled={groupsRunning}
-                className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {groupsRunning && <Spinner className="w-4 h-4" />}
                 {groupsRunning ? 'Analisando…' : 'Analisar grupos de dificuldade'}
@@ -437,7 +437,7 @@ export default function QuestionPage() {
           )}
 
           {groupsError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-lg bg-erro-fundo border border-erro/30 px-4 py-3 text-sm text-erro">
               {groupsError}
             </div>
           )}
@@ -446,11 +446,11 @@ export default function QuestionPage() {
             <>
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-cinza-texto">
                     {rankedGroups.length} grupo{rankedGroups.length !== 1 ? 's' : ''} em {clusterResult.total_submissions} submissões
                   </p>
                   {clusterResult.atualizado_em && (
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-cinza-texto mt-0.5">
                       Agrupado {formatRelativo(clusterResult.atualizado_em)}
                     </p>
                   )}
@@ -460,7 +460,7 @@ export default function QuestionPage() {
                     <button
                       onClick={genInsights}
                       disabled={insightsRunning}
-                      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 transition-colors"
                     >
                       {insightsRunning && <Spinner className="w-3 h-3" />}
                       {insightsRunning ? 'Gerando…' : 'Gerar intervenção (Gemini)'}
@@ -469,7 +469,7 @@ export default function QuestionPage() {
                   <button
                     onClick={runClusterOnly}
                     disabled={groupsRunning}
-                    className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda disabled:opacity-40 transition-colors"
                   >
                     {groupsRunning && <Spinner className="w-3 h-3" />}
                     Recalcular
@@ -486,23 +486,23 @@ export default function QuestionPage() {
                   const insight = insightFor(c.cluster_id)
                   const hot = highlightFor(c.cluster_id)
                   return (
-                    <div key={c.cluster_id} className="bg-white rounded-xl border border-gray-200 p-5">
+                    <div key={c.cluster_id} className="bg-white rounded-xl border border-noite/20 p-5">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: clusterColor(c.cluster_id) }} />
                         <Badge color={isCorrect(c.dominant_error) ? 'green' : 'red'}>{c.dominant_error}</Badge>
-                        {c.failing_label && <span className="text-xs text-gray-500">· {c.failing_label}</span>}
-                        <span className="ml-auto text-xs text-gray-400">{c.size} aluno{c.size !== 1 ? 's' : ''} · {pct}%</span>
+                        {c.failing_label && <span className="text-xs text-cinza-texto">· {c.failing_label}</span>}
+                        <span className="ml-auto text-xs text-cinza-texto">{c.size} aluno{c.size !== 1 ? 's' : ''} · {pct}%</span>
                       </div>
 
                       {insight && (
                         <div className="flex gap-2 mb-3">
-                          <div className="w-0.5 bg-purple-200 rounded-full shrink-0" />
-                          <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
+                          <div className="w-0.5 bg-violeta/30 rounded-full shrink-0" />
+                          <p className="text-sm text-cinza-texto leading-relaxed">{insight}</p>
                         </div>
                       )}
 
                       {!insight && insightsRunning && (
-                        <div className="flex items-center gap-2 mb-3 text-xs text-gray-400">
+                        <div className="flex items-center gap-2 mb-3 text-xs text-cinza-texto">
                           <Spinner className="w-3 h-3" />
                           Gerando descrição…
                         </div>
@@ -514,7 +514,7 @@ export default function QuestionPage() {
                             <Link
                               key={m}
                               to={`/exam/${id}/students/${m}`}
-                              className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md font-mono hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                              className="text-xs bg-lavanda text-cinza-texto px-2 py-0.5 rounded-md font-mono hover:bg-lavanda hover:text-violeta transition-colors"
                             >
                               {m}
                             </Link>
@@ -535,21 +535,21 @@ export default function QuestionPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => setOpenCode(o => ({ ...o, [c.cluster_id]: !o[c.cluster_id] }))}
-                              className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                              className="text-xs text-cinza-texto hover:text-cinza-texto transition-colors"
                             >
                               {openCode[c.cluster_id] ? '− Ocultar' : '+ Ver'} código representativo
                             </button>
                             {hot.length > 0 && (
-                              <span className="text-xs text-red-500">
+                              <span className="text-xs text-erro">
                                 · {hot.length === 1 ? `linha ${hot[0]}` : `linhas ${hot.join(', ')}`} em destaque
                               </span>
                             )}
                             {c.representative_matricula && (
-                              <span className="text-xs text-gray-400">
+                              <span className="text-xs text-cinza-texto">
                                 · de{' '}
                                 <Link
                                   to={`/exam/${id}/students/${c.representative_matricula}`}
-                                  className="font-mono text-gray-500 hover:text-purple-700 transition-colors"
+                                  className="font-mono text-cinza-texto hover:text-violeta transition-colors"
                                 >
                                   {c.representative_matricula}
                                 </Link>

@@ -37,7 +37,7 @@ export default function SubmitPage() {
     }
   }
 
-  if (!exam) return <div className="flex justify-center py-16"><Spinner className="w-6 h-6 text-purple-600" /></div>
+  if (!exam) return <div className="flex justify-center py-16"><Spinner className="w-6 h-6 text-violeta" /></div>
 
   const diagColor = (cat) => {
     if (!cat) return 'gray'
@@ -48,21 +48,21 @@ export default function SubmitPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
-        <Link to={`/exam/${id}`} className="hover:text-gray-600">Atividade #{id}</Link>
+      <div className="flex items-center gap-2 text-sm text-cinza-texto mb-6">
+        <Link to={`/exam/${id}`} className="hover:text-cinza-texto">Atividade #{id}</Link>
         <span>›</span>
-        <span className="text-gray-600">Testar submissão</span>
+        <span className="text-cinza-texto">Testar submissão</span>
       </div>
 
-      <h1 className="text-xl font-semibold text-gray-900 mb-6">Testar submissão</h1>
+      <h1 className="text-xl font-semibold text-noite mb-6">Testar submissão</h1>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+      <div className="bg-white rounded-xl border border-noite/20 p-5 mb-4">
         <div className="mb-4">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Questão</label>
+          <label className="block text-xs font-medium text-cinza-texto mb-1.5">Questão</label>
           <select
             value={selectedQuestion}
             onChange={e => setSelectedQuestion(e.target.value)}
-            className="text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="text-sm rounded-lg border border-noite/20 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violeta focus:border-transparent"
           >
             {exam.questions.map(q => (
               <option key={q.id} value={q.number}>Questão {q.number}</option>
@@ -71,21 +71,21 @@ export default function SubmitPage() {
         </div>
 
         {selectedQuestion && (
-          <div className="mb-4 rounded-lg bg-gray-50 border border-gray-100 px-4 py-3">
-            <p className="text-xs text-gray-500 line-clamp-3">
+          <div className="mb-4 rounded-lg bg-lavanda border border-noite/10 px-4 py-3">
+            <p className="text-xs text-cinza-texto line-clamp-3">
               {exam.questions.find(q => q.number === selectedQuestion)?.statement}
             </p>
           </div>
         )}
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Código C</label>
+          <label className="block text-xs font-medium text-cinza-texto mb-1.5">Código C</label>
           <CodeTextarea
             rows={14}
             value={code}
             onChange={e => setCode(e.target.value)}
             placeholder="#include <stdio.h>&#10;&#10;int main() {&#10;    return 0;&#10;}"
-            className="w-full text-sm font-mono rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+            className="w-full text-sm font-mono rounded-lg border border-noite/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violeta focus:border-transparent resize-none"
           />
         </div>
 
@@ -93,7 +93,7 @@ export default function SubmitPage() {
           <button
             onClick={submit}
             disabled={submitting || !code.trim()}
-            className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {submitting && <Spinner className="w-4 h-4" />}
             Avaliar
@@ -102,23 +102,23 @@ export default function SubmitPage() {
       </div>
 
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 mb-4">
+        <div className="rounded-lg bg-erro-fundo border border-erro/30 px-4 py-3 text-sm text-erro mb-4">
           {error}
         </div>
       )}
 
       {result && (
         <div className="space-y-3">
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-white rounded-xl border border-noite/20 p-5">
             <div className="flex items-start gap-3">
               <Badge color={diagColor(result.diagnosis?.error_category)}>
                 {result.diagnosis?.error_category}
               </Badge>
             </div>
-            <p className="mt-3 text-sm text-gray-700">{result.diagnosis?.pedagogical_diagnosis}</p>
+            <p className="mt-3 text-sm text-cinza-texto">{result.diagnosis?.pedagogical_diagnosis}</p>
             {result.diagnosis?.actionable_feedback && (
-              <div className="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-4 py-2.5">
-                <p className="text-xs text-blue-700">{result.diagnosis.actionable_feedback}</p>
+              <div className="mt-2 rounded-lg bg-lavanda border border-violeta/15 px-4 py-2.5">
+                <p className="text-xs text-violeta">{result.diagnosis.actionable_feedback}</p>
               </div>
             )}
           </div>
@@ -128,34 +128,34 @@ export default function SubmitPage() {
           )}
 
           {result.compile_error && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Erro de compilação</h3>
-              <pre className="text-xs font-mono bg-gray-50 rounded-lg p-3 overflow-x-auto text-red-700 whitespace-pre-wrap">{result.compile_error}</pre>
+            <div className="bg-white rounded-xl border border-noite/20 p-5">
+              <h3 className="text-sm font-medium text-cinza-texto mb-2">Erro de compilação</h3>
+              <pre className="text-xs font-mono bg-lavanda rounded-lg p-3 overflow-x-auto text-erro whitespace-pre-wrap">{result.compile_error}</pre>
             </div>
           )}
 
           {result.warnings && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Avisos</h3>
-              <pre className="text-xs font-mono bg-yellow-50 rounded-lg p-3 overflow-x-auto text-yellow-800 whitespace-pre-wrap">{result.warnings}</pre>
+            <div className="bg-white rounded-xl border border-noite/20 p-5">
+              <h3 className="text-sm font-medium text-cinza-texto mb-2">Avisos</h3>
+              <pre className="text-xs font-mono bg-aviso-fundo rounded-lg p-3 overflow-x-auto text-aviso whitespace-pre-wrap">{result.warnings}</pre>
             </div>
           )}
 
           {result.test_results?.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Resultados dos testes</h3>
+            <div className="bg-white rounded-xl border border-noite/20 p-5">
+              <h3 className="text-sm font-medium text-cinza-texto mb-3">Resultados dos testes</h3>
               <div className="space-y-2">
                 {result.test_results.map((tr, i) => (
-                  <div key={i} className={`rounded-lg border px-4 py-3 ${tr.passed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div key={i} className={`rounded-lg border px-4 py-3 ${tr.passed ? 'bg-sucesso-fundo border-sucesso/30' : 'bg-erro-fundo border-erro/30'}`}>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-semibold ${tr.passed ? 'text-green-700' : 'text-red-700'}`}>
+                      <span className={`text-xs font-semibold ${tr.passed ? 'text-sucesso' : 'text-erro'}`}>
                         {tr.passed ? '✓ Passou' : '✗ Falhou'}
                       </span>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs font-mono">
-                      <div><span className="text-gray-400">entrada:</span> <span className="text-gray-700">{tr.input || '(vazia)'}</span></div>
-                      <div><span className="text-gray-400">esperado:</span> <span className="text-gray-700">{tr.expected_output}</span></div>
-                      <div><span className="text-gray-400">obtido:</span> <span className={tr.passed ? 'text-green-700' : 'text-red-700'}>{tr.actual_output}</span></div>
+                      <div><span className="text-cinza-texto">entrada:</span> <span className="text-cinza-texto">{tr.input || '(vazia)'}</span></div>
+                      <div><span className="text-cinza-texto">esperado:</span> <span className="text-cinza-texto">{tr.expected_output}</span></div>
+                      <div><span className="text-cinza-texto">obtido:</span> <span className={tr.passed ? 'text-sucesso' : 'text-erro'}>{tr.actual_output}</span></div>
                     </div>
                   </div>
                 ))}

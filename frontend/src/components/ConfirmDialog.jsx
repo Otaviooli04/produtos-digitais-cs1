@@ -7,12 +7,12 @@ export default function ConfirmDialog({
 }) {
   return (
     <Modal open={open} onClose={loading ? () => {} : onClose} title={title}>
-      <p className="text-sm text-gray-600 mb-5 whitespace-pre-wrap">{message}</p>
+      <p className="text-sm text-cinza-texto mb-5 whitespace-pre-wrap">{message}</p>
       <div className="flex justify-end gap-2">
         <button
           onClick={onClose}
           disabled={loading}
-          className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          className="text-sm px-4 py-2 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda disabled:opacity-40 transition-colors"
         >
           Cancelar
         </button>
@@ -20,7 +20,7 @@ export default function ConfirmDialog({
           onClick={onConfirm}
           disabled={loading}
           className={`inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg text-white disabled:opacity-40 transition-colors ${
-            danger ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-600 hover:bg-purple-700'
+            danger ? 'bg-erro hover:bg-erro' : 'bg-violeta hover:bg-violeta-escuro'
           }`}
         >
           {loading && <Spinner className="w-4 h-4" />}
