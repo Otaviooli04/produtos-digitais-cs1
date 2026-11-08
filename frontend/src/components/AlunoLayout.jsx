@@ -13,7 +13,7 @@ const linkClass = ({ isActive }) =>
 function Bolinha({ novidades }) {
   if (novidades <= 0) return null
   return (
-    <span className="min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-coral text-noite text-[10px] font-bold leading-[1.125rem] text-center">
+    <span className="inline-block min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-coral text-noite text-[10px] font-bold leading-[1.125rem] text-center">
       <span aria-hidden="true">{novidades > 9 ? '9+' : novidades}</span>
       <span className="sr-only">{`${novidades} novidade${novidades === 1 ? '' : 's'}`}</span>
     </span>
