@@ -331,13 +331,15 @@ export default function TurmaDetailPage() {
               const ea = examAnalyticsMap[exam.id]
               return (
                 <Card key={exam.id} principal>
-                  <div onClick={() => navigate(`/exam/${exam.id}`)} className="cursor-pointer flex-1">
+                  <div onClick={() => navigate(`/exam/${exam.id}`)} className="cursor-pointer flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h2 className="titulo-card leading-tight truncate flex-1">
+                      <h2 className="titulo-card leading-tight min-w-0 break-words flex-1">
                         {exam.titulo || exam.filename}
                       </h2>
-                      <Badge color={exam.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(exam.modo)}</Badge>
-                      {!exam.publicada && <Badge color="yellow">rascunho</Badge>}
+                      <div className="flex flex-wrap justify-end gap-1 shrink-0">
+                        <Badge color={exam.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(exam.modo)}</Badge>
+                        {!exam.publicada && <Badge color="yellow">rascunho</Badge>}
+                      </div>
                     </div>
                     <div className="flex flex-wrap gap-x-4 text-sm text-cinza-texto mb-1">
                       <span>{exam.question_count} {exam.question_count === 1 ? 'questão' : 'questões'}</span>
