@@ -71,8 +71,9 @@ Nenhuma alteração.
 
 ### Base
 
-- `src/index.css`: tokens do guia no `@theme` do Tailwind (`violeta`, `violeta-escuro`, `coral`, `noite`, `cinza-texto`, `lavanda`), cores de estado (`sucesso` `#12805C` sobre `sucesso-fundo` `#E3F7EE`, `erro` `#C4263B` sobre `erro-fundo` `#FFE9EC`, `aviso` `#8A5A00` sobre `aviso-fundo` `#FFF4D6`), fontes, raios e `--sombra-bloco`. Foco visível em violeta. Animações desligadas com `prefers-reduced-motion`.
-- Durante a migração, as cores antigas do Tailwind (`purple`, `gray` e demais usadas hoje) são redefinidas no tema para os valores novos. Assim todas as telas mudam de cor desde o primeiro lote. Essa redefinição sai no último lote.
+- `src/index.css`: tokens do guia no `@theme` do Tailwind (`violeta`, `violeta-escuro`, `coral`, `noite`, `cinza-texto`, `lavanda`), cores de estado (`sucesso` `#0F7654` sobre `sucesso-fundo` `#E3F7EE`, `erro` `#C4263B` sobre `erro-fundo` `#FFE9EC`, `aviso` `#8A5A00` sobre `aviso-fundo` `#FFF4D6`), fontes, raios e `--sombra-bloco`. Foco visível em violeta. Animações desligadas com `prefers-reduced-motion`.
+- Um script descartável troca de uma vez todas as classes de cor antigas (`purple`, `gray` e demais usadas hoje) pelos tokens novos. Assim todas as telas mudam de cor desde o primeiro lote.
+- Tokens próprios para texto sobre o fundo escuro de código: `codigo-texto`, `codigo-sucesso`, `codigo-erro`, `codigo-aviso`.
 - `index.html`: fontes do guia pelo Google Fonts, título, descrição e `theme-color` `#4A2EE0`.
 - `public/favicon.svg`: favicon do guia.
 - `lucide-react` em versão exata no `package.json`, importando ícone por ícone. Substitui os SVGs de interface escritos à mão e os caracteres usados como ícone (✓, ←, ›, +).
@@ -152,5 +153,5 @@ O front não tem testes automatizados. O que prova que funciona:
 10. **`lucide-react` em versão exata:** só ícones, exceção aprovada à regra de não adicionar biblioteca de UI.
 11. **Google Fonts direto, como o guia manda:** o sistema já depende de rede, e a troca por arquivos locais fica para a hospedagem.
 12. **Tom animado só em três ações de entrada do aluno** (aprovado pelo Otávio).
-13. **Cores antigas redefinidas durante a migração:** se o tempo apertar, nenhuma tela fica com aparência antiga.
+13. **Troca de cores por script no primeiro lote:** se o tempo apertar, nenhuma tela fica com as cores antigas. É mais simples que redefinir as cores no tema e retirar depois.
 14. **A `dev` atual é o plano B:** se a branch não estabilizar a tempo, a apresentação usa a `dev` como está.
