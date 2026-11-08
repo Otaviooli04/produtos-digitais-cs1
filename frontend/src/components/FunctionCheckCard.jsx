@@ -1,3 +1,5 @@
+import Card from './ui/Card'
+
 // Exibe o resultado da verificação de funções (function_check) de uma submissão.
 // Só faz sentido renderizar quando a questão exige funções e há alguma divergência.
 export default function FunctionCheckCard({ check }) {
@@ -13,16 +15,16 @@ export default function FunctionCheckCard({ check }) {
   if (rows.length === 0) return null
 
   return (
-    <div className="bg-white rounded-xl border border-noite/20 p-5">
-      <h3 className="text-sm font-medium text-cinza-texto mb-2">Verificação de funções</h3>
+    <Card>
+      <h3 className="titulo-card">Verificação de funções</h3>
       <ul className="text-xs text-cinza-texto space-y-1.5">
         {rows.map((r) => (
           <li key={r.label}>
             <span className="text-cinza-texto">{r.label}:</span>{' '}
-            <span className={r.tone}>{r.items.join('; ')}</span>
+            <span className={`${r.tone} break-words`}>{r.items.join('; ')}</span>
           </li>
         ))}
       </ul>
-    </div>
+    </Card>
   )
 }

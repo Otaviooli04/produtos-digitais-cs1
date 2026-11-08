@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import {
   getExam, getQuestionSubmissions, getGroups, runClustering, runInsights, salvarRespostaDoGrupo,
   deleteSubmission, reevaluateSubmission,
@@ -14,6 +15,11 @@ import { shortError } from '../utils/errorLabels'
 import { compileErrorLines } from '../utils/highlightLines'
 import { formatRelativo } from '../utils/atividade'
 import RespostaAoGrupo from '../components/RespostaAoGrupo'
+import Botao from '../components/ui/Botao'
+import Card from '../components/ui/Card'
+import Progresso from '../components/ui/Progresso'
+import RotuloSecao from '../components/ui/RotuloSecao'
+import { CORES_CATEGORICAS } from '../utils/coresGraficos'
 
 const SUB_SORTS = [
   { value: 'situacao', label: 'Situação' },
@@ -21,8 +27,6 @@ const SUB_SORTS = [
   { value: 'recentes', label: 'Mais recentes' },
 ]
 
-const CLUSTER_COLORS = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
-const ERROR_COLORS = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316']
 // O agrupamento roda sozinho com a estratégia comportamental; o professor não
 // escolhe features, vê os grupos já digeridos.
 const TABS = [
@@ -136,7 +140,7 @@ export default function QuestionPage() {
           label: shortError(error_category),
           title: error_category,
           value: count,
-          color: ERROR_COLORS[i % ERROR_COLORS.length],
+          color: CORES_CATEGORICAS[i % CORES_CATEGORICAS.length],
         }))
     : []
 
@@ -221,7 +225,7 @@ export default function QuestionPage() {
   // Cor estável por grupo (ordem original dos clusters) p/ casar cartão e scatter.
   const clusterColor = (cid) => {
     const idx = clusterResult?.clusters.findIndex(c => c.cluster_id === cid) ?? -1
-    return CLUSTER_COLORS[(idx < 0 ? 0 : idx) % CLUSTER_COLORS.length]
+    return CORES_CATEGORICAS[(idx < 0 ? 0 : idx) % CORES_CATEGORICAS.length]
   }
 
   // Cartões ranqueados por SEVERIDADE: mais casos de teste falhos primeiro
@@ -263,34 +267,31 @@ export default function QuestionPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-2 text-sm text-cinza-texto mb-6">
-        <Link to={`/exam/${id}`} className="hover:text-cinza-texto">Atividade #{id}</Link>
-        <span>›</span>
-        <span className="text-cinza-texto">Questão {num}</span>
+      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
+        <Link to={`/exam/${id}`} className="hover:text-noite">Atividade #{id}</Link>
+        <ChevronRight className="w-4 h-4" aria-hidden="true" />
       </div>
 
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-semibold text-violeta bg-lavanda px-2 py-0.5 rounded-md">Q{num}</span>
-          <Link
-            to={`/exam/${id}/questions/${num}/testcases`}
-            className="text-xs px-2.5 py-1 rounded-md border border-noite/20 text-cinza-texto hover:bg-lavanda transition-colors"
-          >
-            + Test cases
-          </Link>
+        <div className="flex flex-wrap items-center gap-3 mb-1">
+          <h1 className="titulo-pagina">Questão {num}</h1>
+          <Botao variante="secundario" to={`/exam/${id}/questions/${num}/testcases`} className="min-h-9! px-3.5! text-[13px]!">
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            Test cases
+          </Botao>
         </div>
-        {question && <p className="text-sm text-cinza-texto mt-1">{question.statement}</p>}
+        {question && <p className="text-sm text-cinza-texto mt-1 break-words">{question.statement}</p>}
       </div>
 
-      <div className="flex gap-1 border-b border-noite/20 mb-6">
+      <div className="flex flex-wrap gap-1 border-b-2 border-noite mb-6">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`min-h-11 px-4 text-sm font-bold border-b-[3px] -mb-[2px] whitespace-nowrap ${
               tab === t.key
                 ? 'border-violeta text-violeta'
-                : 'border-transparent text-cinza-texto hover:text-cinza-texto'
+                : 'border-transparent text-cinza-texto hover:text-noite'
             }`}
           >
             {t.label}
@@ -318,18 +319,13 @@ export default function QuestionPage() {
                 </Badge>
               </div>
 
-              <div className="w-full bg-lavanda rounded-full h-1.5">
-                <div
-                  className="h-1.5 rounded-full bg-violeta transition-all"
-                  style={{ width: `${passRate}%` }}
-                />
-              </div>
+              <Progresso valor={passRate} rotulo="Respostas corretas" />
 
               {errorDist.length > 0 && (
-                <div className="bg-white rounded-xl border border-noite/20 p-5">
-                  <p className="text-xs font-medium text-cinza-texto mb-3">Distribuição de erros</p>
+                <Card>
+                  <RotuloSecao as="h2">Distribuição de erros</RotuloSecao>
                   <BarList items={errorDist} />
-                </div>
+                </Card>
               )}
 
               <ListControls
@@ -346,28 +342,26 @@ export default function QuestionPage() {
               )}
 
               {visibleSubs.length > 0 && (
-              <div className="bg-white rounded-xl border border-noite/20 divide-y divide-noite/10">
+              <Card className="p-0! gap-0! divide-y-2 divide-noite/10">
                 {visibleSubs.map(s => (
                   <div key={s.id} className="p-4">
                     <div
-                      className="flex items-center gap-2 cursor-pointer"
+                      className="flex flex-wrap items-center gap-2 cursor-pointer"
                       onClick={() => setExpanded(e => ({ ...e, [s.id]: !e[s.id] }))}
                     >
                       <Badge color={s.all_tests_passed ? 'green' : s.compile_error ? 'red' : 'yellow'}>
                         {s.all_tests_passed ? 'Correto' : s.compile_error ? 'Erro compilação' : s.error_category || 'Parcial'}
                       </Badge>
                       {s.matricula && (
-                        <span className="text-xs font-medium text-cinza-texto">{s.matricula}</span>
+                        <span className="text-xs font-bold text-cinza-texto">{s.matricula}</span>
                       )}
                       <span className="text-xs text-cinza-texto ml-auto">
                         {new Date(s.submitted_at).toLocaleString('pt-BR')}
                       </span>
-                      <svg
+                      <ChevronDown
                         className={`w-4 h-4 text-cinza-texto transition-transform ${expanded[s.id] ? 'rotate-180' : ''}`}
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
+                        aria-hidden="true"
+                      />
                     </div>
                     {expanded[s.id] && (
                       <div className="mt-3 space-y-2">
@@ -379,31 +373,29 @@ export default function QuestionPage() {
                         )}
                         <CodeBlock code={s.code} highlight={compileErrorLines(s.compile_error, s.code)} />
                         {s.compile_error && (
-                          <pre className="text-xs font-mono bg-erro-fundo rounded-lg p-3 text-erro overflow-x-auto whitespace-pre-wrap">
+                          <pre className="text-xs font-mono bg-erro-fundo rounded-botao border-2 border-erro p-3 text-erro overflow-x-auto whitespace-pre-wrap">
                             {s.compile_error}
                           </pre>
                         )}
-                        <div className="flex gap-2 pt-1">
-                          <button
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <Botao
+                            variante="secundario"
                             onClick={() => handleReevaluate(s.id)}
                             disabled={reevaluatingId === s.id}
-                            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-noite/20 text-cinza-texto hover:bg-lavanda disabled:opacity-40 transition-colors"
+                            className="min-h-9! px-3.5! text-[13px]!"
                           >
                             {reevaluatingId === s.id && <Spinner className="w-3 h-3" />}
                             Reavaliar
-                          </button>
-                          <button
-                            onClick={() => setDeleteSub(s)}
-                            className="text-xs px-2.5 py-1.5 rounded-md border border-erro/30 text-erro hover:bg-erro-fundo transition-colors"
-                          >
+                          </Botao>
+                          <Botao variante="perigo" onClick={() => setDeleteSub(s)} className="min-h-9! px-3.5! text-[13px]!">
                             Excluir
-                          </button>
+                          </Botao>
                         </div>
                       </div>
                     )}
                   </div>
                 ))}
-              </div>
+              </Card>
               )}
             </div>
           )}
@@ -420,24 +412,22 @@ export default function QuestionPage() {
           )}
 
           {!clusterResult && !groupsLoading && (
-            <div className="bg-white rounded-xl border border-noite/20 p-5">
-              <p className="text-sm text-cinza-texto mb-4">
+            <Card>
+              <p className="text-sm text-cinza-texto">
                 Os grupos de dificuldade são calculados automaticamente ao enviar as submissões
                 em lote. Esta questão ainda não tem grupos — você pode gerá-los agora.
               </p>
-              <button
-                onClick={runClusterOnly}
-                disabled={groupsRunning}
-                className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {groupsRunning && <Spinner className="w-4 h-4" />}
-                {groupsRunning ? 'Analisando…' : 'Analisar grupos de dificuldade'}
-              </button>
-            </div>
+              <div>
+                <Botao onClick={runClusterOnly} disabled={groupsRunning}>
+                  {groupsRunning && <Spinner className="w-4 h-4" />}
+                  {groupsRunning ? 'Analisando…' : 'Analisar grupos de dificuldade'}
+                </Botao>
+              </div>
+            </Card>
           )}
 
           {groupsError && (
-            <div className="rounded-lg bg-erro-fundo border border-erro/30 px-4 py-3 text-sm text-erro">
+            <div className="rounded-botao bg-erro-fundo border-2 border-erro px-4 py-3 text-sm text-erro">
               {groupsError}
             </div>
           )}
@@ -457,27 +447,28 @@ export default function QuestionPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {!hasInsights && (
-                    <button
+                    <Botao
                       onClick={genInsights}
                       disabled={insightsRunning}
-                      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 transition-colors"
+                      className="min-h-9! px-3.5! text-[13px]!"
                     >
                       {insightsRunning && <Spinner className="w-3 h-3" />}
                       {insightsRunning ? 'Gerando…' : 'Gerar intervenção (Gemini)'}
-                    </button>
+                    </Botao>
                   )}
-                  <button
+                  <Botao
+                    variante="secundario"
                     onClick={runClusterOnly}
                     disabled={groupsRunning}
-                    className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda disabled:opacity-40 transition-colors"
+                    className="min-h-9! px-3.5! text-[13px]!"
                   >
                     {groupsRunning && <Spinner className="w-3 h-3" />}
                     Recalcular
-                  </button>
+                  </Botao>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-5">
                 {rankedGroups.map(c => {
                   const alunos = alunosByCluster(c.cluster_id)
                   const pct = clusterResult.total_submissions
@@ -486,9 +477,9 @@ export default function QuestionPage() {
                   const insight = insightFor(c.cluster_id)
                   const hot = highlightFor(c.cluster_id)
                   return (
-                    <div key={c.cluster_id} className="bg-white rounded-xl border border-noite/20 p-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: clusterColor(c.cluster_id) }} />
+                    <Card key={c.cluster_id} principal className="gap-0!">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className="w-4 h-4 rounded-full shrink-0 border-2 border-noite" style={{ backgroundColor: clusterColor(c.cluster_id) }} aria-hidden="true" />
                         <Badge color={isCorrect(c.dominant_error) ? 'green' : 'red'}>{c.dominant_error}</Badge>
                         {c.failing_label && <span className="text-xs text-cinza-texto">· {c.failing_label}</span>}
                         <span className="ml-auto text-xs text-cinza-texto">{c.size} aluno{c.size !== 1 ? 's' : ''} · {pct}%</span>
@@ -497,7 +488,7 @@ export default function QuestionPage() {
                       {insight && (
                         <div className="flex gap-2 mb-3">
                           <div className="w-0.5 bg-violeta/30 rounded-full shrink-0" />
-                          <p className="text-sm text-cinza-texto leading-relaxed">{insight}</p>
+                          <p className="text-sm text-cinza-texto leading-relaxed break-words min-w-0">{insight}</p>
                         </div>
                       )}
 
@@ -514,7 +505,7 @@ export default function QuestionPage() {
                             <Link
                               key={m}
                               to={`/exam/${id}/students/${m}`}
-                              className="text-xs bg-lavanda text-cinza-texto px-2 py-0.5 rounded-md font-mono hover:bg-lavanda hover:text-violeta transition-colors"
+                              className="text-xs bg-lavanda text-cinza-texto px-2 py-0.5 rounded-tag font-mono hover:text-violeta transition-colors"
                             >
                               {m}
                             </Link>
@@ -535,7 +526,7 @@ export default function QuestionPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => setOpenCode(o => ({ ...o, [c.cluster_id]: !o[c.cluster_id] }))}
-                              className="text-xs text-cinza-texto hover:text-cinza-texto transition-colors"
+                              className="min-h-11 text-xs font-bold text-cinza-texto hover:text-noite transition-colors"
                             >
                               {openCode[c.cluster_id] ? '− Ocultar' : '+ Ver'} código representativo
                             </button>
@@ -549,7 +540,7 @@ export default function QuestionPage() {
                                 · de{' '}
                                 <Link
                                   to={`/exam/${id}/students/${c.representative_matricula}`}
-                                  className="font-mono text-cinza-texto hover:text-violeta transition-colors"
+                                  className="font-mono text-cinza-texto hover:text-violeta transition-colors break-all"
                                 >
                                   {c.representative_matricula}
                                 </Link>
@@ -561,7 +552,7 @@ export default function QuestionPage() {
                           )}
                         </div>
                       )}
-                    </div>
+                    </Card>
                   )
                 })}
               </div>

@@ -11,7 +11,7 @@ export default function WhoList({ examId, matriculas }) {
         <Link
           key={m}
           to={`/exam/${examId}/students/${encodeURIComponent(m)}`}
-          className="text-xs font-mono bg-lavanda hover:bg-lavanda text-cinza-texto hover:text-violeta px-2 py-0.5 rounded-md transition-colors"
+          className="text-xs font-mono bg-lavanda text-cinza-texto hover:text-violeta px-2 py-0.5 rounded-tag transition-colors"
         >
           {m}
         </Link>
