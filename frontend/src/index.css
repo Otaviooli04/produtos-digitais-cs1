@@ -1,13 +1,90 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #7c3aed;
-  --color-primary-dark: #6d28d9;
+  --color-violeta: #4A2EE0;
+  --color-violeta-escuro: #3A1FC2;
+  --color-coral: #FF6B4A;
+  --color-noite: #14112B;
+  --color-cinza-texto: #5A5478;
+  --color-lavanda: #F3F0FF;
+
+  --color-sucesso: #0F7654;
+  --color-sucesso-fundo: #E3F7EE;
+  --color-erro: #C4263B;
+  --color-erro-fundo: #FFE9EC;
+  --color-aviso: #8A5A00;
+  --color-aviso-fundo: #FFF4D6;
+
+  --color-codigo-texto: #E8E5F7;
+  --color-codigo-sucesso: #7CE0B5;
+  --color-codigo-erro: #FF9EAB;
+  --color-codigo-aviso: #FFD76A;
+
+  --font-sans: Nunito, ui-sans-serif, system-ui, sans-serif;
+  --font-titulo: "Baloo 2", Nunito, ui-sans-serif, sans-serif;
+  --font-logo: "Space Grotesk", ui-sans-serif, sans-serif;
+
+  --radius-card: 20px;
+  --radius-botao: 14px;
+  --radius-tag: 10px;
+
+  --shadow-bloco: 6px 6px 0 var(--color-violeta);
 }
 
-body {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
+@utility titulo-pagina {
+  font-family: var(--font-titulo);
+  font-weight: 800;
+  line-height: 1.2;
+  font-size: 1.875rem;
+
+  @media (min-width: 64rem) {
+    font-size: 2.5rem;
+  }
+}
+
+@utility titulo-card {
+  font-family: var(--font-titulo);
+  font-weight: 800;
+  line-height: 1.2;
+  font-size: 1.5rem;
+}
+
+@utility campo {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  background: var(--color-white);
+  color: var(--color-noite);
+  border: 2px solid var(--color-noite);
+  border-radius: var(--radius-botao);
+}
+
+@layer base {
+  body {
+    background: var(--color-white);
+    color: var(--color-noite);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-titulo);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-violeta);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  label[for],
+  summary {
+    cursor: pointer;
+  }
 }
 
 /* No iPhone, campo com letra menor que 16 px dá zoom ao receber o foco. */
@@ -20,11 +97,12 @@ body {
   }
 }
 
-@layer base {
-  button:not(:disabled),
-  [role="button"]:not(:disabled),
-  label[for],
-  summary {
-    cursor: pointer;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
