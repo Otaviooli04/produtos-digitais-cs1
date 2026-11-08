@@ -1,3 +1,4 @@
+import { GraduationCap, Presentation } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 // Alterna entre as duas portas de entrada do sistema, no login e no cadastro.
@@ -7,52 +8,30 @@ const DESTINOS = {
 }
 
 const PERFIS = [
-  { chave: 'aluno', rotulo: 'Sou aluno' },
-  { chave: 'professor', rotulo: 'Sou professor' },
+  { chave: 'aluno', rotulo: 'Sou aluno', icone: GraduationCap },
+  { chave: 'professor', rotulo: 'Sou professor', icone: Presentation },
 ]
-
-function IconeAluno({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 3.5 2.5 7.2 10 11l7.5-3.8L10 3.5Z" />
-      <path d="M5.5 9v3.8c0 1.2 2 2.2 4.5 2.2s4.5-1 4.5-2.2V9" />
-      <path d="M17.5 7.2v4.3" />
-    </svg>
-  )
-}
-
-function IconeProfessor({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2.5" y="3.5" width="15" height="10" rx="1.5" />
-      <path d="M6 16.5h8" />
-      <path d="M5.8 10.6 8.4 8l2 2 3.8-3.8" />
-    </svg>
-  )
-}
 
 export default function SeletorPerfil({ atual, contexto = 'login' }) {
   const destinos = DESTINOS[contexto]
 
   return (
-    <div className="flex gap-1 p-1 mb-6 bg-lavanda rounded-xl">
-      {PERFIS.map(({ chave, rotulo }) => {
+    <div className="flex gap-1 mb-6">
+      {PERFIS.map(({ chave, rotulo, icone }) => {
+        const Icone = icone
         const ativo = chave === atual
-        const cor = ativo ? 'text-violeta' : 'text-cinza-texto'
         return (
           <Link
             key={chave}
             to={destinos[chave]}
             aria-current={ativo ? 'page' : undefined}
-            className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2 rounded-lg transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 min-h-11 text-sm font-semibold border-2 rounded-botao transition-colors ${
               ativo
-                ? 'bg-white text-violeta font-medium shadow-sm ring-1 ring-black/5'
-                : 'text-cinza-texto hover:text-cinza-texto'
+                ? 'bg-lavanda text-violeta border-noite'
+                : 'text-cinza-texto border-transparent hover:bg-lavanda hover:text-noite'
             }`}
           >
-            {chave === 'aluno'
-              ? <IconeAluno className={`w-4 h-4 ${cor}`} />
-              : <IconeProfessor className={`w-4 h-4 ${cor}`} />}
+            <Icone className="w-4 h-4" />
             {rotulo}
           </Link>
         )
