@@ -60,7 +60,7 @@ export default function Layout() {
       </header>
 
       {gavetaAberta && (
-        <div className="lg:hidden fixed inset-0 z-40">
+        <div className="lg:hidden fixed inset-0 z-50">
           <button
             type="button"
             aria-label="Fechar menu"
