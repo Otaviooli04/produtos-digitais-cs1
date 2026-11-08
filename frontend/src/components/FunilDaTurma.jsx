@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { getTurmaFunil } from '../api/exam'
-import Badge from './Badge'
 import BarList from './BarList'
 import Spinner from './Spinner'
+import Card from './ui/Card'
+import RotuloSecao from './ui/RotuloSecao'
+import Tag from './ui/Tag'
 
 const pct = (valor) => (valor == null ? 'sem dado' : `${valor}%`)
 
@@ -34,7 +36,7 @@ const textoSucesso = (sucesso) => (sucesso.chegaram === 0
 
 function Meta({ atingida, children }) {
   return (
-    <span className={`text-xs font-medium ${atingida ? 'text-sucesso' : 'text-cinza-texto'}`}>
+    <span className={`text-[13px] font-bold ${atingida ? 'text-sucesso' : 'text-cinza-texto'}`}>
       {children}
     </span>
   )
@@ -42,27 +44,27 @@ function Meta({ atingida, children }) {
 
 function EtapaCard({ titulo, valor, detalhe, extra, meta, atingida }) {
   return (
-    <div className="bg-white rounded-xl border border-noite/20 p-5 flex flex-col gap-1">
+    <Card className="gap-1!">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs text-cinza-texto font-medium uppercase tracking-wide">{titulo}</p>
+        <RotuloSecao>{titulo}</RotuloSecao>
         {meta && <Meta atingida={atingida}>{meta}</Meta>}
       </div>
-      <p className="text-2xl font-bold text-noite">{valor}</p>
-      {detalhe && <p className="text-xs text-cinza-texto">{detalhe}</p>}
-      {extra && <p className="text-xs text-cinza-texto">{extra}</p>}
-    </div>
+      <p className="font-titulo font-extrabold text-3xl text-noite">{valor}</p>
+      {detalhe && <p className="text-sm text-cinza-texto">{detalhe}</p>}
+      {extra && <p className="text-sm text-cinza-texto">{extra}</p>}
+    </Card>
   )
 }
 
 function AlunosEmRisco({ saude }) {
   const alunos = [
-    ...saude.vermelho.map(a => ({ ...a, cor: 'red', rotulo: 'Vermelho' })),
-    ...saude.amarelo.map(a => ({ ...a, cor: 'yellow', rotulo: 'Amarelo' })),
+    ...saude.vermelho.map(a => ({ ...a, cor: 'erro', rotulo: 'Vermelho' })),
+    ...saude.amarelo.map(a => ({ ...a, cor: 'aviso', rotulo: 'Amarelo' })),
   ]
   return (
-    <div className="bg-white rounded-xl border border-noite/20 p-5">
-      <div className="flex items-baseline justify-between gap-2 mb-3">
-        <h3 className="text-sm font-semibold text-cinza-texto">Alunos em risco</h3>
+    <Card>
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="titulo-card">Alunos em risco</h3>
         <Meta atingida={saude.taxa_vermelho != null && saude.taxa_vermelho < saude.meta}>
           {pct(saude.taxa_vermelho)} em vermelho · meta abaixo de {saude.meta}%
         </Meta>
@@ -73,7 +75,7 @@ function AlunosEmRisco({ saude }) {
         <ul className="divide-y divide-noite/10">
           {alunos.map(a => (
             <li key={a.student_id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
-              <Badge color={a.cor}>{a.rotulo}</Badge>
+              <Tag variante={a.cor}>{a.rotulo}</Tag>
               <span className="flex-1 min-w-0 truncate text-noite">{a.nome}</span>
               <span className="text-cinza-texto">{a.motivo}</span>
               <span className="text-xs text-cinza-texto">
@@ -83,7 +85,7 @@ function AlunosEmRisco({ saude }) {
           ))}
         </ul>
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -98,19 +100,19 @@ function Painel({ funil }) {
   return (
     <>
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="bg-white rounded-xl border border-noite/20 p-5 flex flex-col gap-1">
-          <p className="text-xs text-cinza-texto font-medium uppercase tracking-wide">Erros corrigidos</p>
-          <p className="text-2xl font-bold text-noite">{ns.semana_atual}</p>
-          <p className="text-xs text-cinza-texto">nesta semana · {ns.total} desde o início</p>
+        <Card principal className="gap-1!">
+          <RotuloSecao>Erros corrigidos</RotuloSecao>
+          <p className="font-titulo font-extrabold text-3xl text-noite">{ns.semana_atual}</p>
+          <p className="text-sm text-cinza-texto">nesta semana · {ns.total} desde o início</p>
           {ns.por_tipo && (
-            <p className="text-xs text-cinza-texto mt-2">
+            <p className="text-sm text-cinza-texto mt-2">
               Onde foram corrigidos: {ns.por_tipo.provas} nas provas, {ns.por_tipo.listas} nas listas
               e {ns.por_tipo.trilha} na trilha de treino.
             </p>
           )}
-        </div>
-        <div className="bg-white rounded-xl border border-noite/20 p-5 lg:col-span-2">
-          <h3 className="text-sm font-semibold text-cinza-texto mb-4">Erros corrigidos por semana</h3>
+        </Card>
+        <Card className="lg:col-span-2">
+          <h3 className="titulo-card">Erros corrigidos por semana</h3>
           <BarList
             items={ns.semanas.map(s => ({
               label: rotuloSemana(s.semana),
@@ -118,7 +120,7 @@ function Painel({ funil }) {
               title: `Semana de ${rotuloSemana(s.semana)}`,
             }))}
           />
-        </div>
+        </Card>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -151,13 +153,13 @@ function Painel({ funil }) {
         />
       </div>
 
-      <p className="text-xs text-cinza-texto">
+      <p className="text-sm text-cinza-texto">
         Hábito na semana de {rotuloSemana(semana.semana)}: {pct(semana.taxa_sem_prova_marcada)} voltaram sem prova marcada, {pct(semana.taxa_sem_aviso)} abriram sem aviso e {pct(semana.taxa_por_conta_propria)} enviaram em listas ou na trilha.
       </p>
 
       <AlunosEmRisco saude={saude} />
 
-      <p className="text-xs text-cinza-texto">
+      <p className="text-sm text-cinza-texto">
         {media == null
           ? 'Proteção: ainda não há questão resolvida para medir.'
           : `Proteção: ${media} tentativas até acertar, em média, e ${pct(protecao.acerto_de_primeira)} de acerto de primeira.`}
@@ -179,7 +181,7 @@ export default function FunilDaTurma({ turmaId, recarga = 0 }) {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide">Funil da turma</h2>
+      <RotuloSecao as="h2">Funil da turma</RotuloSecao>
       {estado.carregando ? (
         <div className="flex justify-center py-8"><Spinner className="w-5 h-5 text-violeta" /></div>
       ) : estado.erro ? (

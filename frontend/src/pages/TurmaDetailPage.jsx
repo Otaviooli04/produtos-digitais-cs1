@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { ChevronRight, ClipboardList, Plus, Trash2, Upload } from 'lucide-react'
 import { adicionarListaDeAquecimento, getTurma, getTurmaAnalytics, deleteExam } from '../api/exam'
 import Spinner from '../components/Spinner'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -8,6 +9,13 @@ import Badge from '../components/Badge'
 import BarList from '../components/BarList'
 import TrajetoriaDeErros from '../components/TrajetoriaDeErros'
 import FunilDaTurma from '../components/FunilDaTurma'
+import Botao from '../components/ui/Botao'
+import Card from '../components/ui/Card'
+import PainelDestaque from '../components/ui/PainelDestaque'
+import Progresso from '../components/ui/Progresso'
+import RotuloSecao from '../components/ui/RotuloSecao'
+import Tag from '../components/ui/Tag'
+import { COR_ERRO, corDaTaxa } from '../utils/coresGraficos'
 import { comTipo, modoLabel } from '../utils/atividade'
 import { shortError } from '../utils/errorLabels'
 
@@ -28,28 +36,24 @@ const SORT_OPTIONS = [
   { value: 'name', label: 'Nome (A–Z)' },
 ]
 
-const ERR_COLOR = '#e11d48'
-const rateColor = (r) => (r >= 70 ? '#10b981' : r >= 40 ? '#f59e0b' : '#ef4444')
-
 function KpiCard({ label, value, sub }) {
   return (
-    <div className="bg-white rounded-xl border border-noite/20 p-5 flex flex-col gap-1">
-      <p className="text-xs text-cinza-texto font-medium uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-bold text-noite">{value ?? '—'}</p>
-      {sub && <p className="text-xs text-cinza-texto">{sub}</p>}
-    </div>
+    <Card className="gap-1!">
+      <RotuloSecao>{label}</RotuloSecao>
+      <p className="font-titulo font-extrabold text-3xl text-noite">{value ?? '—'}</p>
+      {sub && <p className="text-sm text-cinza-texto">{sub}</p>}
+    </Card>
   )
 }
 
 function PassRateBar({ rate }) {
-  if (rate == null) return <span className="text-xs text-cinza-texto">sem dados</span>
-  const color = rate >= 70 ? 'bg-sucesso' : rate >= 40 ? 'bg-aviso' : 'bg-erro'
+  if (rate == null) return <span className="text-sm text-cinza-texto">sem dados</span>
   return (
     <div className="flex items-center gap-2 mt-2">
-      <div className="flex-1 h-1.5 bg-lavanda rounded-full overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${rate}%` }} />
+      <div className="flex-1">
+        <Progresso valor={rate} rotulo="Taxa de aprovação" />
       </div>
-      <span className="text-xs font-medium text-cinza-texto w-10 text-right">{rate}%</span>
+      <span className="text-[13px] font-bold text-noite w-10 text-right">{rate}%</span>
     </div>
   )
 }
@@ -57,6 +61,9 @@ function PassRateBar({ rate }) {
 export default function TurmaDetailPage() {
   const { turmaId } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const secaoPedida = searchParams.get('secao')
+  const secao = ['panorama', 'atividades', 'desempenho'].includes(secaoPedida) ? secaoPedida : 'panorama'
   const [turma, setTurma] = useState(null)
   const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -99,7 +106,7 @@ export default function TurmaDetailPage() {
     if (!turma?.codigo_acesso) return
     const link = `${window.location.origin}/aluno/convite/${turma.codigo_acesso}`
     const mensagem =
-      `Nossa turma de ${turma.nome} vai usar o Analytics CS1 nas listas e no treino. ` +
+      `Nossa turma de ${turma.nome} vai usar o CentralizEd nas listas e no treino. ` +
       `Para entrar, abra ${link} e crie sua conta. ` +
       `Se preferir, use o código ${turma.codigo_acesso} na área do aluno.`
     try {
@@ -183,151 +190,122 @@ export default function TurmaDetailPage() {
 
   return (
     <div className="space-y-8">
-      {/* Breadcrumb + header */}
-      <div>
-        <div className="flex items-center gap-2 text-sm text-cinza-texto mb-4">
-          <Link to="/" className="hover:text-cinza-texto">Turmas</Link>
-          <span>›</span>
-          <span className="text-cinza-texto">{turma.nome}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-noite">{turma.nome}</h1>
-            <span className="text-xs font-medium text-violeta bg-lavanda border border-violeta/15 px-2 py-0.5 rounded-md">
-              {turma.codigo}
-            </span>
+      <div className="flex items-center gap-1 text-sm text-cinza-texto lg:hidden">
+        <Link to="/" className="hover:text-noite">Turmas</Link>
+        <ChevronRight className="w-4 h-4" aria-hidden="true" />
+      </div>
+
+      <PainelDestaque>
+        <div className="space-y-5 pr-0 sm:pr-24">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="titulo-pagina break-words">{turma.nome}</h1>
+            <Tag>{turma.codigo}</Tag>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div>
+            <p className="font-titulo font-extrabold text-[13px] uppercase tracking-[0.1em] text-white/80">
+              Código de acesso da turma
+            </p>
+            <p className="mt-1 font-titulo font-extrabold text-2xl">
+              {turma.codigo_acesso || '—'}
+            </p>
+            <p className="text-sm text-white/80 mt-1">
+              Passe o código ou o convite com link, que já leva o código. {turma.aluno_count ?? 0} já {(turma.aluno_count ?? 0) === 1 ? 'entrou' : 'entraram'} com conta.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Botao variante="secundario" onClick={copiarCodigo} disabled={!turma.codigo_acesso}>
+              {copiado ? 'Copiado' : 'Copiar código'}
+            </Botao>
+            <Botao variante="secundario" onClick={copiarConvite} disabled={!turma.codigo_acesso}>
+              {conviteCopiado ? 'Copiado' : 'Copiar convite'}
+            </Botao>
+            <Botao variante="secundario" to="/aluno/login" target="_blank">
+              Ver área do aluno
+            </Botao>
             {!turma.exams.some(e => e.filename === 'lista-de-aquecimento') && (
-              <button
-                onClick={adicionarAquecimento}
-                disabled={adicionandoAquecimento}
-                className="text-sm px-3 py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda disabled:opacity-50 transition-colors"
-              >
+              <Botao variante="secundario" onClick={adicionarAquecimento} disabled={adicionandoAquecimento}>
+                <Plus className="w-4 h-4" aria-hidden="true" />
                 {adicionandoAquecimento ? 'Adicionando...' : 'Adicionar lista de aquecimento'}
-              </button>
+              </Botao>
             )}
-          <button
-            onClick={() => navigate(`/turma/${turmaId}/upload`)}
-            className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-violeta text-white hover:bg-violeta-escuro transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-            </svg>
-            Nova atividade
-          </button>
+            <Botao variante="secundario" onClick={() => navigate(`/turma/${turmaId}/upload`)}>
+              <Upload className="w-4 h-4" aria-hidden="true" />
+              Nova atividade
+            </Botao>
           </div>
+          {erroAquecimento && <p className="text-sm text-white font-bold">{erroAquecimento}</p>}
         </div>
-        {erroAquecimento && <p className="mt-2 text-right text-xs text-erro">{erroAquecimento}</p>}
+      </PainelDestaque>
+
+      <div hidden={secao !== 'panorama'}>
+        <FunilDaTurma turmaId={turmaId} recarga={recargaFunil} />
       </div>
 
-      {/* Entrada dos alunos na turma */}
-      <div className="bg-white rounded-xl border border-noite/20 p-5 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs text-cinza-texto font-medium uppercase tracking-wide">Código de acesso da turma</p>
-          <p className="mt-1 text-2xl font-bold font-mono tracking-[0.25em] text-noite">
-            {turma.codigo_acesso || '—'}
-          </p>
-          <p className="text-xs text-cinza-texto mt-1">
-            Passe o código ou o convite com link, que já leva o código. {turma.aluno_count ?? 0} já {(turma.aluno_count ?? 0) === 1 ? 'entrou' : 'entraram'} com conta.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={copiarCodigo}
-            disabled={!turma.codigo_acesso}
-            className="text-sm px-3 py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda disabled:opacity-40 transition-colors"
-          >
-            {copiado ? 'Copiado' : 'Copiar código'}
-          </button>
-          <button
-            onClick={copiarConvite}
-            disabled={!turma.codigo_acesso}
-            className="text-sm px-3 py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda disabled:opacity-40 transition-colors"
-          >
-            {conviteCopiado ? 'Copiado' : 'Copiar convite'}
-          </button>
-          <Link
-            to="/aluno/login"
-            target="_blank"
-            className="text-sm px-3 py-1.5 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda transition-colors"
-          >
-            Ver área do aluno
-          </Link>
-        </div>
+      <div hidden={secao !== 'desempenho'} className="space-y-6">
+        {analytics && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <KpiCard
+              label="Alunos únicos"
+              value={analytics.total_alunos}
+            />
+            <KpiCard
+              label="Aproveitamento médio"
+              value={analytics.aproveitamento_medio != null ? `${analytics.aproveitamento_medio}%` : null}
+              sub={aproveitamentoPorModo}
+            />
+            <KpiCard
+              label="Total de submissões"
+              value={analytics.total_submissoes}
+            />
+            <KpiCard
+              label="Atividades"
+              value={turma.exams.length}
+              sub={contagemPorModo(turma.exams)}
+            />
+          </div>
+        )}
+
+        {analytics && (evolucaoData.length > 0 || errosData.length > 0) && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {evolucaoData.length > 0 && (
+              <Card principal>
+                <h2 className="titulo-card">Taxa de aprovação por atividade</h2>
+                <BarList
+                  max={100}
+                  items={evolucaoData.map(d => ({
+                    label: truncar(d.name), title: d.name,
+                    value: d.taxa, display: `${d.taxa}%`, color: corDaTaxa(d.taxa),
+                  }))}
+                />
+              </Card>
+            )}
+
+            {errosData.length > 0 && (
+              <Card principal>
+                <h2 className="titulo-card">Erros mais frequentes</h2>
+                <BarList
+                  color={COR_ERRO}
+                  items={errosData.map(e => ({ label: e.name, title: e.full, value: e.count }))}
+                />
+              </Card>
+            )}
+          </div>
+        )}
+
+        {analytics?.trajetoria?.length > 0 && (
+          <TrajetoriaDeErros trajetoria={analytics.trajetoria} />
+        )}
       </div>
-
-      {/* KPIs */}
-      {analytics && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <KpiCard
-            label="Alunos únicos"
-            value={analytics.total_alunos}
-          />
-          <KpiCard
-            label="Aproveitamento médio"
-            value={analytics.aproveitamento_medio != null ? `${analytics.aproveitamento_medio}%` : null}
-            sub={aproveitamentoPorModo}
-          />
-          <KpiCard
-            label="Total de submissões"
-            value={analytics.total_submissoes}
-          />
-          <KpiCard
-            label="Atividades"
-            value={turma.exams.length}
-            sub={contagemPorModo(turma.exams)}
-          />
-        </div>
-      )}
-
-      <FunilDaTurma turmaId={turmaId} recarga={recargaFunil} />
-
-      {/* Charts — só mostra se há dados */}
-      {analytics && (evolucaoData.length > 0 || errosData.length > 0) && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Evolução entre provas */}
-          {evolucaoData.length > 0 && (
-            <div className="bg-white rounded-xl border border-noite/20 p-5">
-              <h2 className="text-sm font-semibold text-cinza-texto mb-4">Taxa de aprovação por atividade</h2>
-              <BarList
-                max={100}
-                items={evolucaoData.map(d => ({
-                  label: truncar(d.name), title: d.name,
-                  value: d.taxa, display: `${d.taxa}%`, color: rateColor(d.taxa),
-                }))}
-              />
-            </div>
-          )}
-
-          {/* Top erros */}
-          {errosData.length > 0 && (
-            <div className="bg-white rounded-xl border border-noite/20 p-5">
-              <h2 className="text-sm font-semibold text-cinza-texto mb-4">Erros mais frequentes</h2>
-              <BarList
-                color={ERR_COLOR}
-                items={errosData.map(e => ({ label: e.name, title: e.full, value: e.count }))}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {analytics?.trajetoria?.length > 0 && (
-        <TrajetoriaDeErros trajetoria={analytics.trajetoria} />
-      )}
 
       {/* Atividades: provas e listas são o mesmo tipo de atividade, separadas pelo modo */}
-      <div>
-        <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">Atividades</h2>
+      <div hidden={secao !== 'atividades'} className="space-y-4">
+        <RotuloSecao as="h2">Atividades</RotuloSecao>
         {turma.exams.length === 0 ? (
-          <div className="text-center py-16 text-cinza-texto">
-            <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-            </svg>
-            <p className="text-sm">Nenhuma atividade cadastrada.</p>
-            <p className="text-xs mt-1">Clique em "Nova atividade" para adicionar uma prova ou uma lista.</p>
-          </div>
+          <Card className="border-dashed border-noite/30! text-center p-10! items-center">
+            <ClipboardList className="w-10 h-10 text-violeta" aria-hidden="true" />
+            <p className="font-bold">Nenhuma atividade cadastrada.</p>
+            <p className="text-sm text-cinza-texto">Clique em "Nova atividade" para adicionar uma prova ou uma lista.</p>
+          </Card>
         ) : (
           <>
             <ListControls
@@ -340,11 +318,11 @@ export default function TurmaDetailPage() {
               const doGrupo = displayedExams.filter(exam => (exam.modo || 'prova') === modo)
               return (
                 <div key={modo} className="mt-5 first:mt-0">
-                  <h3 className="text-xs font-semibold text-cinza-texto uppercase tracking-wide mb-2">
+                  <RotuloSecao as="h3" className="mb-3">
                     {titulo} ({doGrupo.length})
-                  </h3>
+                  </RotuloSecao>
                   {doGrupo.length === 0 ? (
-                    <p className="text-sm text-cinza-texto py-4">
+                    <p className="text-sm text-cinza-texto py-2">
                       {search.trim() ? 'Nada encontrado para o filtro.' : vazio}
                     </p>
                   ) : (
@@ -352,35 +330,30 @@ export default function TurmaDetailPage() {
                       {doGrupo.map(exam => {
               const ea = examAnalyticsMap[exam.id]
               return (
-                <div
-                  key={exam.id}
-                  className="bg-white rounded-xl border border-noite/20 p-5 hover:border-violeta/50 hover:shadow-sm transition-all flex flex-col"
-                >
+                <Card key={exam.id} principal>
                   <div onClick={() => navigate(`/exam/${exam.id}`)} className="cursor-pointer flex-1">
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h2 className="text-sm font-semibold text-noite leading-tight truncate flex-1">
+                      <h2 className="titulo-card leading-tight truncate flex-1">
                         {exam.titulo || exam.filename}
                       </h2>
                       <Badge color={exam.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(exam.modo)}</Badge>
                       {!exam.publicada && <Badge color="yellow">rascunho</Badge>}
                     </div>
-                    <div className="flex gap-4 text-xs text-cinza-texto mb-1">
+                    <div className="flex flex-wrap gap-x-4 text-sm text-cinza-texto mb-1">
                       <span>{exam.question_count} {exam.question_count === 1 ? 'questão' : 'questões'}</span>
                       <span>{exam.submission_count} {exam.submission_count === 1 ? 'submissão' : 'submissões'}</span>
                       {ea && <span>{ea.total_alunos} {ea.total_alunos === 1 ? 'aluno' : 'alunos'}</span>}
                     </div>
                     {ea && <PassRateBar rate={ea.pass_rate} />}
-                    <p className="text-xs text-cinza-texto mt-2">{formatDate(exam.created_at)}</p>
+                    <p className="text-[13px] text-cinza-texto mt-2">{formatDate(exam.created_at)}</p>
                   </div>
-                  <div className="flex justify-end mt-3 pt-3 border-t border-noite/10">
-                    <button
-                      onClick={() => setDeleteExamTarget(exam)}
-                      className="text-xs px-2.5 py-1.5 rounded-md border border-erro/30 text-erro hover:bg-erro-fundo transition-colors"
-                    >
+                  <div className="flex justify-end pt-3 border-t-2 border-noite/10">
+                    <Botao variante="perigo" onClick={() => setDeleteExamTarget(exam)} className="min-h-9! px-3.5! text-[13px]!">
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
                       Excluir
-                    </button>
+                    </Botao>
                   </div>
-                </div>
+                </Card>
               )
                       })}
                     </div>
