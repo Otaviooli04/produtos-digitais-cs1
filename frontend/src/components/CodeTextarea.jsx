@@ -120,7 +120,7 @@ export default function CodeTextarea({ value, onChange, onKeyDown, className = '
       <div
         ref={numeracao}
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-0 select-none overflow-hidden text-right font-mono tabular-nums text-gray-400 pr-2"
+        className="pointer-events-none absolute inset-y-0 left-0 select-none overflow-hidden text-right font-mono tabular-nums text-white/60 pr-2"
         style={{ width: LARGURA_DA_NUMERACAO, ...(medidas ?? {}) }}
       >
         {Array.from({ length: linhas }, (_, i) => <div key={i}>{i + 1}</div>)}

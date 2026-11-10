@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, ArrowRight, ChevronDown } from 'lucide-react'
 import { getAtividade, getTentativas, submeterResposta } from '../../api/aluno'
 import Badge from '../../components/Badge'
 import RitmoDaTentativa from '../../components/RitmoDaTentativa'
 import Spinner from '../../components/Spinner'
 import TentativaDetalhe from '../../components/TentativaDetalhe'
+import Botao from '../../components/ui/Botao'
+import Card from '../../components/ui/Card'
+import RotuloSecao from '../../components/ui/RotuloSecao'
 import { categoriaColor, formatarData } from '../../utils/atividade'
 import CodeTextarea from '../../components/CodeTextarea'
 
@@ -20,22 +24,23 @@ function formatarFuncao(fn) {
 
 function ItemHistorico({ tentativa, aberto, onToggle }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-botao border-2 border-noite overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-3 px-5 py-3 hover:bg-gray-50 transition-colors text-left"
+        className="w-full min-h-11 flex items-center justify-between gap-3 px-5 py-3 hover:bg-lavanda transition-colors text-left"
       >
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-          <span className="text-xs text-gray-400 shrink-0">#{tentativa.attempt_number}</span>
+          <span className="text-xs text-cinza-texto shrink-0">#{tentativa.attempt_number}</span>
           <Badge color={categoriaColor(tentativa.error_category)}>{tentativa.error_category}</Badge>
-          <span className="text-xs text-gray-400 truncate">{formatarData(tentativa.submitted_at)}</span>
+          <span className="text-xs text-cinza-texto break-words">{formatarData(tentativa.submitted_at)}</span>
         </span>
-        <span className="text-xs text-gray-400 shrink-0">
+        <span className="flex items-center gap-1 text-xs text-cinza-texto shrink-0">
           {tentativa.tests_total > 0 && `${tentativa.tests_passed}/${tentativa.tests_total} testes · `}
           {aberto ? 'ocultar' : 'ver'}
+          <ChevronDown className={`w-4 h-4 transition-transform ${aberto ? 'rotate-180' : ''}`} aria-hidden="true" />
         </span>
       </button>
-      <div className={`border-t border-gray-100 p-4 bg-gray-50${aberto ? '' : ' hidden'}`}>
+      <div className={`border-t-2 border-noite p-4 bg-lavanda${aberto ? '' : ' hidden'}`}>
         <TentativaDetalhe tentativa={tentativa} mostrarCodigo />
       </div>
     </div>
@@ -113,26 +118,30 @@ function QuestaoConteudo({ examId, numero }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Spinner className="w-6 h-6 text-purple-600" />
+        <Spinner className="w-6 h-6 text-violeta" />
       </div>
     )
   }
 
   if (!questao) {
-    return <p className="text-sm text-red-600">{error || 'Questão não encontrada.'}</p>
+    return <p className="text-sm text-erro">{error || 'Questão não encontrada.'}</p>
   }
 
   const anteriores = (historico?.tentativas || []).filter(
     t => t.submission_id !== resultado?.tentativa?.submission_id)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <Link to={`/aluno/atividades/${examId}`} className="text-xs text-gray-400 hover:text-gray-600">
-          ← {atividade.titulo}
+        <Link
+          to={`/aluno/atividades/${examId}`}
+          className="inline-flex items-center gap-1 min-h-11 text-sm font-bold text-cinza-texto hover:text-noite"
+        >
+          <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="break-words">{atividade.titulo}</span>
         </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold text-gray-900">Questão {questao.number}</h1>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <h1 className="titulo-pagina">Questão {questao.number}</h1>
           {questao.resolvida && <Badge color="green">Resolvida</Badge>}
           {questao.tentativas_restantes != null && (
             <Badge color={questao.tentativas_restantes > 0 ? 'gray' : 'red'}>
@@ -142,117 +151,127 @@ function QuestaoConteudo({ examId, numero }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{questao.statement}</p>
-        <div className="mt-3 space-y-1">
-          {questao.required_structures?.length > 0 && (
-            <p className="text-xs text-gray-400">
-              Estruturas obrigatórias: <span className="text-purple-600">{questao.required_structures.join(', ')}</span>
-            </p>
-          )}
-          {questao.forbidden_structures?.length > 0 && (
-            <p className="text-xs text-red-400">Proibido: {questao.forbidden_structures.join(', ')}</p>
-          )}
-          {questao.required_functions?.length > 0 && (
-            <p className="text-xs text-gray-400">
-              Funções exigidas: <span className="text-purple-600">{questao.required_functions.map(formatarFuncao).join(', ')}</span>
-            </p>
+      <div className="grid gap-6 lg:grid-cols-2 lg:grid-rows-[auto_1fr] items-start">
+        <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+          <Card principal>
+            <p className="text-sm text-cinza-texto leading-relaxed whitespace-pre-wrap break-words">{questao.statement}</p>
+            <div className="space-y-1">
+              {questao.required_structures?.length > 0 && (
+                <p className="text-xs text-cinza-texto break-words">
+                  Estruturas obrigatórias: <span className="font-bold text-violeta">{questao.required_structures.join(', ')}</span>
+                </p>
+              )}
+              {questao.forbidden_structures?.length > 0 && (
+                <p className="text-xs text-erro break-words">Proibido: {questao.forbidden_structures.join(', ')}</p>
+              )}
+              {questao.required_functions?.length > 0 && (
+                <p className="text-xs text-cinza-texto break-words">
+                  Funções exigidas: <span className="font-bold text-violeta">{questao.required_functions.map(formatarFuncao).join(', ')}</span>
+                </p>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        <div className="min-w-0 space-y-6 lg:col-start-2 lg:row-start-1 lg:row-span-2">
+          <Card>
+            <label className="block text-xs font-bold text-cinza-texto">Seu código em C</label>
+            <CodeTextarea
+              rows={18}
+              value={code}
+              onChange={e => setCode(e.target.value)}
+              spellCheck={false}
+              disabled={!podeEnviar}
+              className="w-full text-sm font-mono bg-noite text-codigo-texto caret-white rounded-botao border-2 border-noite px-3 py-2.5 focus-visible:outline-codigo-sucesso resize-y disabled:opacity-60 max-h-[55vh] sm:max-h-none"
+            />
+
+            {!podeEnviar && (
+              <p className="text-xs text-aviso">
+                {semTentativas
+                  ? 'Você usou todas as tentativas desta questão.'
+                  : atividade.situacao === 'agendada'
+                    ? 'Esta atividade ainda não abriu.'
+                    : 'Esta atividade já encerrou.'}
+              </p>
+            )}
+
+            {error && (
+              <div className="rounded-botao bg-erro-fundo border-2 border-erro px-4 py-2.5 text-sm text-erro">
+                {error}
+              </div>
+            )}
+
+            <Botao
+              onClick={handleEnviar}
+              disabled={enviando || !podeEnviar || !code.trim()}
+              className="w-full"
+            >
+              {enviando && <Spinner className="w-4 h-4" />}
+              {enviando ? 'Avaliando…' : questao.tentativas > 0 ? 'Enviar nova tentativa' : 'Enviar resposta'}
+            </Botao>
+          </Card>
+
+          {resultado && (
+            <div className="space-y-3">
+              <RotuloSecao as="h2">Resultado</RotuloSecao>
+              <RitmoDaTentativa
+                avanco={resultado.avanco}
+                sugerirPausa={resultado.sugerir_pausa}
+                semCasos={resultado.tentativa.tests_total === 0}
+              />
+              <TentativaDetalhe
+                tentativa={resultado.tentativa}
+                functionCheck={resultado.function_check}
+              />
+              {vizinhas.proxima && resultado.resolvida && (
+                <Botao
+                  onClick={() => navigate(`/aluno/atividades/${examId}/questoes/${vizinhas.proxima}`)}
+                  className="w-full"
+                >
+                  Ir para a questão {vizinhas.proxima}
+                </Botao>
+              )}
+            </div>
           )}
         </div>
-      </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <label className="block text-xs font-medium text-gray-500 mb-1.5">Seu código em C</label>
-        <CodeTextarea
-          rows={18}
-          value={code}
-          onChange={e => setCode(e.target.value)}
-          spellCheck={false}
-          disabled={!podeEnviar}
-          className="w-full text-sm font-mono rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y bg-gray-50 disabled:opacity-60 max-h-[55vh] sm:max-h-none"
-        />
-
-        {!podeEnviar && (
-          <p className="mt-2 text-xs text-amber-600">
-            {semTentativas
-              ? 'Você usou todas as tentativas desta questão.'
-              : atividade.situacao === 'agendada'
-                ? 'Esta atividade ainda não abriu.'
-                : 'Esta atividade já encerrou.'}
-          </p>
-        )}
-
-        {error && (
-          <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-700">
-            {error}
+        {anteriores.length > 0 && (
+          <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-2">
+            <div className="space-y-2">
+              <RotuloSecao as="h2">
+                Tentativas anteriores ({anteriores.length})
+              </RotuloSecao>
+              {anteriores.map(t => (
+                <ItemHistorico
+                  key={t.submission_id}
+                  tentativa={t}
+                  aberto={!!abertos[t.submission_id]}
+                  onToggle={() => setAbertos(a => ({ ...a, [t.submission_id]: !a[t.submission_id] }))}
+                />
+              ))}
+            </div>
           </div>
         )}
-
-        <button
-          onClick={handleEnviar}
-          disabled={enviando || !podeEnviar || !code.trim()}
-          className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm px-4 py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
-        >
-          {enviando && <Spinner className="w-4 h-4" />}
-          {enviando ? 'Avaliando…' : questao.tentativas > 0 ? 'Enviar nova tentativa' : 'Enviar resposta'}
-        </button>
       </div>
 
-      {resultado && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-900">Resultado</h2>
-          <RitmoDaTentativa
-            avanco={resultado.avanco}
-            sugerirPausa={resultado.sugerir_pausa}
-            semCasos={resultado.tentativa.tests_total === 0}
-          />
-          <TentativaDetalhe
-            tentativa={resultado.tentativa}
-            functionCheck={resultado.function_check}
-          />
-          {vizinhas.proxima && resultado.resolvida && (
-            <button
-              onClick={() => navigate(`/aluno/atividades/${examId}/questoes/${vizinhas.proxima}`)}
-              className="w-full text-sm px-4 py-2.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-            >
-              Ir para a questão {vizinhas.proxima}
-            </button>
-          )}
-        </div>
-      )}
-
-      {anteriores.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-900">
-            Tentativas anteriores ({anteriores.length})
-          </h2>
-          {anteriores.map(t => (
-            <ItemHistorico
-              key={t.submission_id}
-              tentativa={t}
-              aberto={!!abertos[t.submission_id]}
-              onToggle={() => setAbertos(a => ({ ...a, [t.submission_id]: !a[t.submission_id] }))}
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="flex justify-between pt-2">
+      <div className="flex flex-wrap justify-between gap-2 pt-2">
         {vizinhas.anterior ? (
-          <Link
+          <Botao
+            variante="secundario"
             to={`/aluno/atividades/${examId}/questoes/${vizinhas.anterior}`}
-            className="text-sm px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            ← Questão {vizinhas.anterior}
-          </Link>
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            Questão {vizinhas.anterior}
+          </Botao>
         ) : <span />}
         {vizinhas.proxima && (
-          <Link
+          <Botao
+            variante="secundario"
             to={`/aluno/atividades/${examId}/questoes/${vizinhas.proxima}`}
-            className="text-sm px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Questão {vizinhas.proxima} →
-          </Link>
+            Questão {vizinhas.proxima}
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </Botao>
         )}
       </div>
     </div>

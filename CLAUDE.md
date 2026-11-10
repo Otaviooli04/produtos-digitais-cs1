@@ -4,7 +4,7 @@ Guia para o Claude Code neste repositório. **Leia `HANDOFF.md` primeiro** — e
 
 ## Contexto
 
-Sistema de *Learning Analytics* para CS1 (turmas introdutórias de programação em C). Originou-se de um TCC concluído e validado. **Esta fase é a disciplina de Produtos Digitais**, com foco em transformá-lo em **produto voltado ao aluno** (feedback personalizado, acompanhamento, engajamento). Detalhes e backlog de produto em `HANDOFF.md` (seção 15).
+Sistema de *Learning Analytics* para CS1 (turmas introdutórias de programação em C). Originou-se de um TCC concluído e validado. **Esta fase é a disciplina de Produtos Digitais**, com foco em transformá-lo em **produto voltado ao aluno** (feedback personalizado, acompanhamento, engajamento). Detalhes e backlog de produto em `HANDOFF.md` (seção 15). O produto se chama **CentralizEd** (decisão D5) e o guia visual está em `docs/identidade-visual.md`.
 
 O sistema corrige código C de provas como um **funil interpretável**: análise estática (tree-sitter) + execução isolada (Docker/GCC) + heurísticas pedagógicas classificam o erro, e as submissões são **agrupadas por assinatura de falha** para o professor intervir por grupo. O lado do aluno já tem conta, entrada por código de turma ou convite com link, modo treino/prova, histórico de tentativas, progresso, painel de erros recorrentes e um Início com as novidades que chegaram para ele (resposta do professor e exercício pronto), onde parou e os prazos, com a bolinha de novidades no menu. O que falta está mapeado em `docs/mapa-funcionalidades.md`.
 
@@ -30,6 +30,8 @@ backend/app/
   models/                — orm.py (15 entidades) + schemas.py (Pydantic)
   migrations/            — Alembic (revisões 0001..0021)
 frontend/                — painel do professor (`/`) + app do aluno (`/aluno`) (React 19 + Vite + Tailwind v4)
+  components/ui/       — peças da identidade (Botao, Card, Tag, Progresso, RotuloSecao, PainelDestaque)
+  hooks/               — hooks compartilhados (useContextoProfessor)
 ```
 
 **Fluxo:** `CodeRequest` → `dynamic_analyzer` + `static_analyzer` → `heuristics.classify_error` → agrupamento por assinatura de falha → insights (Gemini).

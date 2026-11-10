@@ -3,12 +3,12 @@ export default function CodeBlock({ code, highlight = [], dark = false }) {
   const hot = new Set(highlight)
   const lines = (code || '').split('\n')
   const t = dark
-    ? { box: 'bg-gray-900', gutter: 'text-gray-600', text: 'text-green-400',
-        hotRow: 'bg-red-500/15', hotGutter: 'text-red-400', hotText: 'text-red-300' }
-    : { box: 'bg-gray-50', gutter: 'text-gray-300', text: 'text-gray-600',
-        hotRow: 'bg-red-50', hotGutter: 'text-red-400', hotText: 'text-red-700' }
+    ? { box: 'bg-noite', gutter: 'text-white/40', text: 'text-codigo-sucesso',
+        hotRow: 'bg-erro/15', hotGutter: 'text-codigo-erro', hotText: 'text-codigo-erro' }
+    : { box: 'bg-lavanda', gutter: 'text-cinza-texto', text: 'text-cinza-texto',
+        hotRow: 'bg-erro-fundo', hotGutter: 'text-erro', hotText: 'text-erro' }
   return (
-    <div className={`mt-2 text-xs font-mono ${t.box} rounded-lg overflow-x-auto max-h-60`}>
+    <div className={`mt-2 text-xs font-mono ${t.box} rounded-botao overflow-x-auto max-h-60`}>
       <table className="w-full border-collapse">
         <tbody>
           {lines.map((ln, i) => {

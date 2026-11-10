@@ -86,5 +86,5 @@ O que o sistema já consegue calcular hoje, sem trabalho novo:
 - ~~**Feedback imediato ou progressivo.**~~ Decidido em novembro de 2026: progressivo, com a dica em etapas (item 2.3).
 - **Métrica de sucesso definitiva.** O sistema já mede tentativas até acertar, que
   é a candidata mais forte, mas isso não foi fechado.
-- **Nome oficial do produto.** A pasta de entrega usa "Turma Digital com Apoio de
-  IA" e o sistema ainda se apresenta como "Analytics CS1".
+- ~~**Nome oficial do produto.**~~ Decidido em novembro de 2026: CentralizEd, com a identidade visual aplicada no
+  front.

@@ -40,7 +40,7 @@ const AlunoPerfilPage = lazy(() => import('./pages/aluno/AlunoPerfilPage'))
 function PageFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <Spinner className="w-6 h-6 text-purple-600" />
+      <Spinner className="w-6 h-6 text-violeta" />
     </div>
   )
 }

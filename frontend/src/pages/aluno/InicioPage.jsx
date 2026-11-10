@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Check } from 'lucide-react'
 import { gerarExercicio, getInicio } from '../../api/aluno'
 import EntrarNaTurma from '../../components/EntrarNaTurma'
 import Spinner from '../../components/Spinner'
+import Botao from '../../components/ui/Botao'
+import Card from '../../components/ui/Card'
+import PainelDestaque from '../../components/ui/PainelDestaque'
+import RotuloSecao from '../../components/ui/RotuloSecao'
 import { modoLabel } from '../../utils/atividade'
 import { prazoRelativo } from '../../utils/datas'
 import { shortError } from '../../utils/errorLabels'
@@ -26,19 +31,19 @@ function linkDoContinuar(c) {
 
 function Novidades({ itens }) {
   return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-semibold text-gray-900">Novidades</h2>
-      <div className="space-y-2">
+    <section className="space-y-3">
+      <RotuloSecao as="h2">Novidades</RotuloSecao>
+      <div className="space-y-3">
         {itens.map(n => (
           <Link
             key={`${n.tipo}-${n.exam_id ?? ''}-${n.question_number ?? ''}-${n.exercicio_id ?? ''}`}
             to={linkDaNovidade(n)}
-            className="flex items-center gap-3 bg-white rounded-xl border border-purple-200 p-4 hover:border-purple-400 transition-colors"
+            className="flex items-center gap-3 bg-white border-2 border-noite rounded-card p-4 shadow-bloco transition-transform active:translate-x-0.5 active:translate-y-0.5"
           >
-            <span className="w-2 h-2 rounded-full bg-purple-600 shrink-0" aria-hidden="true" />
+            <span className="w-2.5 h-2.5 rounded-full bg-coral shrink-0" aria-hidden="true" />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900">{TEXTO_DA_NOVIDADE[n.tipo]}</p>
-              <p className="text-xs text-gray-500 truncate">{n.titulo}</p>
+              <p className="font-bold">{TEXTO_DA_NOVIDADE[n.tipo]}</p>
+              <p className="text-sm text-cinza-texto truncate">{n.titulo}</p>
             </div>
           </Link>
         ))}
@@ -67,47 +72,42 @@ function ProvaChegando({ prova }) {
   }
 
   return (
-    <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+    <Card as="section" principal>
       <div className="min-w-0">
-        <h2 className="text-sm font-semibold text-gray-900 break-words">
+        <h2 className="titulo-card break-words">
           {prova.titulo} abre {prazoRelativo(prova.abre_em)}
         </h2>
-        {prova.turma_nome && <p className="text-xs text-gray-400 truncate">{prova.turma_nome}</p>}
-        <p className="text-sm text-gray-500 mt-1">
+        {prova.turma_nome && <p className="text-xs text-cinza-texto truncate">{prova.turma_nome}</p>}
+        <p className="text-sm text-cinza-texto mt-1">
           Um treino curto com o que mais trava você. Nada aqui vale nota.
         </p>
       </div>
 
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-noite/10">
         {prova.erros.map(e => (
           <li key={e.error_category} className="flex items-center justify-between gap-3 py-2">
-            <span className="text-sm text-gray-700 min-w-0 break-words">{shortError(e.error_category)}</span>
+            <span className="text-sm text-cinza-texto min-w-0 break-words">{shortError(e.error_category)}</span>
             {e.feito ? (
-              <span className="text-xs font-medium text-green-700 shrink-0">✓ feito</span>
+              <span className="inline-flex items-center gap-1 text-[13px] font-bold text-sucesso shrink-0"><Check className="w-4 h-4" />feito</span>
             ) : (
-              <button
-                type="button"
-                onClick={() => treinar(e.error_category)}
-                disabled={gerando !== null}
-                className="inline-flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-lg bg-purple-600 text-white font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
-              >
+              <Botao onClick={() => treinar(e.error_category)} disabled={gerando !== null} className="shrink-0">
                 {gerando === e.error_category && <Spinner className="w-4 h-4" />}
                 Treinar
-              </button>
+              </Botao>
             )}
           </li>
         ))}
       </ul>
 
       {gerando && (
-        <p className="text-xs text-gray-500">Montando o exercício. Pode levar até meio minuto.</p>
+        <p className="text-xs text-cinza-texto">Montando o exercício. Pode levar até meio minuto.</p>
       )}
-      {erro && <p className="text-xs text-red-600">{erro}</p>}
+      {erro && <p className="text-xs text-erro">{erro}</p>}
 
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-cinza-texto">
         {tudoFeito ? 'Treino feito' : `${feitos} de ${prova.erros.length} feitos`}
       </p>
-    </section>
+    </Card>
   )
 }
 
@@ -120,49 +120,46 @@ function Continuar({ item }) {
   ].filter(Boolean)
 
   return (
-    <section className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
-          {emAndamento ? 'Continuar de onde parou' : 'Próxima atividade'}
-        </p>
-        <p className="mt-1 text-sm font-medium text-gray-900 truncate">
-          {item.origem === 'trilha' ? `Trilha · ${item.titulo}` : item.titulo}
-        </p>
-        {detalhes.length > 0 && (
-          <p className="text-xs text-gray-400 mt-0.5">{detalhes.join(' · ')}</p>
-        )}
+    <PainelDestaque>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-5 pr-0 sm:pr-24">
+        <div className="flex-1 min-w-0">
+          <p className="font-titulo font-extrabold text-[13px] uppercase tracking-[0.1em] text-white/80">
+            {emAndamento ? 'Continuar de onde parou' : 'Próxima atividade'}
+          </p>
+          <h1 className="mt-1 titulo-pagina break-words">
+            {item.origem === 'trilha' ? `Trilha · ${item.titulo}` : item.titulo}
+          </h1>
+          {detalhes.length > 0 && (
+            <p className="text-sm text-white/80 mt-1">{detalhes.join(' · ')}</p>
+          )}
+        </div>
+        <Botao to={linkDoContinuar(item)} variante="secundario" className="shrink-0">
+          {emAndamento ? 'Bora continuar!' : 'Bora começar!'}
+        </Botao>
       </div>
-      <Link
-        to={linkDoContinuar(item)}
-        className="inline-flex items-center justify-center text-sm px-5 py-2.5 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700 transition-colors"
-      >
-        {emAndamento ? 'Continuar' : 'Começar'}
-      </Link>
-    </section>
+    </PainelDestaque>
   )
 }
 
 function Prazos({ itens }) {
   return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-semibold text-gray-900">Prazos próximos</h2>
-      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+    <section className="space-y-3">
+      <RotuloSecao as="h2">Prazos próximos</RotuloSecao>
+      <Card className="p-0! gap-0! divide-y-2 divide-noite/10 overflow-hidden">
         {itens.map(p => (
           <Link
             key={p.exam_id}
             to={`/aluno/atividades/${p.exam_id}`}
-            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 px-5 py-3 hover:bg-gray-50 transition-colors"
+            className="flex flex-col gap-1 px-5 py-3 hover:bg-lavanda transition-colors"
           >
-            <div className="min-w-0">
-              <p className="text-sm text-gray-900 truncate">{p.titulo}</p>
-              <p className="text-xs text-gray-400 truncate">{p.turma_nome}</p>
-            </div>
-            <p className={`text-xs font-medium shrink-0 ${p.tipo === 'fecha' ? 'text-yellow-700' : 'text-purple-600'}`}>
+            <p className="font-bold truncate">{p.titulo}</p>
+            <p className="text-sm text-cinza-texto truncate">{p.turma_nome}</p>
+            <p className={`text-[13px] font-bold ${p.tipo === 'fecha' ? 'text-aviso' : 'text-violeta'}`}>
               {modoLabel(p.modo)} · {p.tipo} {prazoRelativo(p.quando)}
             </p>
           </Link>
         ))}
-      </div>
+      </Card>
     </section>
   )
 }
@@ -179,16 +176,16 @@ export default function InicioPage() {
 
   if (erro) {
     return (
-      <div className="bg-white rounded-xl border border-dashed border-gray-200 p-10 text-center">
-        <p className="text-sm text-gray-500">Não foi possível carregar o início.</p>
-      </div>
+      <Card className="border-dashed border-noite/30! text-center p-10!">
+        <p className="text-cinza-texto">Não foi possível carregar o início.</p>
+      </Card>
     )
   }
 
   if (!inicio) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Spinner className="w-6 h-6 text-purple-600" />
+        <Spinner className="w-6 h-6 text-violeta" />
       </div>
     )
   }
@@ -198,8 +195,8 @@ export default function InicioPage() {
     return (
       <div className="max-w-md mx-auto py-10 space-y-4">
         <div className="text-center">
-          <h1 className="text-xl font-semibold text-gray-900">Comece entrando na sua turma</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="titulo-pagina">Comece entrando na sua turma</h1>
+          <p className="mt-1 text-sm text-cinza-texto">
             Suas atividades aparecem aqui assim que você entrar.
           </p>
         </div>
@@ -213,28 +210,32 @@ export default function InicioPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">Início</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
-          O que chegou para você, onde você parou e o que vence logo.
-        </p>
-      </div>
+      {continuar ? (
+        <Continuar item={continuar} />
+      ) : (
+        <div>
+          <h1 className="titulo-pagina">Início</h1>
+          <p className="text-cinza-texto mt-1">O que chegou para você, onde você parou e o que vence logo.</p>
+        </div>
+      )}
 
-      {novidades.length > 0 && <Novidades itens={novidades} />}
-      {provaChegando && <ProvaChegando prova={provaChegando} />}
-      {continuar && <Continuar item={continuar} />}
-      {prazos.length > 0 && <Prazos itens={prazos} />}
+      {(novidades.length > 0 || provaChegando || prazos.length > 0) && (
+        <div className="grid gap-8 lg:grid-cols-2 items-start">
+          {(novidades.length > 0 || provaChegando) && (
+            <div className="space-y-8 min-w-0">
+              {novidades.length > 0 && <Novidades itens={novidades} />}
+              {provaChegando && <ProvaChegando prova={provaChegando} />}
+            </div>
+          )}
+          {prazos.length > 0 && <div className="min-w-0"><Prazos itens={prazos} /></div>}
+        </div>
+      )}
 
       {tudoEmDia && (
-        <div className="bg-white rounded-xl border border-dashed border-gray-200 p-10 text-center">
-          <p className="text-sm text-gray-500">Tudo em dia. Que tal treinar?</p>
-          <Link
-            to="/aluno/treino"
-            className="mt-2 inline-block text-sm font-medium text-purple-600 hover:text-purple-700"
-          >
-            Ir para a trilha
-          </Link>
-        </div>
+        <Card className="border-dashed border-noite/30! text-center p-10!">
+          <p className="text-cinza-texto">Tudo em dia. Que tal treinar?</p>
+          <Botao to="/aluno/treino" className="self-center">Bora treinar!</Botao>
+        </Card>
       )}
     </div>
   )

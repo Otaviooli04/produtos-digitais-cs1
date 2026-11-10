@@ -1,29 +1,37 @@
-// Marca do sistema (mesmo símbolo do favicon).
-export default function Logo({ className = 'w-8 h-8' }) {
+const CORES = {
+  claro: { traco: '#4A2EE0', nome: 'text-noite', ed: 'text-violeta' },
+  violeta: { traco: '#FFFFFF', nome: 'text-white', ed: 'text-coral' },
+}
+
+export function SimboloOrbita({ fundo = 'claro', className = '' }) {
+  const { traco } = CORES[fundo]
   return (
-    <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#8b5cf6" />
-          <stop offset="1" stopColor="#6d28d9" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="8" fill="url(#logoGrad)" />
-      <g fill="#fff">
-        <rect x="7" y="17" width="4.2" height="9" rx="2.1" />
-        <rect x="13.9" y="12" width="4.2" height="14" rx="2.1" />
-        <rect x="20.8" y="7" width="4.2" height="19" rx="2.1" />
-      </g>
-      <polyline
-        points="9.1,14 16,9 22.9,4.5"
-        fill="none" stroke="#fff" strokeOpacity="0.5"
-        strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
-      />
-      <g fill="#fff" fillOpacity="0.9">
-        <circle cx="9.1" cy="14" r="1.5" />
-        <circle cx="16" cy="9" r="1.5" />
-        <circle cx="22.9" cy="4.5" r="1.5" />
-      </g>
+    <svg className={className} viewBox="0 0 84 84" aria-hidden="true">
+      <circle cx="42" cy="42" r="38" fill="none" stroke={traco} strokeWidth="3" />
+      <circle cx="42" cy="42" r="23" fill="none" stroke={traco} strokeWidth="3" opacity="0.45" />
+      <circle cx="42" cy="42" r="10" fill={traco} />
+      <circle cx="69" cy="15" r="7" fill="#FF6B4A" />
+      <circle cx="20" cy="56" r="5" fill={traco} />
     </svg>
+  )
+}
+
+const TAMANHOS = {
+  md: { simbolo: 'w-8 h-8', texto: 'text-[22px]', espaco: 'gap-2.5' },
+  lg: { simbolo: 'w-12 h-12', texto: 'text-[32px]', espaco: 'gap-[18px]' },
+}
+
+// Sobre violeta use sempre tamanho `lg`: o guia só aceita coral sobre violeta a partir de 32 px.
+export default function Logo({ fundo = 'claro', tamanho = 'md', soSimbolo = false }) {
+  const t = TAMANHOS[tamanho]
+  const { nome, ed } = CORES[fundo]
+  if (soSimbolo) return <SimboloOrbita fundo={fundo} className={t.simbolo} />
+  return (
+    <span className={`inline-flex items-center ${t.espaco}`}>
+      <SimboloOrbita fundo={fundo} className={t.simbolo} />
+      <span className={`font-logo font-medium tracking-[-0.03em] ${t.texto} ${nome}`}>
+        centraliz<span className={`font-bold ${ed}`}>Ed</span>
+      </span>
+    </span>
   )
 }

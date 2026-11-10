@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import Spinner from './Spinner'
+import Botao from './ui/Botao'
+import Card from './ui/Card'
 
 /**
  * O portão entre a atividade montada e a atividade visível para o aluno.
@@ -28,42 +30,38 @@ export default function PublicacaoCard({ exam, onSave }) {
   }
 
   return (
-    <div
-      className={`mb-5 rounded-xl border px-5 py-4 ${
-        publicada ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'
+    <Card
+      className={`py-4! gap-0! ${
+        publicada ? 'border-sucesso! bg-sucesso-fundo!' : 'border-aviso! bg-aviso-fundo!'
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
-          <p className={`text-sm font-medium ${publicada ? 'text-green-900' : 'text-amber-900'}`}>
+          <p className={`text-sm font-bold ${publicada ? 'text-sucesso' : 'text-aviso'}`}>
             {publicada ? 'Publicada para a turma' : 'Rascunho, invisível para o aluno'}
           </p>
-          <p className={`text-xs mt-0.5 ${publicada ? 'text-green-700' : 'text-amber-700'}`}>
+          <p className={`text-xs mt-0.5 ${publicada ? 'text-sucesso' : 'text-aviso'}`}>
             {publicada
               ? 'Os alunos da turma veem esta atividade na lista deles.'
               : 'Revise as questões e os casos de teste antes de publicar.'}
           </p>
           {!publicada && impedimentos.length > 0 && (
-            <ul className="mt-2 text-xs text-amber-800 list-disc list-inside">
+            <ul className="mt-2 text-xs text-aviso list-disc list-inside">
               {impedimentos.map((motivo, i) => <li key={i}>{motivo}</li>)}
             </ul>
           )}
-          {erro && <p className="mt-2 text-xs text-red-600">{erro}</p>}
+          {erro && <p className="mt-2 text-xs text-erro">{erro}</p>}
         </div>
 
-        <button
+        <Botao
+          variante={publicada ? 'secundario' : 'primario'}
           onClick={alternar}
           disabled={salvando || (!publicada && !podePublicar)}
-          className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-            publicada
-              ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              : 'bg-green-600 text-white hover:bg-green-700'
-          }`}
         >
           {salvando && <Spinner className="w-3.5 h-3.5" />}
           {publicada ? 'Voltar para rascunho' : 'Publicar para a turma'}
-        </button>
+        </Botao>
       </div>
-    </div>
+    </Card>
   )
 }

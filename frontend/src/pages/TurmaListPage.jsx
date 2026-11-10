@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { Pencil, Plus, Trash2, Users } from 'lucide-react'
 import { listTurmas, createTurma, updateTurma, deleteTurma } from '../api/exam'
 import Spinner from '../components/Spinner'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ListControls from '../components/ListControls'
+import Botao from '../components/ui/Botao'
+import Card from '../components/ui/Card'
+import Tag from '../components/ui/Tag'
 
 const SORT_OPTIONS = [
   { value: 'recent', label: 'Mais recentes' },
@@ -16,7 +20,6 @@ const SORT_OPTIONS = [
 const paraAlunos = (valor) => (valor === '' ? null : Number(valor))
 
 export default function TurmaListPage() {
-  const navigate = useNavigate()
   const [turmas, setTurmas] = useState([])
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('recent')
@@ -120,36 +123,31 @@ export default function TurmaListPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">Turmas</h1>
-        <button
-          onClick={() => setShowForm(v => !v)}
-          className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <h1 className="titulo-pagina">Turmas</h1>
+        <Botao onClick={() => setShowForm(v => !v)}>
+          <Plus className="w-4 h-4" aria-hidden="true" />
           Nova turma
-        </button>
+        </Botao>
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-          <h2 className="text-sm font-medium text-gray-700 mb-4">Nova turma</h2>
-          <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3">
+        <Card as="form" onSubmit={handleCreate} className="mb-6">
+          <h2 className="titulo-card">Nova turma</h2>
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               value={nome}
               onChange={e => setNome(e.target.value)}
               placeholder="Nome da turma"
-              className="flex-1 text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="campo flex-1"
             />
             <input
               type="text"
               value={codigo}
               onChange={e => setCodigo(e.target.value)}
               placeholder="Código (ex: CS1-2026-1)"
-              className="flex-1 text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="campo flex-1"
             />
             <input
               type="number"
@@ -158,38 +156,32 @@ export default function TurmaListPage() {
               value={alunosPrevistos}
               onChange={e => setAlunosPrevistos(e.target.value)}
               placeholder="Alunos na turma (opcional)"
-              className="sm:w-56 text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="campo sm:w-56!"
             />
-            <button
-              type="submit"
-              disabled={creating || !nome.trim() || !codigo.trim()}
-              className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
+            <Botao type="submit" disabled={creating || !nome.trim() || !codigo.trim()}>
               {creating && <Spinner className="w-4 h-4" />}
               Criar
-            </button>
-          </form>
-        </div>
+            </Botao>
+          </div>
+        </Card>
       )}
 
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 mb-4">
+        <div className="rounded-botao bg-erro-fundo border-2 border-erro px-4 py-3 text-sm text-erro mb-4">
           {error}
         </div>
       )}
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Spinner className="w-6 h-6 text-purple-600" />
+          <Spinner className="w-6 h-6 text-violeta" />
         </div>
       ) : turmas.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-          </svg>
-          <p className="text-sm">Nenhuma turma cadastrada.</p>
-          <p className="text-xs mt-1">Clique em "Nova turma" para começar.</p>
-        </div>
+        <Card className="border-dashed border-noite/30! items-center text-center py-16!">
+          <Users className="w-10 h-10 text-violeta" aria-hidden="true" />
+          <p className="text-sm text-cinza-texto">Nenhuma turma cadastrada.</p>
+          <p className="text-xs text-cinza-texto">Clique em "Nova turma" para começar.</p>
+        </Card>
       ) : (
         <>
           <ListControls
@@ -199,39 +191,36 @@ export default function TurmaListPage() {
             placeholder="Buscar turma por nome ou código…"
           />
           {displayed.length === 0 ? (
-            <p className="text-center py-12 text-sm text-gray-400">Nenhuma turma encontrada para o filtro.</p>
+            <p className="text-center py-12 text-sm text-cinza-texto">Nenhuma turma encontrada para o filtro.</p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {displayed.map(t => (
-            <div
-              key={t.id}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:border-purple-300 hover:shadow-sm transition-all flex flex-col"
-            >
-              <div onClick={() => navigate(`/turma/${t.id}`)} className="cursor-pointer flex-1">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h2 className="text-base font-semibold text-gray-900 leading-tight">{t.nome}</h2>
-                  <span className="shrink-0 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-md">
-                    {t.codigo}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500">{t.exam_count} {t.exam_count === 1 ? 'atividade' : 'atividades'}</p>
-                <p className="text-xs text-gray-400 mt-1">{formatDate(t.created_at)}</p>
-              </div>
-              <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
-                <button
-                  onClick={() => openEdit(t)}
-                  className="text-xs px-2.5 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => setDeleteTarget(t)}
-                  className="text-xs px-2.5 py-1.5 rounded-md border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  Excluir
-                </button>
-              </div>
-            </div>
+                <Card key={t.id} principal className="gap-0!">
+                  <Link to={`/turma/${t.id}`} className="flex-1 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="titulo-card text-xl!">{t.nome}</h2>
+                      <Tag>{t.codigo}</Tag>
+                    </div>
+                    <p className="text-sm text-cinza-texto">{t.exam_count} {t.exam_count === 1 ? 'atividade' : 'atividades'}</p>
+                    <p className="text-xs text-cinza-texto">{formatDate(t.created_at)}</p>
+                  </Link>
+                  <div className="flex gap-1 mt-3 pt-2 border-t-2 border-noite/10">
+                    <button
+                      onClick={() => openEdit(t)}
+                      aria-label={`Editar a turma ${t.nome}`}
+                      className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-botao border-2 border-transparent text-noite hover:border-noite hover:bg-lavanda"
+                    >
+                      <Pencil className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(t)}
+                      aria-label={`Excluir a turma ${t.nome}`}
+                      className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-botao border-2 border-transparent text-erro hover:border-erro hover:bg-erro-fundo"
+                    >
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                </Card>
               ))}
             </div>
           )}
@@ -243,30 +232,26 @@ export default function TurmaListPage() {
           <input
             type="text" value={editNome} onChange={e => setEditNome(e.target.value)}
             placeholder="Nome da turma"
-            className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="campo"
           />
           <input
             type="text" value={editCodigo} onChange={e => setEditCodigo(e.target.value)}
             placeholder="Código"
-            className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="campo"
           />
-          <label className="block text-xs text-gray-500">
+          <label className="block text-xs text-cinza-texto">
             Alunos na turma (opcional)
             <input
               type="number" min={1} max={1000} value={editAlunos} onChange={e => setEditAlunos(e.target.value)}
-              className="mt-1 w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="campo mt-1"
             />
           </label>
           <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={() => setEditTurma(null)}
-              className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
-              Cancelar
-            </button>
-            <button type="submit" disabled={saving || !editNome.trim() || !editCodigo.trim()}
-              className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 transition-colors">
+            <Botao variante="secundario" onClick={() => setEditTurma(null)}>Cancelar</Botao>
+            <Botao type="submit" disabled={saving || !editNome.trim() || !editCodigo.trim()}>
               {saving && <Spinner className="w-4 h-4" />}
               Salvar
-            </button>
+            </Botao>
           </div>
         </form>
       </Modal>

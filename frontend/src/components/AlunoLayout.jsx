@@ -1,28 +1,42 @@
 import { useEffect, useRef, useState } from 'react'
+import { GraduationCap, House, LogOut, Target, TrendingUp } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { NOVIDADES_MUDARAM, contarNovidades, registrarAcesso } from '../api/aluno'
 import { useAlunoAuth } from '../context/AlunoAuthContext'
 import Logo from './Logo'
 
 const linkClass = ({ isActive }) =>
-  `text-sm px-3 py-2.5 sm:py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-    isActive ? 'bg-purple-50 text-purple-700 font-medium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+  `min-h-11 inline-flex items-center px-3 rounded-botao text-sm font-semibold transition-colors whitespace-nowrap ${
+    isActive ? 'bg-lavanda text-violeta' : 'text-noite hover:bg-lavanda'
   }`
 
-function LinkInicio({ novidades }) {
+function Bolinha({ novidades }) {
+  if (novidades <= 0) return null
   return (
-    <NavLink to="/aluno" end className={linkClass}>
-      <span className="inline-flex items-center gap-1.5">
-        Início
-        {novidades > 0 && (
-          <span
-            className="min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-purple-600 text-white text-[10px] font-semibold leading-[1.125rem] text-center"
-          >
-            <span aria-hidden="true">{novidades > 9 ? '9+' : novidades}</span>
-            <span className="sr-only">{`${novidades} novidade${novidades === 1 ? '' : 's'}`}</span>
-          </span>
-        )}
+    <span className="inline-block min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-coral text-noite text-[10px] font-bold leading-[1.125rem] text-center">
+      <span aria-hidden="true">{novidades > 9 ? '9+' : novidades}</span>
+      <span className="sr-only">{`${novidades} novidade${novidades === 1 ? '' : 's'}`}</span>
+    </span>
+  )
+}
+
+function Aba({ to, end, icone, rotulo, novidades = 0 }) {
+  const Icone = icone
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        `relative flex flex-col items-center justify-center gap-0.5 min-h-14 text-[11px] font-bold ${
+          isActive ? 'text-violeta' : 'text-cinza-texto'
+        }`
+      }
+    >
+      <span className="relative">
+        <Icone className="w-[22px] h-[22px]" />
+        <span className="absolute -top-1.5 left-4"><Bolinha novidades={novidades} /></span>
       </span>
+      {rotulo}
     </NavLink>
   )
 }
@@ -80,16 +94,15 @@ export default function AlunoLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 sm:sticky sm:top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-5">
-            <Link to="/aluno" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-              <Logo className="w-7 h-7" />
-              <span className="font-semibold text-gray-900 text-sm">Analytics CS1</span>
-            </Link>
+    <div className="min-h-screen bg-white">
+      <nav className="bg-white border-b-2 border-noite sm:sticky sm:top-0 z-30">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-6">
+            <Link to="/aluno" aria-label="Início do CentralizEd"><Logo /></Link>
             <div className="hidden sm:flex items-center gap-1">
-              <LinkInicio novidades={novidades} />
+              <NavLink to="/aluno" end className={linkClass}>
+                <span className="inline-flex items-center gap-1.5">Início <Bolinha novidades={novidades} /></span>
+              </NavLink>
               <NavLink to="/aluno/turmas" className={linkClass}>Turmas</NavLink>
               <NavLink to="/aluno/treino" className={linkClass}>Treino</NavLink>
               <NavLink to="/aluno/progresso" className={linkClass}>Meu progresso</NavLink>
@@ -97,34 +110,39 @@ export default function AlunoLayout() {
           </div>
 
           {aluno && (
-            <div className="flex items-center gap-3">
-              <NavLink to="/aluno/perfil" className="flex items-center gap-2 p-1 -m-1 hover:opacity-80 transition-opacity">
-                <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center">
-                  <span className="text-xs font-semibold text-purple-600">
-                    {aluno.nome?.[0]?.toUpperCase()}
-                  </span>
-                </div>
-                <span className="text-sm text-gray-700 hidden sm:block">{aluno.nome}</span>
+            <div className="flex items-center gap-1">
+              <NavLink to="/aluno/perfil" className="min-h-11 flex items-center gap-2 px-2 rounded-botao hover:bg-lavanda transition-colors">
+                <span className="w-8 h-8 rounded-full bg-lavanda border-2 border-noite flex items-center justify-center text-xs font-bold text-violeta">
+                  {aluno.nome?.[0]?.toUpperCase()}
+                </span>
+                <span className="text-sm font-semibold hidden sm:block">{aluno.nome}</span>
               </NavLink>
               <button
+                type="button"
                 onClick={handleLogout}
-                className="text-xs px-3 py-2.5 sm:py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                aria-label="Sair"
+                className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-botao text-cinza-texto hover:bg-lavanda transition-colors"
               >
-                Sair
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
           )}
         </div>
-        <div className="sm:hidden border-t border-gray-100 px-2 py-1.5 flex gap-1 overflow-x-auto">
-          <LinkInicio novidades={novidades} />
-          <NavLink to="/aluno/turmas" className={linkClass}>Turmas</NavLink>
-          <NavLink to="/aluno/treino" className={linkClass}>Treino</NavLink>
-          <NavLink to="/aluno/progresso" className={linkClass}>Progresso</NavLink>
-        </div>
       </nav>
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
+
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-8 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-8">
         <Outlet />
       </main>
+
+      <nav
+        aria-label="Navegação principal"
+        className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t-2 border-noite grid grid-cols-4 pb-[env(safe-area-inset-bottom)]"
+      >
+        <Aba to="/aluno" end icone={House} rotulo="Início" novidades={novidades} />
+        <Aba to="/aluno/turmas" icone={GraduationCap} rotulo="Turmas" />
+        <Aba to="/aluno/treino" icone={Target} rotulo="Treino" />
+        <Aba to="/aluno/progresso" icone={TrendingUp} rotulo="Progresso" />
+      </nav>
     </div>
   )
 }

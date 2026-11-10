@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight, Check } from 'lucide-react'
 import { getActiveJobs } from '../api/exam'
 import Spinner from './Spinner'
+import Progresso from './ui/Progresso'
 
 const KIND_LABEL = {
   exam_upload: 'Extraindo prova (Gemini)',
@@ -42,26 +44,27 @@ export default function JobDock() {
       {jobs.map(job => {
         const pct = job.total > 0 ? Math.round((job.processed / job.total) * 100) : null
         return (
-          <div key={job.id} className="bg-white rounded-xl border border-purple-200 shadow-lg p-4">
+          <div key={job.id} className="bg-white rounded-card border-2 border-noite shadow-bloco p-4">
             <div className="flex items-center gap-2.5 mb-1.5">
-              <Spinner className="w-4 h-4 text-purple-600 shrink-0" />
-              <p className="text-sm font-medium text-gray-800 flex-1 truncate">
+              <Spinner className="w-4 h-4 text-violeta shrink-0" />
+              <p className="text-sm font-bold text-noite flex-1 truncate">
                 {KIND_LABEL[job.kind] || 'Processando'}
               </p>
-              {pct !== null && <span className="text-xs text-gray-400">{pct}%</span>}
+              {pct !== null && <span className="text-xs text-cinza-texto">{pct}%</span>}
             </div>
-            <p className="text-xs text-gray-500 truncate">{job.stage || 'Em andamento…'}</p>
+            <p className="text-xs text-cinza-texto truncate">{job.stage || 'Em andamento…'}</p>
             {pct !== null && (
-              <div className="mt-2 w-full bg-gray-100 rounded-full h-1.5">
-                <div className="h-1.5 rounded-full bg-purple-500 transition-all" style={{ width: `${pct}%` }} />
+              <div className="mt-2">
+                <Progresso valor={pct} rotulo={KIND_LABEL[job.kind] || 'Processando'} />
               </div>
             )}
             {job.exam_id && (
               <Link
                 to={`/exam/${job.exam_id}`}
-                className="mt-2 inline-block text-xs text-purple-600 hover:underline"
+                className="mt-2 inline-flex items-center gap-1 min-h-11 text-xs font-bold text-violeta hover:underline"
               >
-                Abrir prova →
+                Abrir prova
+                <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
               </Link>
             )}
           </div>
@@ -69,11 +72,9 @@ export default function JobDock() {
       })}
 
       {jobs.length === 0 && justFinished && (
-        <div className="bg-white rounded-xl border border-green-200 shadow-lg p-4 flex items-center gap-2.5">
-          <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-          <p className="text-sm font-medium text-gray-800">Processamento concluído</p>
+        <div className="bg-white rounded-card border-2 border-noite shadow-bloco p-4 flex items-center gap-2.5">
+          <Check className="w-5 h-5 text-sucesso shrink-0" aria-hidden="true" />
+          <p className="text-sm font-bold text-noite">Processamento concluído</p>
         </div>
       )}
     </div>

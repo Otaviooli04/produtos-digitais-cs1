@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { Check, ChevronRight, X } from 'lucide-react'
 import { getStudentDetail } from '../api/exam'
 import Spinner from '../components/Spinner'
 import Badge from '../components/Badge'
 import CodeBlock from '../components/CodeBlock'
 import { compileErrorLines } from '../utils/highlightLines'
+import Botao from '../components/ui/Botao'
+import Card from '../components/ui/Card'
+import Tag from '../components/ui/Tag'
 
 export default function StudentDetailPage() {
   const { id, matricula } = useParams()
@@ -23,8 +27,8 @@ export default function StudentDetailPage() {
 
   const toggle = (qnum) => setExpanded(prev => ({ ...prev, [qnum]: !prev[qnum] }))
 
-  if (loading) return <div className="flex justify-center py-16"><Spinner className="w-6 h-6 text-purple-600" /></div>
-  if (error) return <p className="text-red-600 text-sm">{error}</p>
+  if (loading) return <div className="flex justify-center py-16"><Spinner className="w-6 h-6 text-violeta" /></div>
+  if (error) return <p className="text-erro text-sm">{error}</p>
 
   const diagColor = (sub) => {
     if (sub.all_tests_passed) return 'green'
@@ -47,70 +51,70 @@ export default function StudentDetailPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
-        <Link to={`/exam/${id}`} className="hover:text-gray-600">Atividade #{id}</Link>
-        <span>›</span>
-        <Link to={`/exam/${id}/students`} className="hover:text-gray-600">Alunos</Link>
-        <span>›</span>
-        <span className="text-gray-600">{decoded}</span>
+      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
+        <Link to={`/exam/${id}`} className="hover:text-noite">Atividade #{id}</Link>
+        <ChevronRight className="w-4 h-4" aria-hidden="true" />
+        <Link to={`/exam/${id}/students`} className="hover:text-noite">Alunos</Link>
+        <ChevronRight className="w-4 h-4" aria-hidden="true" />
+        <span>{decoded}</span>
       </div>
 
       {/* Header */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-            <span className="text-base font-bold text-purple-600">{decoded[0]?.toUpperCase()}</span>
+      <Card principal className="mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-botao bg-lavanda flex items-center justify-center shrink-0">
+            <span className="text-base font-extrabold text-violeta">{decoded[0]?.toUpperCase()}</span>
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-gray-900">{decoded}</h1>
-            <p className="text-xs text-gray-400">
+            <h1 className="titulo-card">{decoded}</h1>
+            <p className="text-xs text-cinza-texto">
               {data.answered_count} de {data.total_questions} questões respondidas
             </p>
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <div className="flex-1 rounded-lg bg-gray-50 border border-gray-200 p-3 text-center">
-            <p className="text-xl font-bold text-gray-900">{data.passed_count}</p>
-            <p className="text-xs text-gray-400">Corretas</p>
+        <div className="flex flex-wrap gap-3">
+          <div className="flex-1 min-w-24 rounded-botao bg-lavanda p-3 text-center">
+            <p className="text-xl font-extrabold font-titulo text-noite">{data.passed_count}</p>
+            <p className="text-xs text-cinza-texto">Corretas</p>
           </div>
-          <div className="flex-1 rounded-lg bg-gray-50 border border-gray-200 p-3 text-center">
-            <p className="text-xl font-bold text-gray-900">{data.answered_count - data.passed_count}</p>
-            <p className="text-xs text-gray-400">Incorretas</p>
+          <div className="flex-1 min-w-24 rounded-botao bg-lavanda p-3 text-center">
+            <p className="text-xl font-extrabold font-titulo text-noite">{data.answered_count - data.passed_count}</p>
+            <p className="text-xs text-cinza-texto">Incorretas</p>
           </div>
-          <div className="flex-1 rounded-lg bg-gray-50 border border-gray-200 p-3 text-center">
-            <p className="text-xl font-bold text-gray-900">{data.total_questions - data.answered_count}</p>
-            <p className="text-xs text-gray-400">Não respondidas</p>
+          <div className="flex-1 min-w-24 rounded-botao bg-lavanda p-3 text-center">
+            <p className="text-xl font-extrabold font-titulo text-noite">{data.total_questions - data.answered_count}</p>
+            <p className="text-xs text-cinza-texto">Não respondidas</p>
           </div>
-          <div className="flex-1 rounded-lg bg-purple-50 border border-purple-200 p-3 text-center">
-            <p className="text-xl font-bold text-purple-700">
+          <div className="flex-1 min-w-24 rounded-botao bg-lavanda p-3 text-center">
+            <p className="text-xl font-extrabold font-titulo text-violeta">
               {data.answered_count > 0 ? Math.round(data.passed_count / data.answered_count * 100) : 0}%
             </p>
-            <p className="text-xs text-purple-500">Aproveitamento</p>
+            <p className="text-xs text-violeta">Aproveitamento</p>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Questões */}
       <div className="space-y-3">
         {data.submissions.map(sub => (
-          <div key={sub.question_number} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="flex items-start gap-4 p-5">
-              <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md shrink-0 mt-0.5">
-                Q{sub.question_number}
+          <div key={sub.question_number} className="bg-white rounded-card border-2 border-noite overflow-hidden">
+            <div className="flex flex-wrap items-start gap-4 p-5">
+              <span className="shrink-0">
+                <Tag>Q{sub.question_number}</Tag>
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-700 line-clamp-2">{sub.statement}</p>
+                <p className="text-sm text-cinza-texto line-clamp-2">{sub.statement}</p>
                 {sub.submitted_at && (
-                  <p className="text-xs text-gray-400 mt-1">{formatDate(sub.submitted_at)}</p>
+                  <p className="text-xs text-cinza-texto mt-1">{formatDate(sub.submitted_at)}</p>
                 )}
                 {sub.cluster_dominant_error && (
                   <Link
                     to={`/exam/${id}/questions/${sub.question_number}?tab=cluster`}
-                    className="inline-flex items-center gap-1 mt-1.5 text-xs px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                    className="inline-flex items-center gap-1 mt-1.5 text-xs font-bold px-2 py-0.5 rounded-tag bg-lavanda text-violeta hover:bg-violeta hover:text-white"
                     title="Ver os grupos de dificuldade desta questão"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
                     Grupo: {sub.cluster_dominant_error}{sub.cluster_size ? ` (${sub.cluster_size})` : ''}
                   </Link>
                 )}
@@ -118,62 +122,59 @@ export default function StudentDetailPage() {
               <div className="flex items-center gap-2 shrink-0">
                 <Badge color={diagColor(sub)}>{diagLabel(sub)}</Badge>
                 {sub.submission_id && (
-                  <button
-                    onClick={() => toggle(sub.question_number)}
-                    className="text-xs px-2.5 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
+                  <Botao variante="secundario" onClick={() => toggle(sub.question_number)}>
                     {expanded[sub.question_number] ? 'Ocultar' : 'Ver código'}
-                  </button>
+                  </Botao>
                 )}
               </div>
             </div>
 
             {!sub.submission_id && (
               <div className="px-5 pb-4">
-                <p className="text-xs text-gray-400 italic">Questão não respondida por este aluno.</p>
+                <p className="text-xs text-cinza-texto italic">Questão não respondida por este aluno.</p>
               </div>
             )}
 
             {sub.submission_id && expanded[sub.question_number] && (
-              <div className="border-t border-gray-100">
+              <div className="border-t-2 border-noite/10">
                 <div className="px-4 pt-2 pb-4">
                   <CodeBlock dark code={sub.code} highlight={compileErrorLines(sub.compile_error, sub.code)} />
                 </div>
 
                 {sub.compile_error && (
-                  <div className="px-5 py-3 border-t border-gray-100">
-                    <p className="text-xs font-medium text-gray-500 mb-1.5">Erro de compilação</p>
-                    <pre className="text-xs font-mono bg-red-50 rounded-lg p-3 text-red-700 overflow-x-auto whitespace-pre-wrap">{sub.compile_error}</pre>
+                  <div className="px-5 py-3 border-t-2 border-noite/10">
+                    <p className="text-xs font-bold text-cinza-texto mb-1.5">Erro de compilação</p>
+                    <pre className="text-xs font-mono bg-erro-fundo rounded-botao p-3 text-erro overflow-x-auto whitespace-pre-wrap">{sub.compile_error}</pre>
                   </div>
                 )}
 
                 {sub.pedagogical_diagnosis && (
-                  <div className="px-5 py-3 border-t border-gray-100">
-                    <p className="text-xs font-medium text-gray-500 mb-1">Diagnóstico</p>
-                    <p className="text-sm text-gray-700">{sub.pedagogical_diagnosis}</p>
+                  <div className="px-5 py-3 border-t-2 border-noite/10">
+                    <p className="text-xs font-bold text-cinza-texto mb-1">Diagnóstico</p>
+                    <p className="text-sm text-cinza-texto">{sub.pedagogical_diagnosis}</p>
                     {sub.actionable_feedback && (
-                      <div className="mt-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
-                        <p className="text-xs text-blue-700">{sub.actionable_feedback}</p>
+                      <div className="mt-2 rounded-botao bg-lavanda px-3 py-2">
+                        <p className="text-xs text-violeta">{sub.actionable_feedback}</p>
                       </div>
                     )}
                   </div>
                 )}
 
                 {sub.test_results.length > 0 && (
-                  <div className="px-5 py-3 border-t border-gray-100">
-                    <p className="text-xs font-medium text-gray-500 mb-2">Testes</p>
+                  <div className="px-5 py-3 border-t-2 border-noite/10">
+                    <p className="text-xs font-bold text-cinza-texto mb-2">Testes</p>
                     <div className="space-y-1.5">
                       {sub.test_results.map((tr, i) => (
-                        <div key={i} className={`rounded-lg border px-3 py-2 ${tr.passed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                        <div key={i} className={`rounded-botao border-2 px-3 py-2 ${tr.passed ? 'bg-sucesso-fundo border-sucesso' : 'bg-erro-fundo border-erro'}`}>
                           <div className="flex items-center gap-1.5 mb-1">
-                            <span className={`text-xs font-semibold ${tr.passed ? 'text-green-700' : 'text-red-700'}`}>
-                              {tr.passed ? '✓' : '✗'} Teste {i + 1}
+                            <span className={`inline-flex items-center gap-1 text-xs font-bold ${tr.passed ? 'text-sucesso' : 'text-erro'}`}>
+                              {tr.passed ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <X className="w-3.5 h-3.5" aria-hidden="true" />} Teste {i + 1}
                             </span>
                           </div>
                           <div className="grid grid-cols-3 gap-2 text-xs font-mono">
-                            <div><span className="text-gray-400">entrada:</span> <span className="text-gray-700">{tr.input || '(vazia)'}</span></div>
-                            <div><span className="text-gray-400">esperado:</span> <span className="text-gray-700">{tr.expected_output}</span></div>
-                            <div><span className="text-gray-400">obtido:</span> <span className={tr.passed ? 'text-green-700' : 'text-red-700'}>{tr.actual_output}</span></div>
+                            <div><span className="text-cinza-texto">entrada:</span> <span className="text-cinza-texto">{tr.input || '(vazia)'}</span></div>
+                            <div><span className="text-cinza-texto">esperado:</span> <span className="text-cinza-texto">{tr.expected_output}</span></div>
+                            <div><span className="text-cinza-texto">obtido:</span> <span className={tr.passed ? 'text-sucesso' : 'text-erro'}>{tr.actual_output}</span></div>
                           </div>
                         </div>
                       ))}
