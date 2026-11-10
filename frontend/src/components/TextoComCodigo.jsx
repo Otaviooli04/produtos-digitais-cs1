@@ -2,7 +2,8 @@
 // elemento React, nunca HTML, então o texto do modelo continua sendo só texto.
 export default function TextoComCodigo({ texto }) {
   const partes = String(texto ?? '').split('`')
-  if (partes.length < 3 || partes.length % 2 === 0) return texto
+  const trechoVazio = partes.some((parte, i) => i % 2 === 1 && !parte)
+  if (partes.length < 3 || partes.length % 2 === 0 || trechoVazio) return texto
   return (
     <>
       {partes.map((parte, i) => (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -16,10 +16,29 @@ export default function Layout() {
   // Guarda onde a gaveta foi aberta: navegar para outro lugar já a fecha.
   const [gavetaEm, setGavetaEm] = useState(null)
   const gavetaAberta = gavetaEm === aqui
+  const abridor = useRef(null)
+  const devolverFoco = useRef(false)
+
+  // Fechar sem navegar devolve o foco ao botão que abriu a gaveta. O foco espera
+  // a renderização, porque o cabeçalho fica inerte enquanto a gaveta está aberta.
+  const fecharGaveta = () => {
+    devolverFoco.current = true
+    setGavetaEm(null)
+  }
+
+  useEffect(() => {
+    if (gavetaAberta || !devolverFoco.current) return
+    devolverFoco.current = false
+    abridor.current?.focus()
+  }, [gavetaAberta])
 
   useEffect(() => {
     if (!gavetaAberta) return undefined
-    const aoTeclar = (e) => { if (e.key === 'Escape') setGavetaEm(null) }
+    const aoTeclar = (e) => {
+      if (e.key !== 'Escape') return
+      devolverFoco.current = true
+      setGavetaEm(null)
+    }
     window.addEventListener('keydown', aoTeclar)
     return () => window.removeEventListener('keydown', aoTeclar)
   }, [gavetaAberta])
@@ -44,10 +63,11 @@ export default function Layout() {
         {menu}
       </aside>
 
-      <header className="lg:hidden sticky top-0 z-30 bg-white border-b-2 border-noite h-14 px-4 flex items-center justify-between">
+      <header inert={gavetaAberta} className="lg:hidden sticky top-0 z-30 bg-white border-b-2 border-noite h-14 px-4 flex items-center justify-between">
         <Link to="/" aria-label="Início do CentralizEd"><Logo /></Link>
         {professor && (
           <button
+            ref={abridor}
             type="button"
             onClick={() => setGavetaEm(aqui)}
             aria-label="Abrir menu"
@@ -64,7 +84,7 @@ export default function Layout() {
           <button
             type="button"
             aria-label="Fechar menu"
-            onClick={() => setGavetaEm(null)}
+            onClick={fecharGaveta}
             className="absolute inset-0 w-full h-full bg-noite/40"
           />
           <aside
@@ -76,7 +96,7 @@ export default function Layout() {
             <button
               type="button"
               autoFocus
-              onClick={() => setGavetaEm(null)}
+              onClick={fecharGaveta}
               aria-label="Fechar menu"
               className="absolute top-3 right-3 z-10 min-h-11 min-w-11 inline-flex items-center justify-center rounded-botao hover:bg-lavanda"
             >
@@ -87,7 +107,7 @@ export default function Layout() {
         </div>
       )}
 
-      <main className="min-w-0 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
+      <main inert={gavetaAberta} className="min-w-0 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
         <Outlet context={{ contexto }} />
       </main>
       {professor && <JobDock />}
