@@ -51,7 +51,7 @@ function PassRateBar({ rate }) {
   return (
     <div className="flex items-center gap-2 mt-2">
       <div className="flex-1">
-        <Progresso valor={rate} rotulo="Taxa de aprovação" />
+        <Progresso valor={rate} rotulo="Taxa de aprovação" cor={corDaTaxa(rate)} />
       </div>
       <span className="text-[13px] font-bold text-noite w-10 text-right">{rate}%</span>
     </div>

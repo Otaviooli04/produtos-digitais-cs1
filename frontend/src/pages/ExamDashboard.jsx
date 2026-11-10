@@ -15,6 +15,8 @@ import PublicacaoCard from '../components/PublicacaoCard'
 import Botao from '../components/ui/Botao'
 import Card from '../components/ui/Card'
 import PainelDestaque from '../components/ui/PainelDestaque'
+import Progresso from '../components/ui/Progresso'
+import Tag from '../components/ui/Tag'
 import { modoLabel } from '../utils/atividade'
 import { avisarContextoMudou } from '../hooks/useContextoProfessor'
 
