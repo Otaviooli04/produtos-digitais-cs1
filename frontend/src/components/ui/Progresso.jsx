@@ -1,4 +1,4 @@
-export default function Progresso({ valor, rotulo }) {
+export default function Progresso({ valor, rotulo, cor }) {
   const limitado = Math.max(0, Math.min(100, valor))
   return (
     <div
@@ -9,7 +9,7 @@ export default function Progresso({ valor, rotulo }) {
       aria-valuenow={Math.round(limitado)}
       className="h-2.5 rounded-[5px] bg-lavanda overflow-hidden"
     >
-      <div className="h-2.5 rounded-[5px] bg-coral" style={{ width: `${limitado}%` }} />
+      <div className={`h-2.5 rounded-[5px] ${cor ? '' : 'bg-coral'}`} style={{ width: `${limitado}%`, ...(cor ? { backgroundColor: cor } : {}) }} />
     </div>
   )
 }

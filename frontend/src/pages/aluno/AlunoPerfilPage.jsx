@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { changeAlunoPassword, updateAlunoMe } from '../../api/aluno'
 import Spinner from '../../components/Spinner'
+import Botao from '../../components/ui/Botao'
+import Card from '../../components/ui/Card'
 import { useAlunoAuth } from '../../context/AlunoAuthContext'
 
 export default function AlunoPerfilPage() {
@@ -16,8 +18,6 @@ export default function AlunoPerfilPage() {
   const [trocando, setTrocando] = useState(false)
   const [msgSenha, setMsgSenha] = useState('')
   const [erroSenha, setErroSenha] = useState('')
-
-  const campo = 'w-full text-sm rounded-lg border border-noite/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violeta focus:border-transparent'
 
   const salvarPerfil = async (e) => {
     e.preventDefault()
@@ -49,54 +49,50 @@ export default function AlunoPerfilPage() {
 
   return (
     <div className="max-w-md space-y-6">
-      <h1 className="text-xl font-semibold text-noite">Meu perfil</h1>
+      <h1 className="titulo-pagina">Meu perfil</h1>
 
-      <form onSubmit={salvarPerfil} className="bg-white rounded-xl border border-noite/20 p-5 space-y-4">
+      <Card as="form" onSubmit={salvarPerfil}>
         <div>
-          <label className="block text-xs font-medium text-cinza-texto mb-1.5">E-mail</label>
-          <input type="email" value={aluno?.email || ''} disabled className={`${campo} bg-lavanda text-cinza-texto`} />
+          <label className="block text-xs font-bold text-cinza-texto mb-1.5">E-mail</label>
+          <input type="email" value={aluno?.email || ''} disabled className="campo disabled:bg-lavanda disabled:text-cinza-texto" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-cinza-texto mb-1.5">Nome</label>
-          <input type="text" value={nome} onChange={e => setNome(e.target.value)} required className={campo} />
+          <label className="block text-xs font-bold text-cinza-texto mb-1.5">Nome</label>
+          <input type="text" value={nome} onChange={e => setNome(e.target.value)} required className="campo" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-cinza-texto mb-1.5">Matrícula</label>
-          <input type="text" value={matricula} onChange={e => setMatricula(e.target.value)} className={campo} />
+          <label className="block text-xs font-bold text-cinza-texto mb-1.5">Matrícula</label>
+          <input type="text" value={matricula} onChange={e => setMatricula(e.target.value)} className="campo" />
         </div>
         {erroPerfil && <p className="text-xs text-erro">{erroPerfil}</p>}
         {msgPerfil && <p className="text-xs text-sucesso">{msgPerfil}</p>}
-        <button
-          type="submit"
-          disabled={salvando}
-          className="inline-flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-violeta text-white font-medium hover:bg-violeta-escuro disabled:opacity-40 transition-colors"
-        >
-          {salvando && <Spinner className="w-4 h-4" />}
-          Salvar
-        </button>
-      </form>
-
-      <form onSubmit={trocarSenha} className="bg-white rounded-xl border border-noite/20 p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-noite">Trocar senha</h2>
         <div>
-          <label className="block text-xs font-medium text-cinza-texto mb-1.5">Senha atual</label>
-          <input type="password" value={senhaAtual} onChange={e => setSenhaAtual(e.target.value)} required className={campo} />
+          <Botao type="submit" disabled={salvando}>
+            {salvando && <Spinner className="w-4 h-4" />}
+            Salvar
+          </Botao>
+        </div>
+      </Card>
+
+      <Card as="form" onSubmit={trocarSenha}>
+        <h2 className="titulo-card">Trocar senha</h2>
+        <div>
+          <label className="block text-xs font-bold text-cinza-texto mb-1.5">Senha atual</label>
+          <input type="password" value={senhaAtual} onChange={e => setSenhaAtual(e.target.value)} required className="campo" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-cinza-texto mb-1.5">Nova senha</label>
-          <input type="password" value={senhaNova} onChange={e => setSenhaNova(e.target.value)} required className={campo} />
+          <label className="block text-xs font-bold text-cinza-texto mb-1.5">Nova senha</label>
+          <input type="password" value={senhaNova} onChange={e => setSenhaNova(e.target.value)} required className="campo" />
         </div>
         {erroSenha && <p className="text-xs text-erro">{erroSenha}</p>}
         {msgSenha && <p className="text-xs text-sucesso">{msgSenha}</p>}
-        <button
-          type="submit"
-          disabled={trocando}
-          className="inline-flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border border-noite/20 text-cinza-texto hover:bg-lavanda disabled:opacity-40 transition-colors"
-        >
-          {trocando && <Spinner className="w-4 h-4" />}
-          Trocar senha
-        </button>
-      </form>
+        <div>
+          <Botao type="submit" variante="secundario" disabled={trocando}>
+            {trocando && <Spinner className="w-4 h-4" />}
+            Trocar senha
+          </Botao>
+        </div>
+      </Card>
     </div>
   )
 }

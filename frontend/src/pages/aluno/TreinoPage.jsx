@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom'
 import { gerarExercicio, getTrilha } from '../../api/aluno'
 import Badge from '../../components/Badge'
 import Spinner from '../../components/Spinner'
+import Botao from '../../components/ui/Botao'
+import Card from '../../components/ui/Card'
+import RotuloSecao from '../../components/ui/RotuloSecao'
+import Tag from '../../components/ui/Tag'
 import { dataCurta } from '../../utils/datas'
 import { shortError } from '../../utils/errorLabels'
 
@@ -50,7 +54,7 @@ export default function TreinoPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-noite">Treino</h1>
+        <h1 className="titulo-pagina">Treino</h1>
         <p className="text-sm text-cinza-texto mt-0.5">
           Exercícios feitos para o erro que você mais repete. Tentativas ilimitadas,
           e nada daqui entra na sua nota.
@@ -58,7 +62,7 @@ export default function TreinoPage() {
       </div>
 
       {erro && (
-        <div className="rounded-xl border border-aviso/30 bg-aviso-fundo px-4 py-3 text-sm text-aviso">
+        <div className="rounded-botao border-2 border-aviso bg-aviso-fundo px-4 py-3 text-sm text-aviso">
           {erro}
         </div>
       )}
@@ -69,17 +73,17 @@ export default function TreinoPage() {
           <p className="text-xs mt-1">
             Resolva alguma questão da sua turma e volte aqui.
           </p>
-          <Link to="/aluno/turmas" className="inline-block mt-4 text-sm text-violeta hover:text-violeta">
+          <Botao to="/aluno/turmas" className="mt-4">
             Ver minhas turmas
-          </Link>
+          </Botao>
         </div>
       ) : (
         <>
           {pendentes.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">
+            <div className="space-y-3">
+              <RotuloSecao as="h2">
                 Para resolver
-              </h2>
+              </RotuloSecao>
               <div className="space-y-2">
                 {pendentes.map(e => <CartaoExercicio key={e.id} exercicio={e} />)}
               </div>
@@ -87,13 +91,13 @@ export default function TreinoPage() {
           )}
 
           {categorias.length > 0 ? (
-            <div>
-              <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">
+            <div className="space-y-3">
+              <RotuloSecao as="h2">
                 O que você mais erra
-              </h2>
+              </RotuloSecao>
               <div className="space-y-2">
                 {categorias.map(c => (
-                  <div key={c.error_category} className="bg-white rounded-xl border border-noite/20 p-5">
+                  <Card key={c.error_category} className="gap-2!">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge color="red">{shortError(c.error_category)}</Badge>
                       <span className="text-xs text-cinza-texto">
@@ -106,61 +110,57 @@ export default function TreinoPage() {
                       )}
                     </div>
                     {c.o_que_fazer && (
-                      <p className="text-sm text-cinza-texto mt-2">{c.o_que_fazer}</p>
+                      <p className="text-sm text-cinza-texto">{c.o_que_fazer}</p>
                     )}
-                    <button
-                      onClick={() => gerar(c.error_category)}
-                      disabled={gerando != null}
-                      className="mt-3 inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 transition-colors"
-                    >
-                      {gerando === c.error_category && <Spinner className="w-3.5 h-3.5" />}
-                      {c.tem_pendente ? 'Continuar treinando' : 'Treinar isso'}
-                    </button>
-                  </div>
+                    <div>
+                      <Botao onClick={() => gerar(c.error_category)} disabled={gerando != null}>
+                        {gerando === c.error_category && <Spinner className="w-3.5 h-3.5" />}
+                        {c.tem_pendente ? 'Continuar treinando' : 'Treinar isso'}
+                      </Botao>
+                    </div>
+                  </Card>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-dashed border-noite/20 p-8 text-center">
+            <Card className="border-dashed border-noite/30! text-center p-8! items-center">
               <p className="text-sm text-cinza-texto">Você superou todos os erros que repetia.</p>
-              <p className="text-xs text-cinza-texto mt-1">Resolva uma questão da sua turma e volte aqui.</p>
-              <Link to="/aluno/turmas" className="inline-block mt-4 text-sm text-violeta hover:text-violeta">
+              <p className="text-xs text-cinza-texto">Resolva uma questão da sua turma e volte aqui.</p>
+              <Botao to="/aluno/turmas" className="mt-1">
                 Ver minhas turmas
-              </Link>
-            </div>
+              </Botao>
+            </Card>
           )}
 
           {superados.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">
+            <div className="space-y-3">
+              <RotuloSecao as="h2">
                 Erros que você superou
-              </h2>
+              </RotuloSecao>
               <div className="space-y-2">
                 {superados.map(s => (
-                  <div key={s.error_category} className="bg-white rounded-xl border border-noite/20 p-5">
+                  <Card key={s.error_category} className="gap-2!">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge color="green">{shortError(s.error_category)}</Badge>
+                      <Tag variante="sucesso">{shortError(s.error_category)}</Tag>
                       <span className="text-xs text-cinza-texto">superado em {dataCurta(s.superado_em)}</span>
                     </div>
-                    <button
-                      onClick={() => gerar(s.error_category)}
-                      disabled={gerando != null}
-                      className="mt-3 inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-violeta/30 text-violeta hover:bg-lavanda disabled:opacity-40 transition-colors"
-                    >
-                      {gerando === s.error_category && <Spinner className="w-3.5 h-3.5" />}
-                      Treinar de novo
-                    </button>
-                  </div>
+                    <div>
+                      <Botao variante="secundario" onClick={() => gerar(s.error_category)} disabled={gerando != null}>
+                        {gerando === s.error_category && <Spinner className="w-3.5 h-3.5" />}
+                        Treinar de novo
+                      </Botao>
+                    </div>
+                  </Card>
                 ))}
               </div>
             </div>
           )}
 
           {resolvidos.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-cinza-texto uppercase tracking-wide mb-3">
+            <div className="space-y-3">
+              <RotuloSecao as="h2">
                 Já resolvidos
-              </h2>
+              </RotuloSecao>
               <div className="space-y-2">
                 {resolvidos.map(e => <CartaoExercicio key={e.id} exercicio={e} />)}
               </div>
@@ -180,18 +180,20 @@ export default function TreinoPage() {
 
 function CartaoExercicio({ exercicio }) {
   return (
-    <Link
+    <Card
+      as={Link}
       to={`/aluno/treino/${exercicio.id}`}
-      className="block bg-white rounded-xl border border-noite/20 p-4 hover:border-violeta/50 hover:shadow-sm transition-all"
+      principal
+      className="gap-0! p-4! transition-transform active:translate-x-0.5 active:translate-y-0.5"
     >
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-medium text-noite">{exercicio.titulo}</span>
+        <span className="text-sm font-bold text-noite break-words">{exercicio.titulo}</span>
         {exercicio.resolvido && <Badge color="green">resolvido</Badge>}
         <span className="ml-auto text-xs text-cinza-texto">
           {exercicio.tentativas} tentativa{exercicio.tentativas !== 1 ? 's' : ''}
         </span>
       </div>
       <p className="text-xs text-cinza-texto mt-1">{shortError(exercicio.error_category)}</p>
-    </Link>
+    </Card>
   )
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { getAtividade } from '../../api/aluno'
 import Badge from '../../components/Badge'
 import Spinner from '../../components/Spinner'
+import Card from '../../components/ui/Card'
 import { categoriaColor, janelaTexto, modoLabel, situacaoInfo } from '../../utils/atividade'
 
 function QuestaoLinha({ atividade, questao }) {
@@ -10,14 +12,16 @@ function QuestaoLinha({ atividade, questao }) {
   const semTentativas = questao.tentativas_restantes === 0 && !questao.resolvida
 
   return (
-    <Link
+    <Card
+      as={Link}
       to={`/aluno/atividades/${atividade.exam_id}/questoes/${questao.number}`}
-      className="block bg-white rounded-xl border border-noite/20 p-5 hover:border-violeta/50 transition-colors"
+      principal
+      className="gap-0! transition-transform active:translate-x-0.5 active:translate-y-0.5"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-noite">Questão {questao.number}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="titulo-card">Questão {questao.number}</span>
             {questao.resolvida && <Badge color="green">Resolvida</Badge>}
             {!questao.resolvida && questao.ultima_categoria && (
               <Badge color={categoriaColor(questao.ultima_categoria)}>{questao.ultima_categoria}</Badge>
@@ -42,7 +46,7 @@ function QuestaoLinha({ atividade, questao }) {
         )}
         {(bloqueada || semTentativas) && <span className="text-aviso">sem envio disponível</span>}
       </div>
-    </Link>
+    </Card>
   )
 }
 
@@ -81,11 +85,12 @@ export default function AtividadePage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to={`/aluno/turmas/${atividade.turma_id}`} className="text-xs text-cinza-texto hover:text-cinza-texto">
-          ← {atividade.turma_nome}
+        <Link to={`/aluno/turmas/${atividade.turma_id}`} className="inline-flex items-center gap-1 min-h-11 text-sm font-bold text-cinza-texto hover:text-noite">
+          <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="break-words">{atividade.turma_nome}</span>
         </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold text-noite">{atividade.titulo}</h1>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <h1 className="titulo-pagina break-words">{atividade.titulo}</h1>
           <Badge color={atividade.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(atividade.modo)}</Badge>
           <Badge color={situacao.color}>{situacao.label}</Badge>
         </div>
@@ -98,7 +103,7 @@ export default function AtividadePage() {
       </div>
 
       {!atividade.aberta && (
-        <div className="rounded-xl bg-aviso-fundo border border-aviso/30 px-4 py-3 text-sm text-aviso">
+        <div className="rounded-botao bg-aviso-fundo border-2 border-aviso px-4 py-3 text-sm text-aviso">
           {atividade.situacao === 'agendada'
             ? 'Esta atividade ainda não abriu. Você pode ler os enunciados, mas ainda não enviar.'
             : 'Esta atividade já encerrou. Você pode revisar suas tentativas, mas não enviar novas.'}

@@ -3,6 +3,11 @@ import { getErrosRecorrentes, getProgresso } from '../../api/aluno'
 import Badge from '../../components/Badge'
 import BarList from '../../components/BarList'
 import Spinner from '../../components/Spinner'
+import Card from '../../components/ui/Card'
+import PainelDestaque from '../../components/ui/PainelDestaque'
+import Progresso from '../../components/ui/Progresso'
+import RotuloSecao from '../../components/ui/RotuloSecao'
+import { corDaTaxa } from '../../utils/coresGraficos'
 import { dataCurta } from '../../utils/datas'
 import { shortError } from '../../utils/errorLabels'
 
@@ -14,11 +19,11 @@ const TENDENCIA = {
 
 function Kpi({ label, value, sub }) {
   return (
-    <div className="bg-white rounded-xl border border-noite/20 p-5">
-      <p className="text-xs text-cinza-texto font-medium uppercase tracking-wide">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-noite">{value ?? '—'}</p>
-      {sub && <p className="text-xs text-cinza-texto mt-0.5">{sub}</p>}
-    </div>
+    <Card className="gap-0!">
+      <RotuloSecao>{label}</RotuloSecao>
+      <p className="mt-1 font-titulo text-2xl font-extrabold text-noite">{value ?? '—'}</p>
+      {sub && <p className="text-xs text-cinza-texto mt-0.5 break-words">{sub}</p>}
+    </Card>
   )
 }
 
@@ -27,28 +32,26 @@ const TITULO_DO_MODO = { prova: 'Provas', treino: 'Listas' }
 function ProgressoDoModo({ item }) {
   const pct = item.total_questoes ? Math.round(item.questoes_resolvidas / item.total_questoes * 100) : 0
   return (
-    <div className="bg-white rounded-xl border border-noite/20 p-5">
-      <div className="flex items-baseline justify-between">
-        <p className="text-sm font-semibold text-noite">{TITULO_DO_MODO[item.modo] ?? item.modo}</p>
+    <Card>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+        <h3 className="titulo-card">{TITULO_DO_MODO[item.modo] ?? item.modo}</h3>
         <p className="text-xs text-cinza-texto">
           {item.atividades_concluidas} de {item.total_atividades} concluída{item.total_atividades !== 1 ? 's' : ''}
         </p>
       </div>
       {item.total_questoes > 0 ? (
         <>
-          <div className="mt-3 h-2 rounded-full bg-lavanda overflow-hidden">
-            <div className="h-full rounded-full bg-violeta" style={{ width: `${pct}%` }} />
-          </div>
-          <p className="text-xs text-cinza-texto mt-1.5">
+          <Progresso valor={pct} rotulo={`${TITULO_DO_MODO[item.modo] ?? item.modo}: questões resolvidas`} cor={corDaTaxa(pct)} />
+          <p className="text-xs text-cinza-texto">
             {item.questoes_resolvidas} de {item.total_questoes} questões resolvidas
           </p>
         </>
       ) : (
-        <p className="text-xs text-cinza-texto mt-3">
+        <p className="text-xs text-cinza-texto">
           {item.modo === 'treino' ? 'Nenhuma lista na sua turma ainda.' : 'Nenhuma prova na sua turma ainda.'}
         </p>
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -85,20 +88,30 @@ export default function ProgressoPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-noite">Meu progresso</h1>
+        <h1 className="titulo-pagina">Meu progresso</h1>
         <p className="text-sm text-cinza-texto mt-0.5">
           O que suas tentativas mostram sobre o que você já domina e o que ainda trava.
         </p>
       </div>
 
       {semSubmissao ? (
-        <div className="bg-white rounded-xl border border-dashed border-noite/20 p-10 text-center">
+        <Card className="border-dashed border-noite/30! text-center p-10!">
           <p className="text-sm text-cinza-texto">Você ainda não enviou nenhuma tentativa.</p>
-          <p className="text-xs text-cinza-texto mt-1">Resolva uma questão e o acompanhamento começa aqui.</p>
-        </div>
+          <p className="text-xs text-cinza-texto">Resolva uma questão e o acompanhamento começa aqui.</p>
+        </Card>
       ) : (
         <>
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <PainelDestaque>
+            <div className="pr-0 sm:pr-24">
+              <p className="font-titulo font-extrabold text-5xl break-words">{superados.length}</p>
+              <p className="mt-1 font-titulo font-extrabold text-[13px] uppercase tracking-[0.1em] text-white/80">Erros superados</p>
+              <p className="mt-1 text-sm text-white/80">
+                erros que pararam de aparecer · {progresso.total_tentativas} tentativas{noTreino}
+              </p>
+            </div>
+          </PainelDestaque>
+
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
             <Kpi
               label="Questões resolvidas"
               value={`${progresso.questoes_resolvidas}/${progresso.total_questoes}`}
@@ -114,11 +127,6 @@ export default function ProgressoPage() {
               value={progresso.acertos_de_primeira}
               sub="questões e treinos resolvidos no primeiro envio"
             />
-            <Kpi
-              label="Erros superados"
-              value={superados.length}
-              sub={`erros que pararam de aparecer · ${progresso.total_tentativas} tentativas${noTreino}`}
-            />
           </div>
 
           {progresso.por_modo?.length > 0 && (
@@ -128,9 +136,9 @@ export default function ProgressoPage() {
           )}
 
           {progresso.evolucao.length > 0 && (
-            <div className="bg-white rounded-xl border border-noite/20 p-5">
-              <h2 className="text-sm font-semibold text-noite mb-1">Semana a semana</h2>
-              <p className="text-xs text-cinza-texto mb-4">
+            <Card>
+              <h2 className="titulo-card">Semana a semana</h2>
+              <p className="text-xs text-cinza-texto">
                 Tentativas enviadas e o que você resolveu pela primeira vez, nas provas, nas listas e no treino.
               </p>
               <BarList
@@ -141,32 +149,32 @@ export default function ProgressoPage() {
                   title: `Semana de ${semanaLabel(p.periodo)}`,
                 }))}
               />
-            </div>
+            </Card>
           )}
         </>
       )}
 
-      <div>
-        <h2 className="text-sm font-semibold text-noite mb-1">Erros que se repetem</h2>
-        <p className="text-xs text-cinza-texto mb-3">
+      <div className="space-y-3">
+        <RotuloSecao as="h2">Erros que se repetem</RotuloSecao>
+        <p className="text-xs text-cinza-texto">
           {erros.total_com_erro} de {erros.total_submissoes} tentativas tiveram algum erro, somando provas, listas e treino.
         </p>
 
         {erros.erros.length === 0 ? (
-          <div className="bg-white rounded-xl border border-dashed border-noite/20 p-8 text-center">
+          <Card className="border-dashed border-noite/30! text-center p-8!">
             <p className="text-sm text-cinza-texto">
               {superados.length > 0 ? 'Nenhum erro se repetindo agora.' : 'Nenhum erro registrado ainda.'}
             </p>
-          </div>
+          </Card>
         ) : (
           <div className="space-y-3">
             {erros.erros.map(e => {
               const tendencia = TENDENCIA[e.tendencia] ?? TENDENCIA.estavel
               return (
-                <div key={e.error_category} className="bg-white rounded-xl border border-noite/20 p-5">
+                <Card key={e.error_category} className="gap-2!">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-noite" title={e.error_category}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold text-noite" title={e.error_category}>
                         {shortError(e.error_category)}
                       </span>
                       <Badge color={tendencia.color}>{tendencia.label}</Badge>
@@ -177,15 +185,15 @@ export default function ProgressoPage() {
                   </div>
 
                   {e.o_que_fazer && (
-                    <div className="mt-3 rounded-lg bg-lavanda border border-violeta/15 px-4 py-2.5">
+                    <div className="rounded-botao bg-lavanda border-2 border-violeta px-4 py-2.5">
                       <p className="text-xs text-violeta">{e.o_que_fazer}</p>
                     </div>
                   )}
 
                   {e.questoes.length > 0 && (
-                    <p className="mt-2 text-xs text-cinza-texto">Aconteceu em: {e.questoes.join(', ')}</p>
+                    <p className="text-xs text-cinza-texto break-words">Aconteceu em: {e.questoes.join(', ')}</p>
                   )}
-                </div>
+                </Card>
               )
             })}
           </div>
@@ -193,12 +201,12 @@ export default function ProgressoPage() {
       </div>
 
       {superados.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-noite mb-1">Erros que você superou</h2>
-          <p className="text-xs text-cinza-texto mb-3">
+        <div className="space-y-3">
+          <RotuloSecao as="h2">Erros que você superou</RotuloSecao>
+          <p className="text-xs text-cinza-texto">
             Você acertou um treino feito para eles depois da última vez que apareceram. Se um voltar, ele sobe para a lista de cima.
           </p>
-          <div className="bg-white rounded-xl border border-noite/20 divide-y divide-noite/10">
+          <Card className="p-0! gap-0! divide-y-2 divide-noite/10 overflow-hidden">
             {superados.map(s => (
               <div key={s.error_category} className="flex flex-wrap items-center gap-2 px-5 py-3">
                 <span className="text-sm text-noite" title={s.error_category}>
@@ -210,7 +218,7 @@ export default function ProgressoPage() {
                 </span>
               </div>
             ))}
-          </div>
+          </Card>
         </div>
       )}
     </div>
