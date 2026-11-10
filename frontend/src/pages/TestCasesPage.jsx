@@ -232,12 +232,12 @@ export default function TestCasesPage() {
           {pending.map((tc, i) => (
             <div key={i} className="flex items-center gap-4 px-5 py-3">
               <span className="text-xs text-cinza-texto shrink-0">novo</span>
-              <div className="flex-1 grid grid-cols-2 gap-4">
-                <div>
+              <div className="flex-1 min-w-0 grid grid-cols-2 gap-4">
+                <div className="min-w-0">
                   <p className="text-xs text-cinza-texto mb-0.5">Entrada</p>
                   <code className="text-xs text-cinza-texto bg-lavanda px-2 py-1 rounded-botao block truncate">{tc.input || '(vazia)'}</code>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-cinza-texto mb-0.5">Saída esperada</p>
                   <code className="text-xs text-cinza-texto bg-lavanda px-2 py-1 rounded-botao block truncate">{tc.expected_output}</code>
                 </div>

@@ -151,7 +151,7 @@ function QuestaoConteudo({ examId, numero }) {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 items-start">
+      <div className="grid gap-6 lg:grid-cols-2 lg:grid-rows-[auto_1fr] items-start">
         <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
           <Card principal>
             <p className="text-sm text-cinza-texto leading-relaxed whitespace-pre-wrap break-words">{questao.statement}</p>

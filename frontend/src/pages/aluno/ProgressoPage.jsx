@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getErrosRecorrentes, getProgresso } from '../../api/aluno'
 import Badge from '../../components/Badge'
@@ -7,7 +8,6 @@ import Card from '../../components/ui/Card'
 import PainelDestaque from '../../components/ui/PainelDestaque'
 import Progresso from '../../components/ui/Progresso'
 import RotuloSecao from '../../components/ui/RotuloSecao'
-import { corDaTaxa } from '../../utils/coresGraficos'
 import { dataCurta } from '../../utils/datas'
 import { shortError } from '../../utils/errorLabels'
 
@@ -41,7 +41,7 @@ function ProgressoDoModo({ item }) {
       </div>
       {item.total_questoes > 0 ? (
         <>
-          <Progresso valor={pct} rotulo={`${TITULO_DO_MODO[item.modo] ?? item.modo}: questões resolvidas`} cor={corDaTaxa(pct)} />
+          <Progresso valor={pct} rotulo={`${TITULO_DO_MODO[item.modo] ?? item.modo}: questões resolvidas`} />
           <p className="text-xs text-cinza-texto">
             {item.questoes_resolvidas} de {item.total_questoes} questões resolvidas
           </p>
@@ -145,7 +145,11 @@ export default function ProgressoPage() {
                 items={progresso.evolucao.map(p => ({
                   label: semanaLabel(p.periodo),
                   value: p.tentativas,
-                  display: `${p.tentativas} · ${p.resolvidas}✓`,
+                  display: (
+                    <span aria-label={`${p.tentativas} tentativas, ${p.resolvidas} resolvidas`}>
+                      {p.tentativas} · {p.resolvidas}<Check className="w-3.5 h-3.5 inline" aria-hidden="true" />
+                    </span>
+                  ),
                   title: `Semana de ${semanaLabel(p.periodo)}`,
                 }))}
               />

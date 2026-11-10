@@ -56,7 +56,7 @@ export default function RespostaAoGrupo({ resposta, respostaEm, insight, alunos,
             </div>
           </div>
         ) : (
-          <Botao variante="secundario" onClick={() => setAberto(true)} className="min-h-9! px-3.5! text-[13px]!">
+          <Botao variante="secundario" onClick={() => setAberto(true)} className="sm:min-h-9! px-3.5! text-[13px]!">
             Responder ao grupo
             {alunos > 0 && <span className="font-normal text-cinza-texto"> · {alunos} aluno{alunos !== 1 ? 's' : ''}</span>}
           </Botao>
@@ -89,11 +89,11 @@ export default function RespostaAoGrupo({ resposta, respostaEm, insight, alunos,
       )}
       {erro && <p className="mt-1.5 text-xs text-erro">{erro}</p>}
       <div className="flex items-center gap-2 mt-2">
-        <Botao onClick={salvar} disabled={salvando} className="min-h-9! px-3.5! text-[13px]!">
+        <Botao onClick={salvar} disabled={salvando} className="sm:min-h-9! px-3.5! text-[13px]!">
           {salvando && <Spinner className="w-3 h-3" />}
           {texto.trim() ? 'Enviar ao grupo' : 'Apagar resposta'}
         </Botao>
-        <Botao variante="secundario" onClick={cancelar} disabled={salvando} className="min-h-9! px-3.5! text-[13px]!">
+        <Botao variante="secundario" onClick={cancelar} disabled={salvando} className="sm:min-h-9! px-3.5! text-[13px]!">
           Cancelar
         </Botao>
       </div>

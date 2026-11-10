@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 import {
   getExam, getQuestionSubmissions, getGroups, runClustering, runInsights, salvarRespostaDoGrupo,
   deleteSubmission, reevaluateSubmission,
@@ -19,7 +19,7 @@ import Botao from '../components/ui/Botao'
 import Card from '../components/ui/Card'
 import Progresso from '../components/ui/Progresso'
 import RotuloSecao from '../components/ui/RotuloSecao'
-import { CORES_CATEGORICAS } from '../utils/coresGraficos'
+import { CORES_CATEGORICAS, corDaTaxa } from '../utils/coresGraficos'
 
 const SUB_SORTS = [
   { value: 'situacao', label: 'Situação' },
@@ -269,13 +269,12 @@ export default function QuestionPage() {
     <div>
       <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
         <Link to={`/exam/${id}`} className="hover:text-noite">Atividade #{id}</Link>
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
       </div>
 
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-3 mb-1">
           <h1 className="titulo-pagina">Questão {num}</h1>
-          <Botao variante="secundario" to={`/exam/${id}/questions/${num}/testcases`} className="min-h-9! px-3.5! text-[13px]!">
+          <Botao variante="secundario" to={`/exam/${id}/questions/${num}/testcases`} className="sm:min-h-9! px-3.5! text-[13px]!">
             <Plus className="w-4 h-4" aria-hidden="true" />
             Test cases
           </Botao>
@@ -319,7 +318,7 @@ export default function QuestionPage() {
                 </Badge>
               </div>
 
-              <Progresso valor={passRate} rotulo="Respostas corretas" />
+              <Progresso valor={passRate} rotulo="Respostas corretas" cor={corDaTaxa(passRate)} />
 
               {errorDist.length > 0 && (
                 <Card>
@@ -382,12 +381,12 @@ export default function QuestionPage() {
                             variante="secundario"
                             onClick={() => handleReevaluate(s.id)}
                             disabled={reevaluatingId === s.id}
-                            className="min-h-9! px-3.5! text-[13px]!"
+                            className="sm:min-h-9! px-3.5! text-[13px]!"
                           >
                             {reevaluatingId === s.id && <Spinner className="w-3 h-3" />}
                             Reavaliar
                           </Botao>
-                          <Botao variante="perigo" onClick={() => setDeleteSub(s)} className="min-h-9! px-3.5! text-[13px]!">
+                          <Botao variante="perigo" onClick={() => setDeleteSub(s)} className="sm:min-h-9! px-3.5! text-[13px]!">
                             Excluir
                           </Botao>
                         </div>
@@ -450,7 +449,7 @@ export default function QuestionPage() {
                     <Botao
                       onClick={genInsights}
                       disabled={insightsRunning}
-                      className="min-h-9! px-3.5! text-[13px]!"
+                      className="sm:min-h-9! px-3.5! text-[13px]!"
                     >
                       {insightsRunning && <Spinner className="w-3 h-3" />}
                       {insightsRunning ? 'Gerando…' : 'Gerar intervenção (Gemini)'}
@@ -460,7 +459,7 @@ export default function QuestionPage() {
                     variante="secundario"
                     onClick={runClusterOnly}
                     disabled={groupsRunning}
-                    className="min-h-9! px-3.5! text-[13px]!"
+                    className="sm:min-h-9! px-3.5! text-[13px]!"
                   >
                     {groupsRunning && <Spinner className="w-3 h-3" />}
                     Recalcular
@@ -526,9 +525,10 @@ export default function QuestionPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => setOpenCode(o => ({ ...o, [c.cluster_id]: !o[c.cluster_id] }))}
-                              className="min-h-11 text-xs font-bold text-cinza-texto hover:text-noite transition-colors"
+                              className="inline-flex items-center gap-1 min-h-11 text-xs font-bold text-cinza-texto hover:text-noite transition-colors"
                             >
-                              {openCode[c.cluster_id] ? '− Ocultar' : '+ Ver'} código representativo
+                              <ChevronDown className={`w-4 h-4 transition-transform ${openCode[c.cluster_id] ? 'rotate-180' : ''}`} aria-hidden="true" />
+                              {openCode[c.cluster_id] ? 'Ocultar' : 'Ver'} código representativo
                             </button>
                             {hot.length > 0 && (
                               <span className="text-xs text-erro">

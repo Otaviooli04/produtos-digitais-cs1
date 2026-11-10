@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import Badge from './Badge'
 import Card from './ui/Card'
 import Progresso from './ui/Progresso'
-import { corDaTaxa } from '../utils/coresGraficos'
 import { concluida, janelaTexto, situacaoInfo } from '../utils/atividade'
 
 function ProgressoBarra({ resolvidas, total }) {
@@ -10,7 +9,7 @@ function ProgressoBarra({ resolvidas, total }) {
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 min-w-0">
-        <Progresso valor={pct} rotulo="Questões resolvidas" cor={corDaTaxa(pct)} />
+        <Progresso valor={pct} rotulo="Questões resolvidas" />
       </div>
       <span className="text-xs text-cinza-texto w-24 text-right">{resolvidas}/{total} questões</span>
     </div>

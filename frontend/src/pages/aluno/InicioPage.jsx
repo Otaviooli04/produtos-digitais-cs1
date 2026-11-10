@@ -126,9 +126,9 @@ function Continuar({ item }) {
           <p className="font-titulo font-extrabold text-[13px] uppercase tracking-[0.1em] text-white/80">
             {emAndamento ? 'Continuar de onde parou' : 'Próxima atividade'}
           </p>
-          <p className="mt-1 titulo-pagina break-words">
+          <h1 className="mt-1 titulo-pagina break-words">
             {item.origem === 'trilha' ? `Trilha · ${item.titulo}` : item.titulo}
-          </p>
+          </h1>
           {detalhes.length > 0 && (
             <p className="text-sm text-white/80 mt-1">{detalhes.join(' · ')}</p>
           )}

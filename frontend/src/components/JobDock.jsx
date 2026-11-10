@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 import { getActiveJobs } from '../api/exam'
 import Spinner from './Spinner'
 import Progresso from './ui/Progresso'
@@ -61,9 +61,10 @@ export default function JobDock() {
             {job.exam_id && (
               <Link
                 to={`/exam/${job.exam_id}`}
-                className="mt-2 inline-flex items-center min-h-11 text-xs font-bold text-violeta hover:underline"
+                className="mt-2 inline-flex items-center gap-1 min-h-11 text-xs font-bold text-violeta hover:underline"
               >
-                Abrir prova →
+                Abrir prova
+                <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
               </Link>
             )}
           </div>

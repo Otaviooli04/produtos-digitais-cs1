@@ -50,7 +50,6 @@ export default function ExamUploadPage() {
         <Link to="/" className="hover:text-noite">Turmas</Link>
         <ChevronRight className="w-4 h-4" aria-hidden="true" />
         <Link to={`/turma/${turmaId}?secao=atividades`} className="hover:text-noite">{turma?.nome ?? `Turma #${turmaId}`}</Link>
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
       </div>
 
       <div className="text-center mb-8">

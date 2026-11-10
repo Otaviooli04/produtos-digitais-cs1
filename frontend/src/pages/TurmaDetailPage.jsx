@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { ChevronRight, ClipboardList, Plus, Trash2, Upload } from 'lucide-react'
+import { ClipboardList, Plus, Trash2, Upload } from 'lucide-react'
 import { adicionarListaDeAquecimento, getTurma, getTurmaAnalytics, deleteExam } from '../api/exam'
 import Spinner from '../components/Spinner'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -192,7 +192,6 @@ export default function TurmaDetailPage() {
     <div className="space-y-8">
       <div className="flex items-center gap-1 text-sm text-cinza-texto lg:hidden">
         <Link to="/" className="hover:text-noite">Turmas</Link>
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
       </div>
 
       <PainelDestaque>
@@ -350,7 +349,7 @@ export default function TurmaDetailPage() {
                     <p className="text-[13px] text-cinza-texto mt-2">{formatDate(exam.created_at)}</p>
                   </div>
                   <div className="flex justify-end pt-3 border-t-2 border-noite/10">
-                    <Botao variante="perigo" onClick={() => setDeleteExamTarget(exam)} className="min-h-9! px-3.5! text-[13px]!">
+                    <Botao variante="perigo" onClick={() => setDeleteExamTarget(exam)} className="sm:min-h-9! px-3.5! text-[13px]!">
                       <Trash2 className="w-4 h-4" aria-hidden="true" />
                       Excluir
                     </Botao>

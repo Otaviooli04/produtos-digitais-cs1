@@ -150,7 +150,6 @@ export default function ExamDashboard() {
           <Link to="/" className="hover:text-noite">Turmas</Link>
           <ChevronRight className="w-4 h-4" aria-hidden="true" />
           <Link to={`/turma/${exam.turma_id}?secao=atividades`} className="hover:text-noite">{exam.turma_nome}</Link>
-          <ChevronRight className="w-4 h-4" aria-hidden="true" />
         </div>
       ) : null}
 
@@ -312,24 +311,25 @@ export default function ExamDashboard() {
               </div>
 
               <div className="flex flex-wrap gap-2 pt-3.5 border-t-2 border-noite/10">
-                <Botao variante="secundario" to={`/exam/${id}/questions/${q.number}/testcases`} className="min-h-9! px-3.5! text-[13px]!">
-                  + Test cases
+                <Botao variante="secundario" to={`/exam/${id}/questions/${q.number}/testcases`} className="sm:min-h-9! px-3.5! text-[13px]!">
+                  <Plus className="w-4 h-4" aria-hidden="true" />
+                  Test cases
                 </Botao>
-                <Botao variante="secundario" to={`/exam/${id}/questions/${q.number}`} className="min-h-9! px-3.5! text-[13px]!">
+                <Botao variante="secundario" to={`/exam/${id}/questions/${q.number}`} className="sm:min-h-9! px-3.5! text-[13px]!">
                   Respostas
                 </Botao>
-                <Botao variante="secundario" to={`/exam/${id}/questions/${q.number}?tab=cluster`} className="min-h-9! px-3.5! text-[13px]!">
+                <Botao variante="secundario" to={`/exam/${id}/questions/${q.number}?tab=cluster`} className="sm:min-h-9! px-3.5! text-[13px]!">
                   Grupos de dificuldade
                 </Botao>
                 <Botao
                   variante="secundario"
                   onClick={() => setQuestionForm({ mode: 'edit', question: q })}
-                  className="sm:ml-auto min-h-9! px-3.5! text-[13px]!"
+                  className="sm:ml-auto sm:min-h-9! px-3.5! text-[13px]!"
                 >
                   <Pencil className="w-4 h-4" aria-hidden="true" />
                   Editar
                 </Botao>
-                <Botao variante="perigo" onClick={() => setDeleteQ(q)} className="min-h-9! px-3.5! text-[13px]!">
+                <Botao variante="perigo" onClick={() => setDeleteQ(q)} className="sm:min-h-9! px-3.5! text-[13px]!">
                   <Trash2 className="w-4 h-4" aria-hidden="true" />
                   Excluir
                 </Botao>

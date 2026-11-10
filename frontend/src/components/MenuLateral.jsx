@@ -27,7 +27,7 @@ function Item({ to, icone, ativo, children, aoNavegar }) {
 function Grupo({ titulo, children }) {
   return (
     <div className="space-y-1">
-      <RotuloSecao className="px-3 truncate" >{titulo}</RotuloSecao>
+      <RotuloSecao className="px-3 truncate" title={titulo}>{titulo}</RotuloSecao>
       {children}
     </div>
   )

@@ -99,7 +99,7 @@ function Conteudo({ exercicioId }) {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2 items-start">
+      <div className="grid gap-6 lg:grid-cols-2 lg:grid-rows-[auto_1fr] items-start">
         <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
           <Card principal>
             <RotuloSecao as="h2">Enunciado</RotuloSecao>
@@ -149,7 +149,7 @@ function Conteudo({ exercicioId }) {
                   placeholder="Ex.: o enunciado não diz o formato da saída."
                   className="campo"
                 />
-                <Botao variante="perigo" onClick={reportar} className="mt-2 min-h-9! px-3.5! text-[13px]!">
+                <Botao variante="perigo" onClick={reportar} className="mt-2 sm:min-h-9! px-3.5! text-[13px]!">
                   Tirar da trilha
                 </Botao>
               </div>
