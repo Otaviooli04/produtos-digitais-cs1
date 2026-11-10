@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import LinkDaAtividade from '../components/LinkDaAtividade'
 import { ChevronRight, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { getExam, getTestCases, addTestCases, updateTestCase, deleteTestCase } from '../api/exam'
 import Spinner from '../components/Spinner'
@@ -99,7 +100,7 @@ export default function TestCasesPage() {
   return (
     <div className="max-w-2xl">
       <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <Link to={`/exam/${id}`} className="hover:text-noite">Atividade #{id}</Link>
+        <LinkDaAtividade id={id} />
         <ChevronRight className="w-4 h-4" aria-hidden="true" />
         <span>Questão {num}</span>
         <ChevronRight className="w-4 h-4" aria-hidden="true" />

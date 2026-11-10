@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import LinkDaAtividade from '../components/LinkDaAtividade'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { getStudentDetail } from '../api/exam'
 import Spinner from '../components/Spinner'
@@ -52,7 +53,7 @@ export default function StudentDetailPage() {
   return (
     <div className="max-w-3xl">
       <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <Link to={`/exam/${id}`} className="hover:text-noite">Atividade #{id}</Link>
+        <LinkDaAtividade id={id} />
         <ChevronRight className="w-4 h-4" aria-hidden="true" />
         <Link to={`/exam/${id}/students`} className="hover:text-noite">Alunos</Link>
         <ChevronRight className="w-4 h-4" aria-hidden="true" />
@@ -103,7 +104,7 @@ export default function StudentDetailPage() {
               <span className="shrink-0">
                 <Tag>Q{sub.question_number}</Tag>
               </span>
-              <div className="flex-1 min-w-0">
+              <div className="flex-[1_1_12rem] min-w-0">
                 <p className="text-sm text-cinza-texto line-clamp-2">{sub.statement}</p>
                 {sub.submitted_at && (
                   <p className="text-xs text-cinza-texto mt-1">{formatDate(sub.submitted_at)}</p>

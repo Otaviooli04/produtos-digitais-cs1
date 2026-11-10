@@ -67,9 +67,15 @@ export default function Layout() {
             onClick={() => setGavetaEm(null)}
             className="absolute inset-0 w-full h-full bg-noite/40"
           />
-          <aside className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] bg-white border-r-2 border-noite">
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] bg-white border-r-2 border-noite"
+          >
             <button
               type="button"
+              autoFocus
               onClick={() => setGavetaEm(null)}
               aria-label="Fechar menu"
               className="absolute top-3 right-3 z-10 min-h-11 min-w-11 inline-flex items-center justify-center rounded-botao hover:bg-lavanda"
@@ -82,7 +88,7 @@ export default function Layout() {
       )}
 
       <main className="min-w-0 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
-        <Outlet />
+        <Outlet context={{ contexto }} />
       </main>
       {professor && <JobDock />}
     </div>
