@@ -1,6 +1,9 @@
+import { Check, MessageSquare, X } from 'lucide-react'
 import Badge from './Badge'
 import FunctionCheckCard from './FunctionCheckCard'
 import AjudaEmEtapas from './AjudaEmEtapas'
+import Card from './ui/Card'
+import Tag from './ui/Tag'
 import { categoriaColor, formatarData } from '../utils/atividade'
 
 /**
@@ -21,8 +24,8 @@ export default function TentativaDetalhe({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-noite/20 bg-white p-5">
-        <div className="flex flex-wrap items-center gap-2 mb-3">
+      <Card>
+        <div className="flex flex-wrap items-center gap-2">
           <Badge color={categoriaColor(tentativa.error_category)}>
             {tentativa.error_category || 'Sem diagnóstico'}
           </Badge>
@@ -30,31 +33,29 @@ export default function TentativaDetalhe({
             Tentativa {tentativa.attempt_number} · {formatarData(tentativa.submitted_at)}
           </span>
         </div>
-        <p className="text-sm text-cinza-texto">{tentativa.pedagogical_diagnosis}</p>
+        <p className="text-sm text-cinza-texto break-words">{tentativa.pedagogical_diagnosis}</p>
         {tentativa.actionable_feedback && (
-          <div className="mt-3 rounded-lg bg-lavanda border border-violeta/15 px-4 py-2.5">
-            <p className="text-xs font-medium text-violeta mb-0.5">O que fazer</p>
-            <p className="text-xs text-violeta">{tentativa.actionable_feedback}</p>
+          <div className="rounded-botao bg-lavanda border-2 border-violeta px-4 py-2.5">
+            <p className="text-xs font-bold text-violeta mb-0.5">O que fazer</p>
+            <p className="text-xs text-violeta break-words">{tentativa.actionable_feedback}</p>
           </div>
         )}
 
         {temErro && podePedirAjuda && (
           <AjudaEmEtapas key={tentativa.submission_id} tentativa={tentativa} />
         )}
-      </div>
+      </Card>
 
       {/* O retorno do professor vem em cartão próprio, fora do bloco do
           diagnóstico, para não se confundir com o que a máquina escreveu. O aluno
           não sabe (nem precisa saber) que o texto foi escrito para um grupo. */}
       {tentativa.resposta_do_professor && (
-        <div className="rounded-xl border border-sucesso/30 bg-sucesso-fundo p-5">
-          <div className="flex items-center gap-2 mb-1.5">
-            <svg className="w-4 h-4 text-sucesso" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <h3 className="text-sm font-medium text-sucesso">Retorno do seu professor</h3>
+        <Card className="border-sucesso! bg-sucesso-fundo! gap-1.5!">
+          <div className="flex flex-wrap items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-sucesso" aria-hidden="true" />
+            <h3 className="text-sm font-bold text-sucesso">Retorno do seu professor</h3>
             {tentativa.resposta_do_professor_em && (
-              <span className="text-xs text-sucesso/70">
+              <span className="text-xs text-sucesso">
                 {formatarData(tentativa.resposta_do_professor_em)}
               </span>
             )}
@@ -62,55 +63,57 @@ export default function TentativaDetalhe({
           <p className="text-sm text-sucesso leading-relaxed whitespace-pre-wrap break-words">
             {tentativa.resposta_do_professor}
           </p>
-        </div>
+        </Card>
       )}
 
       {functionCheck && !functionCheck.compliant && <FunctionCheckCard check={functionCheck} />}
 
       {tentativa.compile_error && (
-        <div className="rounded-xl border border-noite/20 bg-white p-5">
-          <h3 className="text-sm font-medium text-cinza-texto mb-2">Erro de compilação</h3>
-          <pre className="text-xs font-mono bg-noite rounded-lg p-3 overflow-x-auto text-codigo-erro whitespace-pre-wrap">{tentativa.compile_error}</pre>
-        </div>
+        <Card className="gap-2!">
+          <h3 className="text-sm font-bold text-noite">Erro de compilação</h3>
+          <pre className="text-xs font-mono bg-noite rounded-botao p-3 overflow-x-auto text-codigo-erro whitespace-pre-wrap">{tentativa.compile_error}</pre>
+        </Card>
       )}
 
       {tentativa.warnings && (
-        <div className="rounded-xl border border-noite/20 bg-white p-5">
-          <h3 className="text-sm font-medium text-cinza-texto mb-2">Avisos do compilador</h3>
-          <pre className="text-xs font-mono bg-noite rounded-lg p-3 overflow-x-auto text-codigo-aviso whitespace-pre-wrap">{tentativa.warnings}</pre>
-        </div>
+        <Card className="gap-2!">
+          <h3 className="text-sm font-bold text-noite">Avisos do compilador</h3>
+          <pre className="text-xs font-mono bg-noite rounded-botao p-3 overflow-x-auto text-codigo-aviso whitespace-pre-wrap">{tentativa.warnings}</pre>
+        </Card>
       )}
 
       {tentativa.test_results?.length > 0 && (
-        <div className="rounded-xl border border-noite/20 bg-white p-5">
-          <h3 className="text-sm font-medium text-cinza-texto mb-3">
+        <Card className="gap-3!">
+          <h3 className="text-sm font-bold text-noite">
             Testes: {tentativa.tests_passed}/{tentativa.tests_total} passaram
           </h3>
           <div className="space-y-2">
             {tentativa.test_results.map((tr, i) => (
-              <div
+              <Card
                 key={i}
-                className={`rounded-lg border px-4 py-3 ${tr.passed ? 'bg-sucesso-fundo border-sucesso/30' : 'bg-erro-fundo border-erro/30'}`}
+                className={`rounded-botao! p-4! gap-2! ${tr.passed ? 'bg-sucesso-fundo! border-sucesso!' : 'bg-erro-fundo! border-erro!'}`}
               >
-                <p className={`text-xs font-semibold mb-1.5 ${tr.passed ? 'text-sucesso' : 'text-erro'}`}>
-                  {tr.passed ? '✓ Correto' : '✗ Incorreto'}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono break-words">
-                  <div><span className="text-cinza-texto">entrada: </span><span className="text-cinza-texto">{tr.input || '(vazia)'}</span></div>
-                  <div><span className="text-cinza-texto">esperado: </span><span className="text-cinza-texto">{tr.expected_output}</span></div>
-                  <div><span className="text-cinza-texto">obtido: </span><span className={tr.passed ? 'text-sucesso' : 'text-erro'}>{tr.actual_output}</span></div>
+                <div>
+                  {tr.passed
+                    ? <Tag variante="sucesso"><Check className="w-3.5 h-3.5 mr-1" aria-hidden="true" />Correto</Tag>
+                    : <Tag variante="erro"><X className="w-3.5 h-3.5 mr-1" aria-hidden="true" />Incorreto</Tag>}
                 </div>
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono break-words">
+                  <div className="min-w-0"><span className="text-cinza-texto">entrada: </span><span className="text-noite">{tr.input || '(vazia)'}</span></div>
+                  <div className="min-w-0"><span className="text-cinza-texto">esperado: </span><span className="text-noite">{tr.expected_output}</span></div>
+                  <div className="min-w-0"><span className="text-cinza-texto">obtido: </span><span className={tr.passed ? 'text-sucesso' : 'text-erro'}>{tr.actual_output}</span></div>
+                </div>
+              </Card>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
       {mostrarCodigo && tentativa.code && (
-        <div className="rounded-xl border border-noite/20 bg-white p-5">
-          <h3 className="text-sm font-medium text-cinza-texto mb-2">Código enviado</h3>
-          <pre className="text-xs font-mono bg-noite rounded-lg p-3 overflow-x-auto text-codigo-texto whitespace-pre">{tentativa.code}</pre>
-        </div>
+        <Card className="gap-2!">
+          <h3 className="text-sm font-bold text-noite">Código enviado</h3>
+          <pre className="text-xs font-mono bg-noite rounded-botao p-3 overflow-x-auto text-codigo-texto whitespace-pre">{tentativa.code}</pre>
+        </Card>
       )}
     </div>
   )

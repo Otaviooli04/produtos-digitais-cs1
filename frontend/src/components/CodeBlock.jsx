@@ -5,10 +5,10 @@ export default function CodeBlock({ code, highlight = [], dark = false }) {
   const t = dark
     ? { box: 'bg-noite', gutter: 'text-white/40', text: 'text-codigo-sucesso',
         hotRow: 'bg-erro/15', hotGutter: 'text-codigo-erro', hotText: 'text-codigo-erro' }
-    : { box: 'bg-lavanda', gutter: 'text-cinza-texto/60', text: 'text-cinza-texto',
+    : { box: 'bg-lavanda', gutter: 'text-cinza-texto', text: 'text-cinza-texto',
         hotRow: 'bg-erro-fundo', hotGutter: 'text-erro', hotText: 'text-erro' }
   return (
-    <div className={`mt-2 text-xs font-mono ${t.box} rounded-lg overflow-x-auto max-h-60`}>
+    <div className={`mt-2 text-xs font-mono ${t.box} rounded-botao overflow-x-auto max-h-60`}>
       <table className="w-full border-collapse">
         <tbody>
           {lines.map((ln, i) => {

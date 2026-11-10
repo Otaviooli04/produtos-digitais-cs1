@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Spinner from './Spinner'
+import Botao from './ui/Botao'
 import { pedirAjuda } from '../api/aluno'
 
 const PROXIMO = ['Preciso de uma dica', 'Outra pista', 'Ver explicação completa']
@@ -42,30 +43,26 @@ export default function AjudaEmEtapas({ tentativa }) {
       {pistas.map((pista, i) => (
         <div
           key={i}
-          className={`rounded-lg px-4 py-2.5 border ${i === 0 ? 'bg-lavanda border-violeta/30' : 'bg-white border-violeta/15'}`}
+          className={`rounded-botao px-4 py-2.5 border-2 border-violeta ${i === 0 ? 'bg-lavanda' : 'bg-white'}`}
         >
-          <p className="text-xs font-medium text-violeta mb-0.5">{i === 0 ? 'Dica' : 'Outra pista'}</p>
+          <p className="text-xs font-bold text-violeta mb-0.5">{i === 0 ? 'Dica' : 'Outra pista'}</p>
           <p className="text-xs text-violeta whitespace-pre-wrap break-words">{pista}</p>
         </div>
       ))}
 
       {explicacao && (
-        <div className="rounded-lg bg-lavanda border border-violeta/15 px-4 py-2.5">
-          <p className="text-xs font-medium text-violeta mb-0.5">Explicando o seu código</p>
+        <div className="rounded-botao bg-lavanda border-2 border-violeta px-4 py-2.5">
+          <p className="text-xs font-bold text-violeta mb-0.5">Explicando o seu código</p>
           <p className="text-xs text-violeta whitespace-pre-wrap break-words">{explicacao}</p>
         </div>
       )}
 
       {nivel < 3 && (
         <div>
-          <button
-            onClick={abrirProxima}
-            disabled={carregando}
-            className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-violeta/30 text-violeta hover:bg-lavanda disabled:opacity-40 transition-colors"
-          >
+          <Botao variante="secundario" onClick={abrirProxima} disabled={carregando}>
             {carregando && <Spinner className="w-3.5 h-3.5" />}
             {carregando ? 'Pensando…' : PROXIMO[nivel]}
-          </button>
+          </Botao>
           {erro && <p className="mt-1.5 text-xs text-erro">{erro}</p>}
         </div>
       )}

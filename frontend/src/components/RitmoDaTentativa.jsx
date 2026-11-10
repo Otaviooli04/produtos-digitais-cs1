@@ -9,8 +9,8 @@ export default function RitmoDaTentativa({ avanco, sugerirPausa, semCasos = fals
   return (
     <>
       {sugerirPausa && (
-        <div className="rounded-xl border border-aviso/30 bg-aviso-fundo px-4 py-3">
-          <p className="text-sm font-medium text-aviso">Que tal uma pausa de um minuto?</p>
+        <div className="rounded-botao border-2 border-aviso bg-aviso-fundo px-4 py-3">
+          <p className="text-sm font-bold text-aviso">Que tal uma pausa de um minuto?</p>
           <p className="text-xs text-aviso mt-1">
             Foram três envios em poucos minutos, com o código quase igual e o mesmo resultado.
             {semCasos
@@ -21,14 +21,14 @@ export default function RitmoDaTentativa({ avanco, sugerirPausa, semCasos = fals
       )}
 
       {avanco && mais > 0 && (
-        <div className="rounded-xl border border-sucesso/30 bg-sucesso-fundo px-4 py-2.5 text-sm text-sucesso">
+        <div className="rounded-botao border-2 border-sucesso bg-sucesso-fundo px-4 py-2.5 text-sm text-sucesso">
           Passou em {mais} caso{mais > 1 ? 's' : ''} a mais que na tentativa anterior
           ({avanco.passados_antes} → {avanco.passados} de {avanco.total}).
         </div>
       )}
 
       {avanco && mais < 0 && (
-        <div className="rounded-xl border border-noite/20 bg-white px-4 py-2.5 text-sm text-cinza-texto">
+        <div className="rounded-botao border-2 border-noite/20 bg-white px-4 py-2.5 text-sm text-cinza-texto">
           Passou em {-mais} caso{mais < -1 ? 's' : ''} a menos que na tentativa anterior
           ({avanco.passados_antes} → {avanco.passados} de {avanco.total}).
           Compare o que mudou entre as duas.
