@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { ChevronRight, Upload } from 'lucide-react'
 import { bulkSubmit, getJob } from '../api/exam'
 import Spinner from '../components/Spinner'
+import Botao from '../components/ui/Botao'
+import Card from '../components/ui/Card'
+import Progresso from '../components/ui/Progresso'
+import RotuloSecao from '../components/ui/RotuloSecao'
+import Tag from '../components/ui/Tag'
 
 const FORMAT_OPTIONS = [
   {
@@ -92,13 +98,13 @@ export default function BulkSubmitPage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="flex items-center gap-2 text-sm text-cinza-texto mb-6">
-        <Link to={`/exam/${id}`} className="hover:text-cinza-texto">Atividade #{id}</Link>
-        <span>›</span>
-        <span className="text-cinza-texto">Submissões em lote</span>
+      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
+        <Link to={`/exam/${id}`} className="hover:text-noite">Atividade #{id}</Link>
+        <ChevronRight className="w-4 h-4" aria-hidden="true" />
+        <span>Submissões em lote</span>
       </div>
 
-      <h1 className="text-xl font-semibold text-noite mb-1">Submissões em lote</h1>
+      <h1 className="titulo-pagina mb-1">Submissões em lote</h1>
       <p className="text-sm text-cinza-texto mb-6">
         Faça upload de um ZIP com os códigos dos alunos. Cada arquivo será avaliado e salvo automaticamente.
       </p>
@@ -109,13 +115,14 @@ export default function BulkSubmitPage() {
           <button
             key={opt.id}
             onClick={() => setFormat(opt.id)}
-            className={`text-left rounded-xl border p-4 transition-colors ${
+            aria-pressed={format === opt.id}
+            className={`text-left rounded-card border-2 border-noite p-4 ${
               format === opt.id
-                ? 'border-violeta bg-lavanda ring-1 ring-violeta'
-                : 'border-noite/20 bg-white hover:border-noite/30'
+                ? 'bg-lavanda shadow-bloco'
+                : 'bg-white hover:bg-lavanda'
             }`}
           >
-            <p className={`text-sm font-medium mb-1 ${format === opt.id ? 'text-violeta' : 'text-noite'}`}>
+            <p className={`text-sm font-bold mb-1 ${format === opt.id ? 'text-violeta' : 'text-noite'}`}>
               {opt.label}
             </p>
             <p className="text-xs text-cinza-texto">{opt.description}</p>
@@ -124,8 +131,8 @@ export default function BulkSubmitPage() {
       </div>
 
       {/* Exemplo da estrutura */}
-      <div className="bg-noite rounded-xl p-4 mb-6">
-        <p className="text-xs text-white/60 mb-2 font-medium">Estrutura esperada do ZIP</p>
+      <div className="bg-noite rounded-card p-4 mb-6">
+        <p className="text-xs text-white/60 mb-2 font-bold">Estrutura esperada do ZIP</p>
         <pre className="text-xs font-mono text-codigo-sucesso leading-relaxed">
           {selectedFormat.example.join('\n')}
         </pre>
@@ -140,8 +147,8 @@ export default function BulkSubmitPage() {
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
           className={`
-            border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors
-            ${dragging ? 'border-violeta bg-lavanda' : 'border-noite/20 bg-white hover:border-violeta/50 hover:bg-lavanda'}
+            border-2 border-dashed rounded-card p-10 text-center cursor-pointer
+            ${dragging ? 'border-violeta bg-lavanda' : 'border-noite/30 bg-white hover:border-noite hover:bg-lavanda'}
           `}
         >
           <input
@@ -151,10 +158,8 @@ export default function BulkSubmitPage() {
             className="hidden"
             onChange={e => handleFile(e.target.files[0])}
           />
-          <svg className="mx-auto w-9 h-9 text-cinza-texto/60 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-          </svg>
-          <p className="text-sm font-medium text-cinza-texto">
+          <Upload className="mx-auto w-9 h-9 text-violeta mb-3" aria-hidden="true" />
+          <p className="text-sm font-bold text-cinza-texto">
             Arraste o arquivo aqui ou <span className="text-violeta">clique para selecionar</span>
           </p>
           <p className="mt-1 text-xs text-cinza-texto">Somente .zip</p>
@@ -163,9 +168,9 @@ export default function BulkSubmitPage() {
 
       {/* Progresso (em segundo plano) */}
       {processing && (
-        <div className="bg-white rounded-xl border border-violeta/30 p-8 text-center">
+        <Card className="p-8! text-center items-center gap-0!">
           <Spinner className="w-8 h-8 text-violeta mx-auto mb-4" />
-          <p className="text-sm font-medium text-noite mb-1">
+          <p className="text-sm font-bold text-noite mb-1">
             {uploading ? 'Enviando arquivo…' : (job?.stage || 'Avaliando submissões…')}
           </p>
           <p className="text-xs text-cinza-texto mb-4">
@@ -173,20 +178,17 @@ export default function BulkSubmitPage() {
           </p>
           {job && job.total > 0 && (
             <>
-              <div className="w-full max-w-md mx-auto bg-lavanda rounded-full h-2">
-                <div
-                  className="h-2 rounded-full bg-violeta transition-all"
-                  style={{ width: `${Math.round((job.processed / job.total) * 100)}%` }}
-                />
+              <div className="w-full max-w-md mx-auto">
+                <Progresso valor={(job.processed / job.total) * 100} rotulo="Arquivos avaliados" />
               </div>
               <p className="text-xs text-cinza-texto mt-2">{job.processed} / {job.total} arquivos</p>
             </>
           )}
-        </div>
+        </Card>
       )}
 
       {error && (
-        <div className="mt-4 rounded-lg bg-erro-fundo border border-erro/30 px-4 py-3 text-sm text-erro">
+        <div className="mt-4 rounded-botao bg-erro-fundo border-2 border-erro px-4 py-3 text-sm text-erro">
           {error}
         </div>
       )}
@@ -196,58 +198,54 @@ export default function BulkSubmitPage() {
         <div>
           {/* Resumo */}
           <div className="grid grid-cols-3 gap-3 mb-5">
-            <div className="bg-white rounded-xl border border-noite/20 p-4 text-center">
-              <p className="text-2xl font-semibold text-noite">{result.total}</p>
+            <div className="bg-white rounded-card border-2 border-noite p-4 text-center">
+              <p className="text-2xl font-extrabold font-titulo text-noite">{result.total}</p>
               <p className="text-xs text-cinza-texto mt-0.5">Arquivos</p>
             </div>
-            <div className="bg-sucesso-fundo rounded-xl border border-sucesso/30 p-4 text-center">
-              <p className="text-2xl font-semibold text-sucesso">{result.processed}</p>
+            <div className="bg-sucesso-fundo rounded-card border-2 border-sucesso p-4 text-center">
+              <p className="text-2xl font-extrabold font-titulo text-sucesso">{result.processed}</p>
               <p className="text-xs text-sucesso mt-0.5">Processados</p>
             </div>
-            <div className={`rounded-xl border p-4 text-center ${result.errors > 0 ? 'bg-erro-fundo border-erro/30' : 'bg-lavanda border-noite/20'}`}>
-              <p className={`text-2xl font-semibold ${result.errors > 0 ? 'text-erro' : 'text-cinza-texto'}`}>{result.errors}</p>
+            <div className={`rounded-card border-2 p-4 text-center ${result.errors > 0 ? 'bg-erro-fundo border-erro' : 'bg-lavanda border-noite'}`}>
+              <p className={`text-2xl font-extrabold font-titulo ${result.errors > 0 ? 'text-erro' : 'text-cinza-texto'}`}>{result.errors}</p>
               <p className={`text-xs mt-0.5 ${result.errors > 0 ? 'text-erro' : 'text-cinza-texto'}`}>Erros</p>
             </div>
           </div>
 
           {/* Tabela de itens */}
-          <div className="bg-white rounded-xl border border-noite/20 overflow-hidden mb-5">
-            <div className="grid grid-cols-[1fr_80px_80px_1fr] gap-0 px-4 py-2 bg-lavanda border-b border-noite/20 text-xs font-medium text-cinza-texto">
-              <span>Aluno</span>
-              <span>Questão</span>
-              <span>Status</span>
-              <span>Observação</span>
-            </div>
-            <div className="divide-y divide-noite/10 max-h-96 overflow-y-auto">
-              {result.items.map((item, i) => (
-                <div key={i} className="grid grid-cols-[1fr_80px_80px_1fr] gap-0 px-4 py-2.5 items-center">
-                  <span className="text-sm text-noite truncate">{item.matricula || '—'}</span>
-                  <span className="text-sm text-cinza-texto">{item.question ? `Q${item.question}` : '—'}</span>
-                  <span>
-                    {item.status === 'ok'
-                      ? <span className="text-xs font-medium text-sucesso bg-sucesso-fundo border border-sucesso/30 px-2 py-0.5 rounded-md">OK</span>
-                      : <span className="text-xs font-medium text-erro bg-erro-fundo border border-erro/30 px-2 py-0.5 rounded-md">Erro</span>
-                    }
-                  </span>
-                  <span className="text-xs text-cinza-texto truncate">{item.message || item.file}</span>
-                </div>
-              ))}
+          <div className="bg-white rounded-card border-2 border-noite overflow-x-auto mb-5">
+            <div className="min-w-[32rem]">
+              <div className="grid grid-cols-[1fr_80px_80px_1fr] gap-0 px-4 py-2 bg-lavanda border-b-2 border-noite">
+                <RotuloSecao as="span">Aluno</RotuloSecao>
+                <RotuloSecao as="span">Questão</RotuloSecao>
+                <RotuloSecao as="span">Status</RotuloSecao>
+                <RotuloSecao as="span">Observação</RotuloSecao>
+              </div>
+              <div className="divide-y-2 divide-noite/10 max-h-96 overflow-y-auto">
+                {result.items.map((item, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_80px_80px_1fr] gap-0 px-4 py-2.5 items-center">
+                    <span className="text-sm text-noite truncate">{item.matricula || '—'}</span>
+                    <span className="text-sm text-cinza-texto">{item.question ? `Q${item.question}` : '—'}</span>
+                    <span>
+                      {item.status === 'ok'
+                        ? <Tag variante="sucesso">OK</Tag>
+                        : <Tag variante="erro">Erro</Tag>
+                      }
+                    </span>
+                    <span className="text-xs text-cinza-texto truncate">{item.message || item.file}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="flex gap-3">
-            <button
-              onClick={() => { setResult(null); setError(''); setJob(null) }}
-              className="text-sm px-4 py-2 rounded-lg bg-violeta text-white hover:bg-violeta-escuro transition-colors"
-            >
+            <Botao onClick={() => { setResult(null); setError(''); setJob(null) }}>
               Enviar outro ZIP
-            </button>
-            <Link
-              to={`/exam/${id}`}
-              className="text-sm px-4 py-2 rounded-lg border border-noite/20 text-cinza-texto hover:bg-lavanda transition-colors"
-            >
+            </Botao>
+            <Botao variante="secundario" to={`/exam/${id}`}>
               Voltar à atividade
-            </Link>
+            </Botao>
           </div>
         </div>
       )}

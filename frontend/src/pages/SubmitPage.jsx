@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { Check, ChevronRight, X } from 'lucide-react'
 import { getExam, submitCode } from '../api/exam'
 import Spinner from '../components/Spinner'
 import Badge from '../components/Badge'
 import FunctionCheckCard from '../components/FunctionCheckCard'
 import CodeTextarea from '../components/CodeTextarea'
+import Botao from '../components/ui/Botao'
+import Card from '../components/ui/Card'
 
 export default function SubmitPage() {
   const { id } = useParams()
@@ -48,21 +51,21 @@ export default function SubmitPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center gap-2 text-sm text-cinza-texto mb-6">
-        <Link to={`/exam/${id}`} className="hover:text-cinza-texto">Atividade #{id}</Link>
-        <span>›</span>
-        <span className="text-cinza-texto">Testar submissão</span>
+      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
+        <Link to={`/exam/${id}`} className="hover:text-noite">Atividade #{id}</Link>
+        <ChevronRight className="w-4 h-4" aria-hidden="true" />
+        <span>Testar submissão</span>
       </div>
 
-      <h1 className="text-xl font-semibold text-noite mb-6">Testar submissão</h1>
+      <h1 className="titulo-pagina mb-6">Testar submissão</h1>
 
-      <div className="bg-white rounded-xl border border-noite/20 p-5 mb-4">
+      <Card className="mb-4">
         <div className="mb-4">
-          <label className="block text-xs font-medium text-cinza-texto mb-1.5">Questão</label>
+          <label className="block text-xs font-bold text-cinza-texto mb-1.5">Questão</label>
           <select
             value={selectedQuestion}
             onChange={e => setSelectedQuestion(e.target.value)}
-            className="text-sm rounded-lg border border-noite/20 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violeta focus:border-transparent"
+            className="campo w-auto!"
           >
             {exam.questions.map(q => (
               <option key={q.id} value={q.number}>Questão {q.number}</option>
@@ -71,7 +74,7 @@ export default function SubmitPage() {
         </div>
 
         {selectedQuestion && (
-          <div className="mb-4 rounded-lg bg-lavanda border border-noite/10 px-4 py-3">
+          <div className="mb-4 rounded-botao bg-lavanda px-4 py-3">
             <p className="text-xs text-cinza-texto line-clamp-3">
               {exam.questions.find(q => q.number === selectedQuestion)?.statement}
             </p>
@@ -79,37 +82,33 @@ export default function SubmitPage() {
         )}
 
         <div>
-          <label className="block text-xs font-medium text-cinza-texto mb-1.5">Código C</label>
+          <label className="block text-xs font-bold text-cinza-texto mb-1.5">Código C</label>
           <CodeTextarea
             rows={14}
             value={code}
             onChange={e => setCode(e.target.value)}
             placeholder="#include <stdio.h>&#10;&#10;int main() {&#10;    return 0;&#10;}"
-            className="w-full text-sm font-mono rounded-lg border border-noite/20 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violeta focus:border-transparent resize-none"
+            className="w-full text-sm font-mono bg-noite text-codigo-texto caret-white rounded-botao border-2 border-noite px-3 py-2.5 focus-visible:outline-codigo-sucesso resize-y"
           />
         </div>
 
         <div className="flex justify-end mt-3">
-          <button
-            onClick={submit}
-            disabled={submitting || !code.trim()}
-            className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-violeta text-white hover:bg-violeta-escuro disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
+          <Botao onClick={submit} disabled={submitting || !code.trim()}>
             {submitting && <Spinner className="w-4 h-4" />}
             Avaliar
-          </button>
+          </Botao>
         </div>
-      </div>
+      </Card>
 
       {error && (
-        <div className="rounded-lg bg-erro-fundo border border-erro/30 px-4 py-3 text-sm text-erro mb-4">
+        <div className="rounded-botao bg-erro-fundo border-2 border-erro px-4 py-3 text-sm text-erro mb-4">
           {error}
         </div>
       )}
 
       {result && (
         <div className="space-y-3">
-          <div className="bg-white rounded-xl border border-noite/20 p-5">
+          <Card className="gap-0!">
             <div className="flex items-start gap-3">
               <Badge color={diagColor(result.diagnosis?.error_category)}>
                 {result.diagnosis?.error_category}
@@ -117,39 +116,40 @@ export default function SubmitPage() {
             </div>
             <p className="mt-3 text-sm text-cinza-texto">{result.diagnosis?.pedagogical_diagnosis}</p>
             {result.diagnosis?.actionable_feedback && (
-              <div className="mt-2 rounded-lg bg-lavanda border border-violeta/15 px-4 py-2.5">
+              <div className="mt-2 rounded-botao bg-lavanda px-4 py-2.5">
                 <p className="text-xs text-violeta">{result.diagnosis.actionable_feedback}</p>
               </div>
             )}
-          </div>
+          </Card>
 
           {result.function_check && !result.function_check.compliant && (
             <FunctionCheckCard check={result.function_check} />
           )}
 
           {result.compile_error && (
-            <div className="bg-white rounded-xl border border-noite/20 p-5">
-              <h3 className="text-sm font-medium text-cinza-texto mb-2">Erro de compilação</h3>
-              <pre className="text-xs font-mono bg-lavanda rounded-lg p-3 overflow-x-auto text-erro whitespace-pre-wrap">{result.compile_error}</pre>
-            </div>
+            <Card className="gap-0!">
+              <h3 className="titulo-card text-lg! mb-2">Erro de compilação</h3>
+              <pre className="text-xs font-mono bg-lavanda rounded-botao p-3 overflow-x-auto text-erro whitespace-pre-wrap">{result.compile_error}</pre>
+            </Card>
           )}
 
           {result.warnings && (
-            <div className="bg-white rounded-xl border border-noite/20 p-5">
-              <h3 className="text-sm font-medium text-cinza-texto mb-2">Avisos</h3>
-              <pre className="text-xs font-mono bg-aviso-fundo rounded-lg p-3 overflow-x-auto text-aviso whitespace-pre-wrap">{result.warnings}</pre>
-            </div>
+            <Card className="gap-0!">
+              <h3 className="titulo-card text-lg! mb-2">Avisos</h3>
+              <pre className="text-xs font-mono bg-aviso-fundo rounded-botao p-3 overflow-x-auto text-aviso whitespace-pre-wrap">{result.warnings}</pre>
+            </Card>
           )}
 
           {result.test_results?.length > 0 && (
-            <div className="bg-white rounded-xl border border-noite/20 p-5">
-              <h3 className="text-sm font-medium text-cinza-texto mb-3">Resultados dos testes</h3>
+            <Card className="gap-0!">
+              <h3 className="titulo-card text-lg! mb-3">Resultados dos testes</h3>
               <div className="space-y-2">
                 {result.test_results.map((tr, i) => (
-                  <div key={i} className={`rounded-lg border px-4 py-3 ${tr.passed ? 'bg-sucesso-fundo border-sucesso/30' : 'bg-erro-fundo border-erro/30'}`}>
+                  <div key={i} className={`rounded-botao border-2 px-4 py-3 ${tr.passed ? 'bg-sucesso-fundo border-sucesso' : 'bg-erro-fundo border-erro'}`}>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-semibold ${tr.passed ? 'text-sucesso' : 'text-erro'}`}>
-                        {tr.passed ? '✓ Passou' : '✗ Falhou'}
+                      <span className={`inline-flex items-center gap-1 text-xs font-bold ${tr.passed ? 'text-sucesso' : 'text-erro'}`}>
+                        {tr.passed ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <X className="w-3.5 h-3.5" aria-hidden="true" />}
+                        {tr.passed ? 'Passou' : 'Falhou'}
                       </span>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs font-mono">
@@ -160,7 +160,7 @@ export default function SubmitPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
         </div>
       )}
