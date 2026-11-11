@@ -106,7 +106,7 @@ export default function TurmaDetailPage() {
     if (!turma?.codigo_acesso) return
     const link = `${window.location.origin}/aluno/convite/${turma.codigo_acesso}`
     const mensagem =
-      `Nossa turma de ${turma.nome} vai usar o CentralizEd nas listas e no treino. ` +
+      `${turma.nome} vai usar o CentralizEd nas listas e no treino. ` +
       `Para entrar, abra ${link} e crie sua conta. ` +
       `Se preferir, use o código ${turma.codigo_acesso} na área do aluno.`
     try {
@@ -333,7 +333,13 @@ export default function TurmaDetailPage() {
                   <div onClick={() => navigate(`/exam/${exam.id}`)} className="cursor-pointer flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <h2 className="titulo-card leading-tight min-w-0 break-words flex-1">
-                        {exam.titulo || exam.filename}
+                        <Link
+                          to={`/exam/${exam.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="hover:text-violeta"
+                        >
+                          {exam.titulo || exam.filename}
+                        </Link>
                       </h2>
                       <div className="flex flex-wrap justify-end gap-1 shrink-0">
                         <Badge color={exam.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(exam.modo)}</Badge>

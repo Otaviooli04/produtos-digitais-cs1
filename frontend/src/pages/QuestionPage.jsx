@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
+import LinkDaAtividade from '../components/LinkDaAtividade'
+import TextoComCodigo from '../components/TextoComCodigo'
 import { ChevronDown, Plus } from 'lucide-react'
 import {
   getExam, getQuestionSubmissions, getGroups, runClustering, runInsights, salvarRespostaDoGrupo,
@@ -268,7 +270,7 @@ export default function QuestionPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <Link to={`/exam/${id}`} className="hover:text-noite">Atividade #{id}</Link>
+        <LinkDaAtividade id={id} />
       </div>
 
       <div className="mb-6">
@@ -487,7 +489,7 @@ export default function QuestionPage() {
                       {insight && (
                         <div className="flex gap-2 mb-3">
                           <div className="w-0.5 bg-violeta/30 rounded-full shrink-0" />
-                          <p className="text-sm text-cinza-texto leading-relaxed break-words min-w-0">{insight}</p>
+                          <p className="text-sm text-cinza-texto leading-relaxed break-words min-w-0"><TextoComCodigo texto={insight} /></p>
                         </div>
                       )}
 
@@ -522,21 +524,21 @@ export default function QuestionPage() {
 
                       {c.representative_code && (
                         <div className="mt-3">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-x-2">
                             <button
                               onClick={() => setOpenCode(o => ({ ...o, [c.cluster_id]: !o[c.cluster_id] }))}
-                              className="inline-flex items-center gap-1 min-h-11 text-xs font-bold text-cinza-texto hover:text-noite transition-colors"
+                              className="inline-flex items-center gap-1 min-h-11 text-xs font-bold text-cinza-texto hover:text-noite transition-colors whitespace-nowrap"
                             >
                               <ChevronDown className={`w-4 h-4 transition-transform ${openCode[c.cluster_id] ? 'rotate-180' : ''}`} aria-hidden="true" />
                               {openCode[c.cluster_id] ? 'Ocultar' : 'Ver'} código representativo
                             </button>
                             {hot.length > 0 && (
-                              <span className="text-xs text-erro">
+                              <span className="text-xs text-erro whitespace-nowrap">
                                 · {hot.length === 1 ? `linha ${hot[0]}` : `linhas ${hot.join(', ')}`} em destaque
                               </span>
                             )}
                             {c.representative_matricula && (
-                              <span className="text-xs text-cinza-texto">
+                              <span className="text-xs text-cinza-texto whitespace-nowrap">
                                 · de{' '}
                                 <Link
                                   to={`/exam/${id}/students/${c.representative_matricula}`}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import LinkDaAtividade from '../components/LinkDaAtividade'
 import { Check, ChevronRight, CircleAlert, Minus, Users, X } from 'lucide-react'
 import { getExamStudents } from '../api/exam'
 import Spinner from '../components/Spinner'
@@ -65,7 +66,7 @@ export default function StudentsPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <Link to={`/exam/${id}`} className="hover:text-noite">Atividade #{id}</Link>
+        <LinkDaAtividade id={id} />
         <ChevronRight className="w-4 h-4" aria-hidden="true" />
         <span>Alunos</span>
       </div>
@@ -83,7 +84,7 @@ export default function StudentsPage() {
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <CircleAlert className="w-4 h-4 text-erro" aria-hidden="true" />
             <h2 className="titulo-card text-lg! text-erro">Alunos em risco ({atRisk.length})</h2>
-            <Tag variante="erro">menos de 40% de acerto</Tag>
+            <span className="text-sm text-erro">menos de 40% de acerto</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {atRisk.map(s => {
@@ -140,7 +141,13 @@ export default function StudentsPage() {
                             {student.matricula?.[0]}
                           </span>
                         </div>
-                        <span className="font-bold text-noite truncate max-w-[140px]">{student.matricula}</span>
+                        <Link
+                          to={`/exam/${id}/students/${encodeURIComponent(student.matricula)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-bold text-noite truncate max-w-[140px] hover:text-violeta"
+                        >
+                          {student.matricula}
+                        </Link>
                       </div>
                     </td>
                     {student.questions.map(qs => (

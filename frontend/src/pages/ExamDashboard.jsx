@@ -154,32 +154,34 @@ export default function ExamDashboard() {
       ) : null}
 
       <PainelDestaque>
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 space-y-2">
-            <p className="text-sm text-white/80 break-words">{modoLabel(exam.modo)} #{id} · {exam.titulo || exam.filename}</p>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="titulo-pagina break-words">{nomeDaAtividade}</h1>
-              <Badge color={exam.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(exam.modo)}</Badge>
-              {!exam.publicada && <Badge color="yellow">rascunho</Badge>}
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-4">
+            <p className="min-w-0 pt-2.5 text-sm text-white/80 break-words">
+              {modoLabel(exam.modo)} #{id}{exam.titulo && exam.filename ? ` · ${exam.filename}` : ''}
+            </p>
+            <div className="flex shrink-0 gap-1">
+              <button
+                onClick={() => { setRenameValue(nomeDaAtividade); setRenameOpen(true) }}
+                title="Nome da atividade"
+                aria-label="Nome da atividade"
+                className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-botao hover:bg-white/15 text-white"
+              >
+                <Pencil className="w-5 h-5" aria-hidden="true" />
+              </button>
+              <button
+                onClick={() => setExamDeleteOpen(true)}
+                title={`Excluir ${tipo}`}
+                aria-label={`Excluir ${tipo}`}
+                className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-botao hover:bg-white/15 text-white"
+              >
+                <Trash2 className="w-5 h-5" aria-hidden="true" />
+              </button>
             </div>
           </div>
-          <div className="flex shrink-0 gap-1">
-            <button
-              onClick={() => { setRenameValue(nomeDaAtividade); setRenameOpen(true) }}
-              title="Nome da atividade"
-              aria-label="Nome da atividade"
-              className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-botao hover:bg-white/15 text-white"
-            >
-              <Pencil className="w-5 h-5" aria-hidden="true" />
-            </button>
-            <button
-              onClick={() => setExamDeleteOpen(true)}
-              title={`Excluir ${tipo}`}
-              aria-label={`Excluir ${tipo}`}
-              className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-botao hover:bg-white/15 text-white"
-            >
-              <Trash2 className="w-5 h-5" aria-hidden="true" />
-            </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="titulo-pagina break-words text-balance">{nomeDaAtividade}</h1>
+            <Badge color={exam.modo === 'treino' ? 'purple' : 'gray'}>{modoLabel(exam.modo)}</Badge>
+            {!exam.publicada && <Badge color="yellow">rascunho</Badge>}
           </div>
         </div>
       </PainelDestaque>
@@ -248,7 +250,7 @@ export default function ExamDashboard() {
           return (
             <Card key={q.id} principal>
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
+                <div className="flex-[1_1_15rem] min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1.5">
                     <Tag>Q{q.number}</Tag>
                     <span className="text-xs text-cinza-texto">

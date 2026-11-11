@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import LinkDaAtividade from '../components/LinkDaAtividade'
 import { ChevronRight, Upload } from 'lucide-react'
 import { bulkSubmit, getJob } from '../api/exam'
 import Spinner from '../components/Spinner'
@@ -99,7 +100,7 @@ export default function BulkSubmitPage() {
   return (
     <div className="max-w-2xl">
       <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <Link to={`/exam/${id}`} className="hover:text-noite">Atividade #{id}</Link>
+        <LinkDaAtividade id={id} />
         <ChevronRight className="w-4 h-4" aria-hidden="true" />
         <span>Submissões em lote</span>
       </div>
