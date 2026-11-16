@@ -25,6 +25,8 @@ Os intervalos são os três primeiros do SM-2 com facilidade 2,5 (1, 6 e 15 dias
 1. O aluno supera o erro, pela regra que já existe: acerta na trilha um exercício feito para aquele erro, sem repeti-lo, depois da última vez que ele apareceu.
 2. A 1ª revisão vence 1 dia depois do acerto que superou o erro, a 2ª 6 dias depois da 1ª revisão feita, e a 3ª 15 dias depois da 2ª.
 3. Uma revisão é feita quando o aluno acerta, sem repetir o erro, um exercício da trilha feito para aquele erro, numa data a partir do vencimento. Acerto antes do vencimento (por "Treinar de novo") vale como treino, mas não avança a agenda.
+   - Só conta o **primeiro** acerto de cada exercício. Refazer um exercício já resolvido não avança a agenda, inclusive o exercício que superou o erro e o que foi resolvido antes do vencimento. Assim o aluno não consolida o erro refazendo o mesmo exercício nas datas certas.
+   - Tentativa de exercício reportado sai do histórico, como já acontece hoje. Reportar uma revisão desfaz aquela revisão, e reportar o exercício que superou o erro faz o erro voltar a ativo.
 4. Feitas as três revisões, o erro fica **consolidado** e não volta mais pela agenda.
 5. Se o aluno repetir o erro em qualquer lugar (lista, prova ou trilha), o erro volta a ser ativo, pela regra que já existe. Quando ele superar de novo, a agenda recomeça do zero.
 
@@ -37,9 +39,9 @@ Quando o aluno acerta um exercício da trilha, o sistema prepara o próximo em s
 - se o exercício que ele acabou de acertar **não** era uma revisão, vem primeiro uma revisão vencida e depois o primeiro erro ativo
 - se **era** uma revisão, vem primeiro o primeiro erro ativo e depois uma revisão vencida
 
-Assim duas revisões seguidas só acontecem quando não há erro ativo. Entre as revisões vencidas, vem a que venceu há mais tempo. Uma revisão vencida que já tem exercício pendente não é preparada de novo.
+Assim duas revisões seguidas só acontecem quando não há erro ativo. Entre as revisões vencidas, vem a que venceu há mais tempo. A lista de candidatos é percorrida em ordem e vale o primeiro que ainda não tem exercício pendente: uma revisão vencida com pendente é pulada e a próxima vencida é tentada antes do erro ativo.
 
-"Era uma revisão" quer dizer: a categoria do exercício já estava superada antes do acerto. O acerto que supera um erro ativo não é revisão.
+"Era uma revisão" quer dizer: a categoria do exercício já estava superada antes do acerto, ou seja, o `superado_em` calculado depois do commit da tentativa é anterior ao momento dela. O acerto que supera um erro ativo tem `superado_em` igual ao próprio momento e não é revisão.
 
 Abrir a trilha continua aquecendo o primeiro erro ativo. Sem erro ativo, aquece a revisão vencida há mais tempo. Gerar sem categoria (o botão principal) segue a mesma ordem: erro ativo primeiro, revisão vencida se não houver ativo, e o aviso "Você superou todos os erros" só quando não há nenhum dos dois.
 
@@ -50,12 +52,14 @@ Na trilha, cada erro da seção "Erros que você superou" mostra uma das situaç
 | Situação | Texto | Botão |
 |---|---|---|
 | Revisão vencida | "Hora de revisar" | **Revisar agora** (principal) |
-| Próxima revisão no futuro | "Próxima revisão amanhã" ou "Próxima revisão em N dias" | Treinar de novo (secundário) |
+| Próxima revisão no futuro | "Próxima revisão amanhã" ou "Próxima revisão em N dias", com N calculado no servidor pelo dia de Brasília | Treinar de novo (secundário) |
 | Consolidado | "Consolidado" | Treinar de novo (secundário) |
 
 Os erros com revisão vencida aparecem primeiro na seção. Não existe contador de revisões atrasadas, a palavra "atrasado" nem cobrança por revisão que passou do dia: uma revisão vencida há dez dias aparece igual a uma vencida hoje.
 
-Na tela do exercício, quando a categoria dele está superada, aparece o aviso: "Revisão: você já superou este erro. Este exercício confere se ele ficou para trás."
+Na tela do exercício, quando a categoria dele está superada, aparece o aviso: "Revisão: você já superou este erro. Treinar de novo ajuda a ver se ele ficou para trás." O texto não promete que o acerto conta na agenda, porque um exercício aberto antes do vencimento não conta.
+
+A revisão preparada depois de um acerto registra a novidade "Exercício novo pronto na trilha", como qualquer preparo depois de acerto já registra hoje. Ela ocupa o lugar do preparo do erro ativo, então a bolinha não acende mais vezes do que já acende.
 
 O progresso e os erros recorrentes não mudam.
 
@@ -70,11 +74,11 @@ Sem tabela nova, sem coluna nova e sem migração. A agenda sai do histórico qu
 **`app/services/historico_do_aluno.py`:**
 - `INTERVALOS_DA_REVISAO = (1, 6, 15)`, em dias.
 - `Revisao`, dataclass com `feitas`, `proxima_em: date | None` e as propriedades `consolidado` (feitas == 3) e `vencida(hoje: date)`.
-- `agenda_de_revisao(erro, envios) -> Revisao | None`: `None` para erro ativo. Percorre os acertos da trilha com `alvo` igual à categoria, categoria diferente dela e momento depois de `superado_em`, uma vez por exercício, e conta como revisão o que cai em data a partir do vencimento da vez.
+- `agenda_de_revisao(erro, envios, hoje) -> Revisao | None`: `None` para erro ativo. Toma o primeiro acerto de cada exercício da trilha em todo o histórico, fica com os que têm `alvo` igual à categoria, categoria diferente dela e momento depois de `superado_em`, em ordem de tempo, e conta como revisão o que cai em data a partir do vencimento da vez. `Revisao` também leva `dias_ate` (dias de Brasília até `proxima_em`, zero ou negativo quando vencida).
 - Função pura, testada com listas montadas à mão, como as outras do arquivo.
 
 **`app/services/treino_service.py`:**
-- `trilha`: cada superado ganha `revisao` (`feitas`, `proxima_em` em ISO ou nulo, `vencida`, `consolidado`), com os vencidos primeiro. O aquecimento sem erro ativo usa a revisão vencida.
+- `trilha`: lê o histórico uma vez e passa os envios para os erros e para a agenda. Cada superado ganha `revisao` (`feitas`, `proxima_em` em ISO ou nulo, `dias_ate`, `vencida`, `consolidado`), com os vencidos primeiro. O aquecimento sem erro ativo usa a revisão vencida.
 - `gerar_para_categoria` sem categoria: sem erro ativo, escolhe a revisão vencida há mais tempo.
 - `treinar`, no acerto: escolhe o próximo pela ordem da seção acima e chama `preparar_proximo`, que já trata pendente, teto e espera depois de falha.
 - `_exercicio_detalhe`: campo `revisao`, verdadeiro quando a categoria do exercício está superada.
@@ -87,7 +91,7 @@ Nenhuma rota nova nem mudança de papel ou posse. As rotas são as de `/aluno/tr
 
 - `pages/aluno/TreinoPage.jsx`: a seção dos superados com a situação e o botão da tabela acima.
 - `pages/aluno/ExercicioTreinoPage.jsx`: o aviso de revisão, no mesmo estilo do aviso de exercício reaproveitado.
-- Um helper puro para o texto da próxima revisão ("amanhã", "em N dias"), a partir da data que a API devolve e de hoje.
+- O texto da próxima revisão ("amanhã", "em N dias") sai do `dias_ate` que a API devolve, sem conta de data no navegador.
 
 ## Regras de uso responsável
 
@@ -106,7 +110,10 @@ Funções puras (`historico_do_aluno`):
 - acerto antes do vencimento não conta, e o mesmo acerto depois do vencimento conta
 - três revisões espaçadas deixam o erro consolidado, sem `proxima_em`
 - dois acertos no mesmo exercício contam uma vez
+- exercício resolvido antes do vencimento e refeito depois não conta, e o exercício que superou o erro refeito depois do vencimento também não
 - acerto com a própria categoria do erro não conta como revisão
+- revisão que repete o erro deixa o erro ativo, sem agenda
+- histórico sem a tentativa de um exercício reportado: a revisão dele deixa de contar
 - erro que reaparece volta a ativo e, superado de novo, recomeça a agenda
 - erro ativo não tem agenda
 
@@ -114,7 +121,7 @@ Serviço (`treino_service`):
 - acerto num exercício de erro ativo com revisão vencida prepara a revisão
 - acerto numa revisão prepara o erro ativo
 - acerto numa revisão sem erro ativo prepara outra revisão vencida
-- revisão vencida com exercício pendente não é preparada, e entra o erro ativo
+- revisão vencida com exercício pendente é pulada: entra a próxima revisão vencida, e sem ela o erro ativo
 - sem revisão vencida, prepara o erro ativo como hoje
 - entre duas revisões vencidas, prepara a que venceu há mais tempo
 - trilha devolve `revisao` nos superados com os vencidos primeiro, e aquece a revisão vencida sem erro ativo
@@ -140,3 +147,6 @@ Smoke com Docker e Gemini reais: aluno `SMOKE-` supera um erro, os envios são d
 4. **Revisão e erro ativo se alternam.** A revisão não toma o lugar do erro que ainda está aberto, e a mistura é a intercalação do RF32.
 5. **Sem tabela.** A agenda é derivada do histórico, então os dados que já existem ganham agenda na hora e não há migração para desfazer.
 6. **Revisão vencida há muito tempo aparece igual à vencida hoje.** É o cuidado da pilha de atrasados.
+7. **Só o primeiro acerto de cada exercício conta.** Fecha o atalho de consolidar refazendo o mesmo exercício.
+8. **Os dias até a próxima revisão vêm do servidor.** O navegador pode estar em outro fuso, e a agenda conta pelo dia de Brasília.
+9. **A revisão preparada registra novidade como qualquer preparo.** Ela substitui o preparo do erro ativo, então não aumenta o número de avisos.
