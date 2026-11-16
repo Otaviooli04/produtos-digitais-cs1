@@ -84,7 +84,7 @@
 Criar `backend/tests/unit/test_agenda_de_revisao.py`:
 
 ```python
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 from app.services.calendario import dia_local
 from app.services.historico_do_aluno import (
@@ -536,7 +536,7 @@ def trilha(student: Student, db: Session) -> dict:
     }
 ```
 
-4. Em `gerar_para_categoria`, trocar a linha `    erros = _erros(student, db)` por `    envios, erros = _historico_e_erros(student, db)` e trocar o bloco `else:` inteiro (de `        ativos = [e for e in erros if e.ativo]` até `        alvo = next(e for e in ativos if e.categoria == pronta["error_category"])`) por:
+4. Em `gerar_para_categoria`, trocar a linha `    erros = _erros(student, db)` por `    envios, erros = _historico_e_erros(student, db)` e trocar o trecho que vai da linha `    else:` (a do `if categoria:`) até `        alvo = next(e for e in ativos if e.categoria == pronta["error_category"])`, as duas inclusive, por:
 
 ```python
     else:
@@ -556,6 +556,8 @@ def trilha(student: Student, db: Session) -> dict:
                 raise TreinoIndisponivel(
                     "Você superou todos os erros que repetia. "
                     "Resolva uma questão da sua turma e volte aqui.")
+            # Como nos ativos, a vencida que já tem exercício pronto vem antes da
+            # que venceu há mais tempo: entregar na hora vale mais do que esperar.
             pronta = next((c for c in vencidas if tem_pendente(student.id, c, db)), vencidas[0])
             alvo = next(e for e in erros if e.categoria == pronta)
 ```
@@ -708,7 +710,7 @@ Acrescentar dentro da classe `TestRevisaoEspacada`, no fim de `backend/tests/tes
 - [ ] **Passo 2: rodar e ver falhar**
 
 Rodar: `cd backend && /home/otavio/produtos-digitais-cs1/backend/venv/bin/python -m pytest tests/test_treino.py::TestRevisaoEspacada -q`
-Esperado: os 4 da Task 2 passam e os 6 novos FALHAM, porque o código de hoje prepara sempre o primeiro erro ativo (por exemplo `[self.Z] != [self.X]`, e `[] != [self.W]` quando não há ativo)
+Esperado: os 4 da Task 2 passam, 4 dos 6 novos FALHAM e 2 já passam. O código de hoje prepara sempre o primeiro erro ativo, então falham os que esperam revisão (por exemplo `[self.Z] != [self.X]`, e `[] != [self.W]` quando não há ativo). Já passam `test_acerto_numa_revisao_prepara_o_erro_ativo` e `test_vencida_com_pendente_e_pulada_pelo_erro_ativo`, que esperam o erro ativo `[self.Z]`
 
 - [ ] **Passo 3: escrever o mínimo para passar**
 

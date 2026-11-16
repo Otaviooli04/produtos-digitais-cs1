@@ -43,7 +43,7 @@ Assim duas revisões seguidas só acontecem quando não há erro ativo. Entre as
 
 "Era uma revisão" quer dizer: a categoria do exercício já estava superada antes do acerto, ou seja, o `superado_em` calculado depois do commit da tentativa é anterior ao momento dela. O acerto que supera um erro ativo tem `superado_em` igual ao próprio momento e não é revisão.
 
-Abrir a trilha continua aquecendo o primeiro erro ativo. Sem erro ativo, aquece a revisão vencida há mais tempo. Gerar sem categoria (o botão principal) segue a mesma ordem: erro ativo primeiro, revisão vencida se não houver ativo, e o aviso "Você superou todos os erros" só quando não há nenhum dos dois.
+Abrir a trilha continua aquecendo o primeiro erro ativo. Sem erro ativo, aquece a revisão vencida há mais tempo. Gerar sem categoria (o botão principal) segue a mesma ordem: erro ativo primeiro, revisão vencida se não houver ativo, e o aviso "Você superou todos os erros" só quando não há nenhum dos dois. Entre as revisões vencidas, como já acontece entre os ativos, a que tem exercício pronto vem antes da que venceu há mais tempo.
 
 ### O que o aluno vê
 
