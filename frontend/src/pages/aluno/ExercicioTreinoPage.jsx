@@ -99,6 +99,12 @@ function Conteudo({ exercicioId }) {
         </div>
       )}
 
+      {exercicio.revisao && (
+        <div className="rounded-botao border-2 border-violeta bg-lavanda px-4 py-2.5 text-xs text-violeta">
+          Revisão: você já superou este erro. Treinar de novo ajuda a ver se ele ficou para trás.
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2 lg:grid-rows-[auto_1fr] items-start">
         <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
           <Card principal>

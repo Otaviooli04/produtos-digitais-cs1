@@ -15,6 +15,15 @@ import { shortError } from '../../utils/errorLabels'
  * aqui ele treina exatamente isso, com exercício gerado sob medida e tentativas
  * ilimitadas. Nada daqui vale nota.
  */
+function situacaoDaRevisao(revisao) {
+  if (!revisao) return ''
+  if (revisao.consolidado) return 'Consolidado'
+  if (revisao.vencida) return 'Hora de revisar'
+  return revisao.dias_ate === 1
+    ? 'Próxima revisão amanhã'
+    : `Próxima revisão em ${revisao.dias_ate} dias`
+}
+
 export default function TreinoPage() {
   const [trilha, setTrilha] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -138,20 +147,32 @@ export default function TreinoPage() {
                 Erros que você superou
               </RotuloSecao>
               <div className="space-y-2">
-                {superados.map(s => (
-                  <Card key={s.error_category} className="gap-2!">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Tag variante="sucesso">{shortError(s.error_category)}</Tag>
-                      <span className="text-xs text-cinza-texto">superado em {dataCurta(s.superado_em)}</span>
-                    </div>
-                    <div>
-                      <Botao variante="secundario" onClick={() => gerar(s.error_category)} disabled={gerando != null}>
-                        {gerando === s.error_category && <Spinner className="w-3.5 h-3.5" />}
-                        Treinar de novo
-                      </Botao>
-                    </div>
-                  </Card>
-                ))}
+                {superados.map(s => {
+                  const vencida = s.revisao?.vencida
+                  return (
+                    <Card key={s.error_category} className="gap-2!">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Tag variante="sucesso">{shortError(s.error_category)}</Tag>
+                        <span className="text-xs text-cinza-texto">superado em {dataCurta(s.superado_em)}</span>
+                      </div>
+                      {s.revisao && (
+                        <p className={`text-xs ${vencida ? 'font-bold text-violeta' : 'text-cinza-texto'}`}>
+                          {situacaoDaRevisao(s.revisao)}
+                        </p>
+                      )}
+                      <div>
+                        <Botao
+                          variante={vencida ? 'primario' : 'secundario'}
+                          onClick={() => gerar(s.error_category)}
+                          disabled={gerando != null}
+                        >
+                          {gerando === s.error_category && <Spinner className="w-3.5 h-3.5" />}
+                          {vencida ? 'Revisar agora' : 'Treinar de novo'}
+                        </Botao>
+                      </div>
+                    </Card>
+                  )
+                })}
               </div>
             </div>
           )}
