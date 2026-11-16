@@ -22,6 +22,7 @@ from app.core.tempo import agora_utc
 from sqlalchemy.orm import Session
 
 from app.engine.evaluators.code_evaluator import evaluate_code
+from app.llm.cliente import TEMPO_PADRAO_S
 from app.llm.exercise_generator import GERACOES_POR_DIA, ExercicioInvalido, gerar_exercicio
 from app.models.orm import ExercicioGerado, Student, TentativaDeTreino
 from app.services.historico_do_aluno import (
@@ -148,15 +149,12 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
         pronta = next((c for c in categorias if c["tem_pendente"]), categorias[0])
         alvo = next(e for e in ativos if e.categoria == pronta["error_category"])
 
-    pendente = (
-        db.query(ExercicioGerado)
-        .filter(ExercicioGerado.student_id == student.id,
-                ExercicioGerado.error_category == alvo.categoria,
-                ExercicioGerado.resolvido.is_(False),
-                ExercicioGerado.reportado.is_(False))
-        .order_by(ExercicioGerado.created_at.desc())
-        .first()
-    )
+    pendente = _pendente(student.id, alvo.categoria, db)
+    if not pendente and (student.id, alvo.categoria) in _em_voo:
+        # O preparo desta categoria já está no Gemini: esperar por ele sai mais
+        # barato do que pagar uma segunda geração para o mesmo erro.
+        _esperar_preparo((student.id, alvo.categoria))
+        pendente = _pendente(student.id, alvo.categoria, db)
     if pendente:
         entrega = _exercicio_detalhe(pendente, db, reaproveitado=True)
         marcar_exercicio_visto(student.id, pendente.id, db)
@@ -169,10 +167,24 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
 
     try:
         exercicio = _gerar_e_salvar(student, alvo.categoria, alvo.o_que_fazer, db)
-    except ExercicioInvalido as e:
+    except Exception as e:  # noqa: BLE001 — exercício torto, tempo estourado ou API fora
+        if not isinstance(e, ExercicioInvalido):
+            logger.exception("Falha ao gerar exercício de treino na hora")
         raise TreinoIndisponivel(
             "Não consegui montar um exercício bom agora. Tente de novo.") from e
     return _exercicio_detalhe(exercicio, db)
+
+
+def _pendente(student_id: int, categoria: str, db: Session) -> ExercicioGerado | None:
+    return (
+        db.query(ExercicioGerado)
+        .filter(ExercicioGerado.student_id == student_id,
+                ExercicioGerado.error_category == categoria,
+                ExercicioGerado.resolvido.is_(False),
+                ExercicioGerado.reportado.is_(False))
+        .order_by(ExercicioGerado.created_at.desc())
+        .first()
+    )
 
 
 def _gerar_e_salvar(student: Student, categoria: str, diagnostico: str,
@@ -241,9 +253,12 @@ def conferir_casos(dados: dict) -> list[dict]:
 # ── pré-geração ──────────────────────────────────────────────────────────────
 
 # Chaves (aluno, categoria) com geração em voo. Sem isso, o aluno apertando F5
-# na trilha dispararia uma geração por recarga e torraria o teto do dia.
-_em_voo: set[tuple[int, str]] = set()
+# na trilha dispararia uma geração por recarga e torraria o teto do dia. O
+# evento é sinalizado quando o preparo termina, para quem pediu na hora esperar.
+_em_voo: dict[tuple[int, str], threading.Event] = {}
 _trava = threading.Lock()
+# Um pouco mais do que o tempo limite do Gemini, que é o grosso do preparo.
+ESPERA_PELO_PREPARO_S = TEMPO_PADRAO_S + 5
 
 # O teto de gerações só conta exercício gravado, então geração que falha pagaria
 # o Gemini a cada abertura do Início. Depois de uma falha, a chave espera.
@@ -252,6 +267,20 @@ _falhou_em: dict[tuple[int, str], datetime] = {}
 # Cada preparo segura uma conexão do banco durante o Gemini e o Docker. Pré-geração
 # é conveniência: passando disso, o aluno prepara na próxima abertura ou gera ao tocar.
 MAXIMO_DE_PREPAROS = 4
+
+
+def _esperar_preparo(chave: tuple[int, str]) -> None:
+    with _trava:
+        terminou = _em_voo.get(chave)
+    if terminou:
+        terminou.wait(ESPERA_PELO_PREPARO_S)
+
+
+def _liberar(chave: tuple[int, str]) -> None:
+    with _trava:
+        terminou = _em_voo.pop(chave, None)
+    if terminou:
+        terminou.set()
 
 
 def tem_pendente(student_id: int, categoria: str, db: Session) -> bool:
@@ -302,7 +331,7 @@ def preparar_proximo(student_id: int, categoria: str, registrar_novidade: bool =
         if (chave in _em_voo or len(_em_voo) >= MAXIMO_DE_PREPAROS
                 or (falhou and agora_utc() - falhou < ESPERA_DEPOIS_DA_FALHA)):
             return
-        _em_voo.add(chave)
+        _em_voo[chave] = threading.Event()
 
     def _tarefa(db: Session):
         try:
@@ -323,8 +352,7 @@ def preparar_proximo(student_id: int, categoria: str, registrar_novidade: bool =
                 _falhou_em[chave] = agora_utc()
             raise
         finally:
-            with _trava:
-                _em_voo.discard(chave)
+            _liberar(chave)
 
     try:
         _em_segundo_plano(_tarefa)
@@ -332,8 +360,7 @@ def preparar_proximo(student_id: int, categoria: str, registrar_novidade: bool =
         # Sem thread disponível, o preparo fica para a próxima abertura. A chave
         # precisa sair, porque quem a tira é a própria tarefa, que não vai rodar.
         logger.exception("Não consegui abrir a thread da pré-geração")
-        with _trava:
-            _em_voo.discard(chave)
+        _liberar(chave)
 
 
 # ── treino ───────────────────────────────────────────────────────────────────

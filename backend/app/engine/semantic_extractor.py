@@ -1,4 +1,4 @@
-from google import genai
+from app.llm.cliente import TEMPO_DA_EXTRACAO_S, cliente_gemini
 from google.genai import types
 from app.core.config import GEMINI_API_KEY
 
@@ -10,7 +10,7 @@ def extract_exam_structure(raw_text: str, *, file_bytes: bytes = None,
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY não configurada.")
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = cliente_gemini(GEMINI_API_KEY, TEMPO_DA_EXTRACAO_S)
 
     prompt = f"""
 Você é um analisador de provas de programação introdutória em C.

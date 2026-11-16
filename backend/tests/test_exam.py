@@ -26,7 +26,7 @@ FAKE_PDF_BYTES = b"%PDF-1.4 fake"
 def _mock_upload_dependencies():
     parse = patch("app.services.exam_service.parse_document", return_value="texto extraído")
     gemini = patch(
-        "app.engine.semantic_extractor.genai.Client",
+        "google.genai.Client",
         return_value=_mock_gemini_client(GEMINI_STRUCTURE),
     )
     return parse, gemini
@@ -79,7 +79,7 @@ class TestExamUpload:
     def test_upload_gemini_falha_marca_job_com_erro(self, client, run_jobs_sync, turma):
         parse = patch("app.services.exam_service.parse_document", return_value="texto")
         gemini = patch(
-            "app.engine.semantic_extractor.genai.Client",
+            "google.genai.Client",
             side_effect=RuntimeError("API indisponível"),
         )
         with parse, gemini:

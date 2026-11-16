@@ -382,6 +382,20 @@ class TestGeracao:
             gerar_para_categoria(aluno, None, db)
         assert db.query(ExercicioGerado).count() == 0
 
+    def test_gemini_que_estoura_o_tempo_vira_aviso(
+        self, client, db, aluno, erros_do_aluno, monkeypatch
+    ):
+        """Sem isto a rota devolvia 500 e a trilha mostrava erro genérico."""
+        def travado(*a, **k):
+            raise TimeoutError("read timeout")
+
+        monkeypatch.setattr("app.services.treino_service.gerar_exercicio", travado)
+        resp = client.post("/aluno/treino/gerar", json={"error_category": None},
+                           headers=_auth(_token(client)))
+        assert resp.status_code == 409
+        assert "Tente de novo" in resp.json()["detail"]
+        assert db.query(ExercicioGerado).count() == 0
+
 
 class TestTreino:
     def _exercicio(self, db, aluno):
@@ -698,6 +712,73 @@ class TestPreGeracao:
         assert escolhido["reaproveitado"] is True
         assert escolhido["error_category"] == "Acesso Fora dos Limites: Off-by-One"
         assert len(gemini_ok) == antes, "nao podia gerar tendo um pronto"
+
+    def test_pedido_na_hora_espera_o_preparo_em_andamento(
+        self, db, aluno, erros_do_aluno, gemini_ok, monkeypatch
+    ):
+        """Tocar em Treinar enquanto o preparo roda gastava uma segunda geração."""
+        from app.services import treino_service
+
+        categoria = "Acesso Fora dos Limites: Off-by-One"
+        monkeypatch.setattr(treino_service, "_em_segundo_plano", lambda alvo: None)
+        treino_service.preparar_proximo(aluno.id, categoria)
+        assert (aluno.id, categoria) in treino_service._em_voo
+
+        def preparo_termina(chave):
+            # O que a thread do preparo grava antes de liberar a chave.
+            db.add(ExercicioGerado(
+                student_id=aluno.id, error_category=categoria, titulo="Preparado",
+                enunciado="Some os n primeiros inteiros.",
+                casos_teste=[{"input": "3", "expected_output": "6"}],
+                created_at=agora_utc()))
+            db.commit()
+
+        monkeypatch.setattr(treino_service, "_esperar_preparo", preparo_termina)
+        escolhido = treino_service.gerar_para_categoria(aluno, categoria, db)
+        assert escolhido["titulo"] == "Preparado"
+        assert escolhido["reaproveitado"] is True
+        assert gemini_ok == [], "o pedido na hora nao podia gerar outro"
+
+    def test_preparo_que_falha_deixa_o_pedido_gerar(
+        self, db, aluno, erros_do_aluno, gemini_ok, monkeypatch
+    ):
+        from app.services import treino_service
+
+        categoria = "Acesso Fora dos Limites: Off-by-One"
+        monkeypatch.setattr(treino_service, "_em_segundo_plano", lambda alvo: None)
+        treino_service.preparar_proximo(aluno.id, categoria)
+        monkeypatch.setattr(treino_service, "_esperar_preparo", lambda chave: None)
+
+        escolhido = treino_service.gerar_para_categoria(aluno, categoria, db)
+        assert escolhido["titulo"] == "Soma até o limite"
+        assert len(gemini_ok) == 1
+
+    def test_esperar_preparo_volta_quando_o_preparo_termina(self, aluno, monkeypatch):
+        import threading
+
+        from app.services import treino_service
+
+        chave = (aluno.id, "Tudo no Main")
+        terminou = threading.Event()
+        treino_service._em_voo[chave] = terminou
+        threading.Timer(0.05, terminou.set).start()
+        treino_service._esperar_preparo(chave)
+        assert terminou.is_set()
+
+    def test_esperar_preparo_sem_preparo_nao_espera(self, aluno):
+        from app.services import treino_service
+
+        treino_service._esperar_preparo((aluno.id, "Nada em voo"))
+
+    def test_esperar_preparo_desiste_no_tempo_limite(self, aluno, monkeypatch):
+        import threading
+
+        from app.services import treino_service
+
+        monkeypatch.setattr(treino_service, "ESPERA_PELO_PREPARO_S", 0.05)
+        chave = (aluno.id, "Tudo no Main")
+        treino_service._em_voo[chave] = threading.Event()
+        treino_service._esperar_preparo(chave)
 
 
 class TestNovidadesDaTrilha:

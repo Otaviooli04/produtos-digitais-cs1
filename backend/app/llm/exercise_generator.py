@@ -15,7 +15,7 @@ Três restrições vêm direto dos riscos do produto:
 import json
 import re
 
-from google import genai
+from app.llm.cliente import cliente_gemini
 from google.genai import types
 
 from app.core.config import GEMINI_API_KEY
@@ -43,7 +43,7 @@ def gerar_exercicio(error_category: str, diagnostico: str, exemplos: list[str]) 
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY não configurada.")
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = cliente_gemini(GEMINI_API_KEY)
     response = client.models.generate_content(
         model=MODELO,
         contents=_montar_prompt(error_category, diagnostico, exemplos),
