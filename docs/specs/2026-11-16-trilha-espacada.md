@@ -59,7 +59,7 @@ Os erros com revisão vencida aparecem primeiro na seção. Não existe contador
 
 Na tela do exercício, quando a categoria dele está superada, aparece o aviso: "Revisão: você já superou este erro. Treinar de novo ajuda a ver se ele ficou para trás." O texto não promete que o acerto conta na agenda, porque um exercício aberto antes do vencimento não conta.
 
-A revisão preparada depois de um acerto registra a novidade "Exercício novo pronto na trilha", como qualquer preparo depois de acerto já registra hoje. Ela ocupa o lugar do preparo do erro ativo, então a bolinha não acende mais vezes do que já acende.
+A revisão preparada depois de um acerto registra a novidade "Exercício novo pronto na trilha", como qualquer preparo depois de acerto já registra hoje. Com revisão vencida, o acerto prepara a revisão e a próxima visita à trilha prepara o erro ativo, então um ciclo pode deixar dois exercícios prontos e duas novidades, dentro do teto de 8 gerações por dia.
 
 O progresso e os erros recorrentes não mudam.
 
@@ -100,7 +100,7 @@ Nenhuma rota nova nem mudança de papel ou posse. As rotas são as de `/aluno/tr
 - **Cuidado da pilha de atrasados** (Plano de Hábito): sem contador, sem "atrasado" e sem aviso por revisão perdida.
 - **Nada sorteado** (Plano de Growth): a escolha do próximo é determinística.
 - **RNF05:** o exercício de revisão é gerado e conferido pela solução de referência, como qualquer outro.
-- **RNF06:** no máximo três revisões por superação, dentro do teto de 8 gerações por dia. A revisão ocupa o lugar de uma geração que já aconteceria no preparo do próximo.
+- **RNF06:** no máximo três revisões por superação, dentro do teto de 8 gerações por dia. Com revisão vencida, um ciclo pode gerar dois exercícios em vez de um, e cada um fica pendente até o aluno usar.
 
 ## Testes
 
@@ -149,4 +149,4 @@ Smoke com Docker e Gemini reais: aluno `SMOKE-` supera um erro, os envios são d
 6. **Revisão vencida há muito tempo aparece igual à vencida hoje.** É o cuidado da pilha de atrasados.
 7. **Só o primeiro acerto de cada exercício conta.** Fecha o atalho de consolidar refazendo o mesmo exercício.
 8. **Os dias até a próxima revisão vêm do servidor.** O navegador pode estar em outro fuso, e a agenda conta pelo dia de Brasília.
-9. **A revisão preparada registra novidade como qualquer preparo.** Ela substitui o preparo do erro ativo, então não aumenta o número de avisos.
+9. **A revisão preparada registra novidade como qualquer preparo.** Com revisão vencida, um ciclo pode ter duas novidades em vez de uma. Aceito porque cada exercício preparado é usado depois e o teto de 8 por dia continua valendo.

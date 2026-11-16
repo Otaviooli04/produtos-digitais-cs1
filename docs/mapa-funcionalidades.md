@@ -69,8 +69,7 @@ O que o sistema já consegue calcular hoje, sem trabalho novo:
    com o exercício gerado para o erro que o aluno mais repete, o teto de 8
    gerações por dia e o aluno reportando o exercício ruim. Desde o item 1.1 ela
    entra no progresso e nos erros recorrentes. Falta a etapa de revisão do
-   professor, porque "professor no comando" é valor declarado do produto, e a
-   trilha intercalada (2.5).
+   professor, porque "professor no comando" é valor declarado do produto.
 2. **Antifraude do modo prova.** Hoje a janela e o teto de tentativas são as
    únicas barreiras. O risco está declarado no próprio roadmap do Mês 4.
 3. **Relatório de fim de lista.** Fechamento por atividade para o aluno e para o
