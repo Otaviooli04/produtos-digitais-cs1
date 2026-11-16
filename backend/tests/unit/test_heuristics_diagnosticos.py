@@ -85,6 +85,15 @@ class TestDivisaoInteira:
         diag = classify_error(_saidas(("10.00", "10")), _STATIC)
         assert diag["error_category"] == "Precisão de Saída: Casas Decimais"
 
+    def test_nan_e_inf_nao_derrubam_a_classificacao(self):
+        for esperado, obtido in [("nan", "0"), ("inf", "2"), ("2.50", "inf"), ("2.50", "nan")]:
+            diag = classify_error(_saidas((esperado, obtido)), _STATIC)
+            assert diag["error_category"] == "Saída Incorreta"
+
+    def test_meio_negativo_trunca_para_zero(self):
+        diag = classify_error(_saidas(("-0.50", "0.00")), _STATIC)
+        assert diag["error_category"] == DIVISAO_INTEIRA
+
     def test_texto_diferente_nao_e_divisao_inteira(self):
         diag = classify_error(_saidas(("Media: 7.50", "media 7.00")), _STATIC)
         assert diag["error_category"] == "Saída Incorreta"

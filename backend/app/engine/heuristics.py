@@ -385,6 +385,9 @@ def _truncated(expected: str, actual: str) -> bool:
             ve, va = float(e), float(a)
         except ValueError:
             return False
+        # float() aceita "nan" e "inf", e math.trunc levanta erro com eles.
+        if not (math.isfinite(ve) and math.isfinite(va)):
+            return False
         if ve.is_integer() or va != math.trunc(ve):
             return False
         differs = True
@@ -402,7 +405,8 @@ def _classify_integer_division(exemplo: dict) -> dict:
         ),
         "actionable_feedback": (
             "Faça a divisão com pelo menos um operando real, por exemplo "
-            "(float) soma / n ou soma / 2.0."
+            "(float) soma / n ou soma / 2.0. Se a conta já usa número real, confira "
+            "se o printf não está com %d ou %.0f."
         ),
     }
 

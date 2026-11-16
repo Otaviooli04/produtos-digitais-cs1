@@ -152,7 +152,9 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
     pendente = _pendente(student.id, alvo.categoria, db)
     if not pendente and (student.id, alvo.categoria) in _em_voo:
         # O preparo desta categoria já está no Gemini: esperar por ele sai mais
-        # barato do que pagar uma segunda geração para o mesmo erro.
+        # barato do que pagar uma segunda geração para o mesmo erro. Até aqui só
+        # houve leitura, e o commit devolve a conexão ao pool durante a espera.
+        db.commit()
         _esperar_preparo((student.id, alvo.categoria))
         pendente = _pendente(student.id, alvo.categoria, db)
     if pendente:
@@ -257,8 +259,8 @@ def conferir_casos(dados: dict) -> list[dict]:
 # evento é sinalizado quando o preparo termina, para quem pediu na hora esperar.
 _em_voo: dict[tuple[int, str], threading.Event] = {}
 _trava = threading.Lock()
-# Um pouco mais do que o tempo limite do Gemini, que é o grosso do preparo.
-ESPERA_PELO_PREPARO_S = TEMPO_PADRAO_S + 5
+# O tempo limite do Gemini mais a conferência dos casos no Docker e o commit.
+ESPERA_PELO_PREPARO_S = TEMPO_PADRAO_S + 20
 
 # O teto de gerações só conta exercício gravado, então geração que falha pagaria
 # o Gemini a cada abertura do Início. Depois de uma falha, a chave espera.
