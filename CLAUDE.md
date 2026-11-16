@@ -19,7 +19,7 @@ backend/app/
   engine/
     dynamic_analyzer.py  — compila/roda C em Docker (gcc fixo pelo digest, --network none, memória, processos e CPU limitados, sem root, timeout)
     static_analyzer.py   — tree-sitter (tolerante a erros): estruturas, funções, off-by-one
-    heuristics.py        — classify_error: 27 categorias pedagógicas (núcleo)
+    heuristics.py        — classify_error: 29 categorias pedagógicas (núcleo)
     error_locator.py     — linhas culpadas pelo erro de compilação
     semantic_extractor.py— Gemini: enunciado → questões + casos de teste
     evaluators/          — por tipo de questão (código, dissertativa, múltipla escolha)

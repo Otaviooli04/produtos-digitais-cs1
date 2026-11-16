@@ -199,7 +199,7 @@ Extrai `structures` (If/For/While/DoWhile/Switch), `functions` (nome, tipo de re
 
 ### `app/engine/heuristics.py`
 
-Cruza os resultados dinâmico + estático + a especificação da questão e produz **um** diagnóstico pedagógico `{error_category, pedagogical_diagnosis, actionable_feedback}`. Aplica regras em **ordem de prioridade**: se não compila, classifica pela mensagem do GCC. Se compila: avisos → violação de estrutura → violação de função → off-by-one → testes → estrutura. É o núcleo pedagógico. Ver seção 6 para as 27 categorias.
+Cruza os resultados dinâmico + estático + a especificação da questão e produz **um** diagnóstico pedagógico `{error_category, pedagogical_diagnosis, actionable_feedback}`. Aplica regras em **ordem de prioridade**: se não compila, classifica pela mensagem do GCC. Se compila: avisos → violação de estrutura → violação de função → off-by-one → testes → estrutura. É o núcleo pedagógico. Ver seção 6 para as 29 categorias.
 
 ### `app/engine/error_locator.py`
 
@@ -258,7 +258,7 @@ Código do aluno
 
 **Normalização de saída:** a comparação tolera diferenças de whitespace e alinhamento (`%Nd`), para não reprovar um aluno por espaço a mais.
 
-### As 27 categorias de erro
+### As 29 categorias de erro
 
 São a "verdade-base pedagógica" (usada também como pseudo ground-truth no agrupamento):
 
@@ -267,7 +267,7 @@ São a "verdade-base pedagógica" (usada também como pseudo ground-truth no agr
 - **Avisos:** Variável Não Inicializada, Variável Declarada e Não Utilizada, Declaração Implícita de Função.
 - **Estrutura:** Violação de Estrutura, Solução Sequencial — Sem Controle de Fluxo, Estrutura Suspeita — Excesso de Condicionais, Lógica Estrutural Válida.
 - **Funções:** Função Ausente, Tudo no Main, Assinatura Incorreta, Recursão Faltando, Por-Valor vs Por-Referência.
-- **Saída/outros:** Saída Incorreta, Correto, Erro Desconhecido.
+- **Saída/outros:** Saída Incorreta, Precisão de Saída — Casas Decimais, Erro Aritmético — Divisão Inteira, Correto, Erro Desconhecido.
 
 A fundamentação combina metodologia dedutivo-indutiva com âncoras da literatura (McCall & Kölling para severidade, Altadmri & Brown para erros de novatos, Becker, Keuning, Hattie & Timperley para feedback).
 

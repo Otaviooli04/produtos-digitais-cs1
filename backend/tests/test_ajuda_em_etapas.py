@@ -56,7 +56,7 @@ def _cliente(texto):
 class TestGerador:
     def _gerar(self, monkeypatch, texto, **extra):
         monkeypatch.setattr(student_explainer, "GEMINI_API_KEY", "chave-de-teste")
-        with patch("app.llm.student_explainer.genai.Client", return_value=_cliente(texto)):
+        with patch("google.genai.Client", return_value=_cliente(texto)):
             return student_explainer.generate_student_help(
                 statement="Calcule a média.", code="int main(){}",
                 error_category="Saída Incorreta", pedagogical_diagnosis="A saída difere.",
@@ -163,7 +163,7 @@ class TestRotaDaAjuda:
     def test_nivel_1_devolve_uma_pista_e_grava(self, client, db, token, prova):
         _lista(db, prova)
         sub_id = _errada(client, token, prova)
-        with patch("app.llm.student_explainer.genai.Client", return_value=_mock_gemini()):
+        with patch("google.genai.Client", return_value=_mock_gemini()):
             resp = _ajuda(client, token, sub_id, 1)
         assert resp.status_code == 200
         assert resp.json() == {"nivel": 1, "pistas": ETAPAS_OK["pistas"][:1],
@@ -177,7 +177,7 @@ class TestRotaDaAjuda:
         _lista(db, prova)
         sub_id = _errada(client, token, prova)
         mock = _mock_gemini()
-        with patch("app.llm.student_explainer.genai.Client", return_value=mock):
+        with patch("google.genai.Client", return_value=mock):
             _ajuda(client, token, sub_id, 1)
             segunda = _ajuda(client, token, sub_id, 2).json()
             terceira = _ajuda(client, token, sub_id, 3).json()
@@ -190,7 +190,7 @@ class TestRotaDaAjuda:
     def test_nivel_menor_depois_nao_baixa(self, client, db, token, prova):
         _lista(db, prova)
         sub_id = _errada(client, token, prova)
-        with patch("app.llm.student_explainer.genai.Client", return_value=_mock_gemini()):
+        with patch("google.genai.Client", return_value=_mock_gemini()):
             _ajuda(client, token, sub_id, 3)
             resp = _ajuda(client, token, sub_id, 1).json()
         assert resp["nivel"] == 1
@@ -201,7 +201,7 @@ class TestRotaDaAjuda:
         _lista(db, prova)
         sub_id = _submeter(client, token, prova.id, saida="par").json()["tentativa"]["submission_id"]
         mock = _mock_gemini()
-        with patch("app.llm.student_explainer.genai.Client", return_value=mock):
+        with patch("google.genai.Client", return_value=mock):
             resp = _ajuda(client, token, sub_id, 1)
         assert resp.status_code == 400
         assert mock.models.generate_content.call_count == 0
@@ -216,7 +216,7 @@ class TestRotaDaAjuda:
     def test_prova_aberta_bloqueia_sem_chamar_o_gemini(self, client, db, token, prova):
         sub_id = _errada(client, token, prova)
         mock = _mock_gemini()
-        with patch("app.llm.student_explainer.genai.Client", return_value=mock):
+        with patch("google.genai.Client", return_value=mock):
             resp = _ajuda(client, token, sub_id, 1)
         assert resp.status_code == 400
         assert resp.json()["detail"] == "A dica fica disponível quando a prova fechar."
@@ -229,7 +229,7 @@ class TestRotaDaAjuda:
         aluno = db.query(Student).first()
         sub = tentativa_factory(aluno.id, "1", "Erro Desconhecido")
         mock = _mock_gemini()
-        with patch("app.llm.student_explainer.genai.Client", return_value=mock):
+        with patch("google.genai.Client", return_value=mock):
             resp = _ajuda(client, token, sub.id, 1)
         assert resp.status_code == 400
         assert resp.json()["detail"] == (
@@ -248,26 +248,26 @@ class TestRotaDaAjuda:
         sub_id = _errada(client, token, prova)
         prova.fecha_em = agora_utc() - timedelta(hours=1)
         db.commit()
-        with patch("app.llm.student_explainer.genai.Client", return_value=_mock_gemini()):
+        with patch("google.genai.Client", return_value=_mock_gemini()):
             assert _ajuda(client, token, sub_id, 1).status_code == 200
 
     def test_questao_resolvida_na_prova_aberta_libera(self, client, db, token, prova):
         errada_id = _errada(client, token, prova)
         _submeter(client, token, prova.id, saida="par")
-        with patch("app.llm.student_explainer.genai.Client", return_value=_mock_gemini()):
+        with patch("google.genai.Client", return_value=_mock_gemini()):
             assert _ajuda(client, token, errada_id, 1).status_code == 200
 
     def test_prova_com_teto_gasto_libera(self, client, db, token, prova):
         prova.max_tentativas = 1
         db.commit()
         sub_id = _errada(client, token, prova)
-        with patch("app.llm.student_explainer.genai.Client", return_value=_mock_gemini()):
+        with patch("google.genai.Client", return_value=_mock_gemini()):
             assert _ajuda(client, token, sub_id, 1).status_code == 200
 
     def test_falha_do_gemini_nao_grava_nada(self, client, db, token, prova):
         _lista(db, prova)
         sub_id = _errada(client, token, prova)
-        with patch("app.llm.student_explainer.genai.Client",
+        with patch("google.genai.Client",
                    return_value=_cliente("isto não é json")):
             resp = _ajuda(client, token, sub_id, 1)
         assert resp.status_code == 503
@@ -282,7 +282,7 @@ class TestRotaDaAjuda:
         sub = db.get(Submission, sub_id)
         sub.llm_explanation = "Explicação antiga."
         db.commit()
-        with patch("app.llm.student_explainer.genai.Client", return_value=_mock_gemini()):
+        with patch("google.genai.Client", return_value=_mock_gemini()):
             resp = _ajuda(client, token, sub_id, 3).json()
         assert resp["explicacao"] == ETAPAS_OK["explicacao"]
         assert resp["pistas"] == ETAPAS_OK["pistas"]
@@ -308,7 +308,7 @@ class TestEtapasNaTentativa:
     def test_historico_traz_so_as_etapas_abertas(self, client, db, token, prova):
         _lista(db, prova)
         sub_id = _errada(client, token, prova)
-        with patch("app.llm.student_explainer.genai.Client", return_value=_mock_gemini()):
+        with patch("google.genai.Client", return_value=_mock_gemini()):
             _ajuda(client, token, sub_id, 1)
             depois_da_1 = self._historico(client, token, prova)["tentativas"][0]
             _ajuda(client, token, sub_id, 3)

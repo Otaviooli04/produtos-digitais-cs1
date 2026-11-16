@@ -221,7 +221,7 @@ Detalhe importante da robustez: a **normalização de saída** tolera diferença
 
 ---
 
-## 8. Heurísticas — as 27 categorias de erro
+## 8. Heurísticas — as 29 categorias de erro
 
 `classify_error` aplica regras em **ordem de prioridade**. Se o código **não compila**, classifica pela mensagem do compilador. Se compila, avalia: avisos → violação de estrutura → violação de função → off-by-one → testes → estrutura. As categorias são a "verdade-base pedagógica" (usada também como pseudo ground-truth no agrupamento):
 
@@ -230,7 +230,7 @@ Detalhe importante da robustez: a **normalização de saída** tolera diferença
 - **Avisos:** Variável Não Inicializada, Variável Declarada e Não Utilizada, Declaração Implícita de Função.
 - **Estrutura:** Violação de Estrutura, Solução Sequencial — Sem Controle de Fluxo, Estrutura Suspeita — Excesso de Condicionais, Lógica Estrutural Válida.
 - **Funções:** Função Ausente, Tudo no Main, Assinatura Incorreta, Recursão Faltando, Por-Valor vs Por-Referência.
-- **Saída/outros:** Saída Incorreta, Correto, Erro Desconhecido.
+- **Saída/outros:** Saída Incorreta, Precisão de Saída — Casas Decimais, Erro Aritmético — Divisão Inteira, Correto, Erro Desconhecido.
 
 A **fundamentação** dessas categorias no TCC combina metodologia dedutivo-indutiva com âncoras da literatura (McCall & Kölling para severidade, Altadmri & Brown para erros comuns de novatos, Becker, Keuning, Hattie & Timperley para feedback). O rótulo de **severidade** de McCall & Kölling é usado para priorizar o que mostrar ao professor.
 
@@ -395,6 +395,7 @@ A disciplina de Produtos Digitais reposiciona o sistema: de **ferramenta de corr
 13. **Prova chegando (novembro de 2026).** Experimento 5 do Plano de Growth. Nos 3 dias antes de uma prova abrir, o Início mostra um cartão com até 3 erros do aluno para treinar, e o erro vira "feito" com um acerto na trilha dentro da janela (`services/prova_chegando.py`, campo `prova_chegando` de `GET /aluno/inicio`, componente na `InicioPage`). Sem tabela nova, calculado na hora. Abrir o Início prepara em segundo plano o exercício do primeiro erro pendente, sem criar novidade. Como o teto de 8 por dia só conta exercício gravado, `preparar_proximo` espera 10 minutos depois de uma falha e roda no máximo 4 preparos ao mesmo tempo. O "como se sente?" do RF24 e o aviso por push ficam para o item 4.8, e a comparação do experimento fica para depois do piloto.
 14. **Lista de aquecimento (novembro de 2026).** Item 3.5 e experimento 3 do Plano de Growth. Na tela da turma, o professor adiciona uma questão curta e pronta, a média de duas notas com uma casa decimal, que nasce como rascunho para ele revisar e publicar (`POST /turmas/{id}/lista-de-aquecimento`). Ela é curta, mas tem as armadilhas de quem começa, porque acertar de primeira não conta como erro corrigido, que é o que o experimento mede. Sem tabela nova: o `filename` fixo evita a duplicata e mostra quais turmas a usaram.
 15. **Nova identidade visual (novembro de 2026).** O produto passa a se chamar CentralizEd (decisão D5) e todas as telas do professor e do aluno foram migradas para o guia de `docs/identidade-visual.md`, com peças em `frontend/src/components/ui/`, ícones `lucide-react` e sem gradiente, sombra ou emoji como ícone. Nenhuma regra de negócio mudou.
+16. **Diagnósticos e tempo do Gemini (novembro de 2026).** O `;` ausente numa declaração (`expected '=', ',', ';' ...` e `expected ',' or ';'` do gcc) deixou de cair em "não declarada", e a categoria nova "Erro Aritmético: Divisão Inteira" pega a saída que só perdeu a parte decimal. As quatro chamadas ao Gemini passam por `llm/cliente.py`, com 30 s de tempo limite (120 s na extração da prova), e a falha vira mensagem em vez de 500. Tocar em Treinar enquanto o preparo da mesma categoria roda espera esse preparo e entrega o exercício dele. A espera vale por processo, então com mais de um worker do uvicorn ela não enxerga o preparo de outro.
 
 ### O que ainda falta
 Revisão do professor na trilha, antifraude do modo prova, relatório de fim de lista, DAU e WAU em tela (o acesso já é registrado) e acesso sem turma. O mapa completo, ligando cada funcionalidade dos documentos da disciplina ao código, está em `docs/mapa-funcionalidades.md`.
@@ -428,7 +429,7 @@ Regras absolutas do Otávio, reunidas para evitar retrabalho:
 - **Funil interpretável:** arquitetura em estágios sucessivos e determinísticos, cada um auditável, em oposição a uma caixa-preta de ML.
 - **Adaptativo (sem modos):** cada questão declara o que exige e os verificadores só disparam o relevante.
 - **`required_structures` / `forbidden_structures` / `required_functions`:** especificação por questão do que a solução deve/não deve conter, extraída pelo Gemini e revisável pelo professor.
-- **Categoria de erro:** rótulo pedagógico produzido pelas heurísticas (27 categorias).
+- **Categoria de erro:** rótulo pedagógico produzido pelas heurísticas (29 categorias).
 - **Insight:** síntese pedagógica curta gerada pelo Gemini por grupo, cacheada em `QuestionCluster.insight`.
 - **`highlight_lines`:** linhas do código representativo a destacar (erro de compilação via GCC, erro de lógica via Gemini sob revisão).
 

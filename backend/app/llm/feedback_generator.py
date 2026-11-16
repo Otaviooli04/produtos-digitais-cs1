@@ -1,10 +1,13 @@
 import json
+import logging
 import re
 
-from google import genai
+from app.llm.cliente import cliente_gemini
 from google.genai import types
 from app.core.config import GEMINI_API_KEY
 from app.llm.student_explainer import neutralizar_marcadores
+
+logger = logging.getLogger(__name__)
 
 
 def generate_cluster_insights(question_statement: str, clusters: list[dict]) -> list[dict]:
@@ -15,7 +18,7 @@ def generate_cluster_insights(question_statement: str, clusters: list[dict]) -> 
     if not clusters:
         return []
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = cliente_gemini(GEMINI_API_KEY)
 
     blocos = "\n\n".join(
         f"""[Cluster {c["cluster_id"]}] — erro predominante: {c["dominant_error"]}; {c["size"]} aluno(s)
@@ -51,13 +54,17 @@ Retorne APENAS um JSON: uma lista de objetos, um por grupo, no formato
 {{"cluster_id": <int>, "insight": "<texto>", "highlight_lines": [<int>, ...]}}.
 """
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-        ),
-    )
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            ),
+        )
+    except Exception as e:  # noqa: BLE001 — tempo estourado ou API fora vira o 503 da rota
+        logger.exception("Falha ao gerar os insights dos grupos")
+        raise RuntimeError("O Gemini não respondeu. Tente gerar os insights de novo.") from e
 
     parsed = _parse_insights(response.text)
     by_id = {item.get("cluster_id"): item for item in parsed}
