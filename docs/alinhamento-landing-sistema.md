@@ -43,7 +43,7 @@ conceito no ORM, nas rotas, nos serviços e no frontend antes de concluir.
 | Escreve o C na própria página, sem instalar nada | Pronta | `pages/aluno/QuestaoPage.jsx`, editor embutido |
 | Modo treino com tentativas ilimitadas | Pronta | `Exam.modo`, `student_activity_service.py:_restantes` |
 | Modo prova com janela e teto de tentativas | Pronta | `Exam.abre_em/fecha_em/max_tentativas`, `_situacao` |
-| Recebe tipo do erro, causa, linha e o que fazer | Pronta | `engine/heuristics.py`, 27 categorias |
+| Recebe tipo do erro, causa, linha e o que fazer | Pronta | `engine/heuristics.py`, 29 categorias |
 | Vê os casos de teste: "Testes 2/3 passaram", entrada, esperado, obtido | Pronta | `components/TentativaDetalhe.jsx:89-95`, `TestResult` |
 | Botão "explicar meu erro", sob demanda, sobre o próprio código | Pronta | `TentativaDetalhe.jsx:66`, `llm/student_explainer.py` |
 | O diagnóstico não entrega a solução | Pronta | restrição no prompt de `student_explainer.py` |

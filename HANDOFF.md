@@ -221,7 +221,7 @@ Detalhe importante da robustez: a **normalização de saída** tolera diferença
 
 ---
 
-## 8. Heurísticas — as 27 categorias de erro
+## 8. Heurísticas — as 29 categorias de erro
 
 `classify_error` aplica regras em **ordem de prioridade**. Se o código **não compila**, classifica pela mensagem do compilador. Se compila, avalia: avisos → violação de estrutura → violação de função → off-by-one → testes → estrutura. As categorias são a "verdade-base pedagógica" (usada também como pseudo ground-truth no agrupamento):
 
@@ -230,7 +230,7 @@ Detalhe importante da robustez: a **normalização de saída** tolera diferença
 - **Avisos:** Variável Não Inicializada, Variável Declarada e Não Utilizada, Declaração Implícita de Função.
 - **Estrutura:** Violação de Estrutura, Solução Sequencial — Sem Controle de Fluxo, Estrutura Suspeita — Excesso de Condicionais, Lógica Estrutural Válida.
 - **Funções:** Função Ausente, Tudo no Main, Assinatura Incorreta, Recursão Faltando, Por-Valor vs Por-Referência.
-- **Saída/outros:** Saída Incorreta, Correto, Erro Desconhecido.
+- **Saída/outros:** Saída Incorreta, Precisão de Saída — Casas Decimais, Erro Aritmético — Divisão Inteira, Correto, Erro Desconhecido.
 
 A **fundamentação** dessas categorias no TCC combina metodologia dedutivo-indutiva com âncoras da literatura (McCall & Kölling para severidade, Altadmri & Brown para erros comuns de novatos, Becker, Keuning, Hattie & Timperley para feedback). O rótulo de **severidade** de McCall & Kölling é usado para priorizar o que mostrar ao professor.
 
@@ -428,7 +428,7 @@ Regras absolutas do Otávio, reunidas para evitar retrabalho:
 - **Funil interpretável:** arquitetura em estágios sucessivos e determinísticos, cada um auditável, em oposição a uma caixa-preta de ML.
 - **Adaptativo (sem modos):** cada questão declara o que exige e os verificadores só disparam o relevante.
 - **`required_structures` / `forbidden_structures` / `required_functions`:** especificação por questão do que a solução deve/não deve conter, extraída pelo Gemini e revisável pelo professor.
-- **Categoria de erro:** rótulo pedagógico produzido pelas heurísticas (27 categorias).
+- **Categoria de erro:** rótulo pedagógico produzido pelas heurísticas (29 categorias).
 - **Insight:** síntese pedagógica curta gerada pelo Gemini por grupo, cacheada em `QuestionCluster.insight`.
 - **`highlight_lines`:** linhas do código representativo a destacar (erro de compilação via GCC, erro de lógica via Gemini sob revisão).
 

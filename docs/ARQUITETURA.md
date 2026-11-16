@@ -151,7 +151,7 @@ Saída de `extract_control_flow`:
 compila**, classifica pela mensagem do compilador; quando compila, avalia avisos
 → violação de estrutura → violação de função → off-by-one → testes → estrutura.
 
-**27 categorias de erro** atualmente (a "verdade-base pedagógica" usada também
+**29 categorias de erro** atualmente (a "verdade-base pedagógica" usada também
 como pseudo ground-truth no clustering):
 
 - **Sintaxe/Compilação:** Ponto e Vírgula Ausente, Variável ou Função Não
@@ -166,7 +166,8 @@ como pseudo ground-truth no clustering):
   Fluxo, Estrutura Suspeita — Excesso de Condicionais, Lógica Estrutural Válida.
 - **Funções:** Função Ausente, Tudo no Main, Assinatura Incorreta, Recursão
   Faltando, Por-Valor vs Por-Referência.
-- **Saída/outros:** Saída Incorreta, Correto, Erro Desconhecido.
+- **Saída/outros:** Saída Incorreta, Precisão de Saída — Casas Decimais, Erro
+  Aritmético — Divisão Inteira, Correto, Erro Desconhecido.
 
 ---
 

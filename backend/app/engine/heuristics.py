@@ -1,4 +1,5 @@
 import math
+import re
 from dataclasses import dataclass
 
 
@@ -172,6 +173,19 @@ def _check_float_precision(ctx: DiagnosisContext) -> dict | None:
     return _classify_float_precision(exp_dec, got_dec)
 
 
+def _check_integer_division(ctx: DiagnosisContext) -> dict | None:
+    """Saída igual à esperada, a não ser por números que perderam a parte decimal.
+    Só dispara se todas as falhas forem assim, como a regra das casas decimais."""
+    if not ctx.dyn_success or not ctx.test_results:
+        return None
+    failed = [r for r in ctx.test_results if not r["passed"]]
+    if not failed or any(r["actual_output"] == "TIMEOUT" for r in failed):
+        return None
+    if not all(_truncated(r["expected_output"], r["actual_output"]) for r in failed):
+        return None
+    return _classify_integer_division(failed[0])
+
+
 def _check_tests(ctx: DiagnosisContext) -> dict | None:
     if not ctx.dyn_success or not ctx.test_results:
         return None
@@ -202,6 +216,7 @@ CHECKERS = [
     _check_structure_violation,
     _check_function_violation,
     _check_float_precision,
+    _check_integer_division,
     _check_tests,
     _check_structural_fallback,
 ]
@@ -355,6 +370,43 @@ def _precision_mismatch(expected: str, actual: str) -> tuple[int, int] | None:
     return diff
 
 
+def _truncated(expected: str, actual: str) -> bool:
+    """Todo token que difere é um número com parte decimal no esperado e, no
+    obtido, esse número sem a parte decimal, truncado em direção ao zero como
+    faz a divisão entre inteiros em C."""
+    exp_toks, act_toks = expected.split(), actual.split()
+    if len(exp_toks) != len(act_toks):
+        return False
+    differs = False
+    for e, a in zip(exp_toks, act_toks):
+        if e == a:
+            continue
+        try:
+            ve, va = float(e), float(a)
+        except ValueError:
+            return False
+        if ve.is_integer() or va != math.trunc(ve):
+            return False
+        differs = True
+    return differs
+
+
+def _classify_integer_division(exemplo: dict) -> dict:
+    return {
+        "error_category": "Erro Aritmético: Divisão Inteira",
+        "pedagogical_diagnosis": (
+            f"O resultado perdeu a parte decimal: entrada '{exemplo['input']}' → "
+            f"esperado '{exemplo['expected_output']}', obtido '{exemplo['actual_output']}'. "
+            "Em C, a divisão entre dois int descarta a parte decimal antes de o "
+            "resultado ir para a variável float."
+        ),
+        "actionable_feedback": (
+            "Faça a divisão com pelo menos um operando real, por exemplo "
+            "(float) soma / n ou soma / 2.0."
+        ),
+    }
+
+
 def _classify_float_precision(expected_decimals: int, found_decimals: int) -> dict:
     return {
         "error_category": "Precisão de Saída: Casas Decimais",
@@ -386,8 +438,14 @@ def _classify_off_by_one(risky_loops: list, segfault: bool = False) -> dict:
     }
 
 
+# O gcc lista o que esperava logo depois de "expected": "expected ';'", mas também
+# "expected ',' or ';'" e "expected '=', ',', ';', 'asm' ...", que é o caso da
+# declaração sem ponto e vírgula. O ';' depois do "before" não conta.
+_FALTA_PONTO_E_VIRGULA = re.compile(r"expected\s+(?:'[^']+'\s*(?:,|or)\s*)*';'")
+
+
 def _classify_compilation_error(message: str) -> dict:
-    if "expected ';'" in message or 'expected ";"' in message:
+    if _FALTA_PONTO_E_VIRGULA.search(message) or 'expected ";"' in message:
         return {
             "error_category": "Sintaxe: Ponto e Vírgula Ausente",
             "pedagogical_diagnosis": "Uma ou mais instruções não foram terminadas com ';'.",
