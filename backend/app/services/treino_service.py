@@ -435,6 +435,23 @@ def detalhe(student: Student, exercicio_id: int, db: Session) -> dict:
     return entrega
 
 
+def _proximo_depois_do_acerto(student: Student, exercicio: ExercicioGerado,
+                              momento: datetime, db: Session) -> str | None:
+    """A revisão vencida há mais tempo e o primeiro erro ativo se alternam: depois
+    de uma revisão vem o erro ativo, e depois de qualquer outro acerto vem a
+    revisão. Duas revisões seguidas só sem erro ativo.
+
+    Era revisão quando o erro do exercício já estava superado antes deste acerto.
+    O acerto que supera um erro ativo tem `superado_em` igual ao próprio momento."""
+    envios, erros = _historico_e_erros(student, db)
+    vencidas = _revisoes_vencidas(_revisoes(erros, envios))
+    ativo = [e.categoria for e in erros if e.ativo][:1]
+    erro = next((e for e in erros if e.categoria == exercicio.error_category), None)
+    era_revisao = bool(erro and not erro.ativo and erro.superado_em < momento)
+    candidatos = ativo + vencidas if era_revisao else vencidas + ativo
+    return _primeiro_sem_pendente(student.id, candidatos, db)
+
+
 def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict:
     """Submete contra um exercício gerado. Sem janela e sem teto: é treino."""
     exercicio = _meu_exercicio(student, exercicio_id, db)
@@ -476,11 +493,10 @@ def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict
     db.commit()
     db.refresh(tentativa)
 
-    # Acabou de resolver: o próximo a ficar pronto é o do primeiro erro que
-    # continua ativo, que em geral já não é o deste exercício. Assim, quando
-    # ele voltar à trilha, não há espera.
+    # Acabou de resolver: o próximo já fica pronto para não haver espera quando
+    # ele voltar à trilha. Revisão vencida e erro ativo se alternam.
     if acertou:
-        proximo = next((e.categoria for e in _erros(student, db) if e.ativo), None)
+        proximo = _proximo_depois_do_acerto(student, exercicio, tentativa.submitted_at, db)
         if proximo:
             preparar_proximo(student.id, proximo)
 

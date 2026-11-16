@@ -1067,3 +1067,96 @@ class TestRevisaoEspacada:
 
         assert detalhe(aluno, resolvido.id, db)["revisao"] is True
         assert detalhe(aluno, do_ativo.id, db)["revisao"] is False
+
+    @pytest.fixture()
+    def acerta(self, monkeypatch):
+        from app.services import treino_service
+
+        monkeypatch.setattr(treino_service, "evaluate_code",
+                            lambda *a, **k: _resultado_referencia([True]))
+
+    def test_acerto_num_erro_ativo_prepara_a_revisao_vencida(
+        self, db, aluno, exam_factory, pre_geracoes, acerta
+    ):
+        from app.services.treino_service import treinar
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        _superou(db, aluno, exam, self.X, dias_atras=3)
+        _errou(db, aluno, exam, self.Y)
+        _errou(db, aluno, exam, self.Z)
+        exercicio = _pendente_de(db, aluno, self.Y)
+
+        treinar(aluno, exercicio.id, "int main(){}", db)
+        assert pre_geracoes == [self.X]
+
+    def test_acerto_numa_revisao_prepara_o_erro_ativo(
+        self, db, aluno, exam_factory, pre_geracoes, acerta
+    ):
+        from app.services.treino_service import treinar
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        _superou(db, aluno, exam, self.X, dias_atras=3)
+        _superou(db, aluno, exam, self.W, dias_atras=5)
+        _errou(db, aluno, exam, self.Z)
+        revisao = _pendente_de(db, aluno, self.X)
+
+        treinar(aluno, revisao.id, "int main(){}", db)
+        assert pre_geracoes == [self.Z]
+
+    def test_acerto_numa_revisao_sem_ativo_prepara_outra_revisao(
+        self, db, aluno, exam_factory, pre_geracoes, acerta
+    ):
+        from app.services.treino_service import treinar
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        _superou(db, aluno, exam, self.X, dias_atras=3)
+        _superou(db, aluno, exam, self.W, dias_atras=5)
+        revisao = _pendente_de(db, aluno, self.X)
+
+        treinar(aluno, revisao.id, "int main(){}", db)
+        assert pre_geracoes == [self.W]
+
+    def test_entre_duas_vencidas_vem_a_mais_antiga(
+        self, db, aluno, exam_factory, pre_geracoes, acerta
+    ):
+        from app.services.treino_service import treinar
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        _superou(db, aluno, exam, self.X, dias_atras=3)
+        _superou(db, aluno, exam, self.W, dias_atras=5)
+        _errou(db, aluno, exam, self.Y)
+        exercicio = _pendente_de(db, aluno, self.Y)
+
+        treinar(aluno, exercicio.id, "int main(){}", db)
+        assert pre_geracoes == [self.W]
+
+    def test_vencida_com_pendente_e_pulada_pela_proxima_vencida(
+        self, db, aluno, exam_factory, pre_geracoes, acerta
+    ):
+        from app.services.treino_service import treinar
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        _superou(db, aluno, exam, self.X, dias_atras=3)
+        _superou(db, aluno, exam, self.W, dias_atras=5)
+        _pendente_de(db, aluno, self.W)
+        _errou(db, aluno, exam, self.Y)
+        _errou(db, aluno, exam, self.Z)
+        exercicio = _pendente_de(db, aluno, self.Y)
+
+        treinar(aluno, exercicio.id, "int main(){}", db)
+        assert pre_geracoes == [self.X]
+
+    def test_vencida_com_pendente_e_pulada_pelo_erro_ativo(
+        self, db, aluno, exam_factory, pre_geracoes, acerta
+    ):
+        from app.services.treino_service import treinar
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        _superou(db, aluno, exam, self.X, dias_atras=3)
+        _pendente_de(db, aluno, self.X)
+        _errou(db, aluno, exam, self.Y)
+        _errou(db, aluno, exam, self.Z)
+        exercicio = _pendente_de(db, aluno, self.Y)
+
+        treinar(aluno, exercicio.id, "int main(){}", db)
+        assert pre_geracoes == [self.Z]
