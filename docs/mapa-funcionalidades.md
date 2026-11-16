@@ -21,7 +21,7 @@ Numeração igual à do documento "Produto, Personas, Mercado e Roadmap", seçã
 | 7 | Agrupamento por assinatura de falha | MVP | Pronta | `ml/cluster.py`, aba de grupos no painel do professor |
 | 8 | Montagem da prova a partir do enunciado | MVP | Pronta | `engine/semantic_extractor.py` (Gemini), job em segundo plano |
 | 9 | Modo prova com janela e tentativas controladas | v2 | Parcial | Janela e teto valem em `submeter`, com trava contra envios simultâneos passarem do teto. Falta antifraude |
-| 10 | Trilha direcionada ao erro, com geração de exercícios | v2 | Parcial | `services/treino_service.py`, `llm/exercise_generator.py`, `pages/aluno/TreinoPage.jsx`, migração 0016. Mostra só os erros ativos, com os superados e o "Treinar de novo" à parte. Falta a revisão do professor, ver seção 4 |
+| 10 | Trilha direcionada ao erro, com geração de exercícios | v2 | Parcial | `services/treino_service.py`, `llm/exercise_generator.py`, `pages/aluno/TreinoPage.jsx`, migração 0016. Mostra só os erros ativos, com os superados à parte, cada um com revisão em 1, 6 e 15 dias até ficar consolidado, intercalada com os erros ativos. Falta a revisão do professor, ver seção 4 |
 
 Duas funcionalidades do roadmap que não estavam nessa lista também entraram:
 
