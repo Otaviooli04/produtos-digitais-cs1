@@ -1028,10 +1028,13 @@ class TestRevisaoEspacada:
         _superou(db, aluno, exam, self.W, dias_atras=0)
         _superou(db, aluno, exam, self.X, dias_atras=3)
 
+        from app.services.calendario import dia_local
+
+        esperado = (dia_local(agora_utc() - timedelta(days=3)) + timedelta(days=1)).isoformat()
         superados = trilha(aluno, db)["superados"]
         assert [s["error_category"] for s in superados] == [self.X, self.W]
         assert superados[0]["revisao"] == {
-            "feitas": 0, "proxima_em": superados[0]["revisao"]["proxima_em"],
+            "feitas": 0, "proxima_em": esperado,
             "dias_ate": -2, "vencida": True, "consolidado": False}
         assert superados[1]["revisao"]["dias_ate"] == 1
         assert superados[1]["revisao"]["vencida"] is False
@@ -1057,15 +1060,19 @@ class TestRevisaoEspacada:
         assert exercicio["error_category"] == self.X
         assert exercicio["revisao"] is True
 
-    def test_detalhe_traz_revisao_so_para_categoria_superada(self, db, aluno, exam_factory):
+    def test_detalhe_traz_revisao_so_para_exercicio_criado_depois_da_superacao(
+        self, db, aluno, exam_factory
+    ):
         from app.services.treino_service import detalhe
 
         exam = exam_factory(questions=[{"number": "1"}])
         resolvido = _superou(db, aluno, exam, self.X, dias_atras=3)
         _errou(db, aluno, exam, self.Z)
         do_ativo = _pendente_de(db, aluno, self.Z)
+        de_revisao = _pendente_de(db, aluno, self.X)
 
-        assert detalhe(aluno, resolvido.id, db)["revisao"] is True
+        assert detalhe(aluno, resolvido.id, db)["revisao"] is False
+        assert detalhe(aluno, de_revisao.id, db)["revisao"] is True
         assert detalhe(aluno, do_ativo.id, db)["revisao"] is False
 
     @pytest.fixture()

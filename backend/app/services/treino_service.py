@@ -127,7 +127,7 @@ def trilha(student: Student, db: Session) -> dict:
     categorias = _categorias([e for e in erros if e.ativo], student, db)
     # Aquece a categoria que ele mais erra, que é a que o botão grande oferece.
     # Sem exercício pendente ali, o primeiro clique esperaria o Gemini. Sem erro
-    # ativo, o botão grande vira a revisão vencida, e é ela que fica pronta.
+    # ativo, quem fica pronto é o "Revisar agora" da revisão vencida há mais tempo.
     if categorias:
         if not categorias[0]["tem_pendente"]:
             preparar_proximo(student.id, categorias[0]["error_category"])
@@ -212,7 +212,8 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
         _esperar_preparo((student.id, alvo.categoria))
         pendente = _pendente(student.id, alvo.categoria, db)
     if pendente:
-        entrega = _exercicio_detalhe(pendente, db, reaproveitado=True)
+        entrega = _exercicio_detalhe(
+            pendente, db, reaproveitado=True, revisao=_e_revisao(pendente, erros))
         marcar_exercicio_visto(student.id, pendente.id, db)
         return entrega
 
@@ -228,7 +229,7 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
             logger.exception("Falha ao gerar exercício de treino na hora")
         raise TreinoIndisponivel(
             "Não consegui montar um exercício bom agora. Tente de novo.") from e
-    return _exercicio_detalhe(exercicio, db)
+    return _exercicio_detalhe(exercicio, db, revisao=_e_revisao(exercicio, erros))
 
 
 def _pendente(student_id: int, categoria: str, db: Session) -> ExercicioGerado | None:
@@ -430,7 +431,8 @@ def _meu_exercicio(student: Student, exercicio_id: int, db: Session) -> Exercici
 
 def detalhe(student: Student, exercicio_id: int, db: Session) -> dict:
     exercicio = _meu_exercicio(student, exercicio_id, db)
-    entrega = _exercicio_detalhe(exercicio, db)
+    entrega = _exercicio_detalhe(
+        exercicio, db, revisao=_e_revisao(exercicio, _erros(student, db)))
     marcar_exercicio_visto(student.id, exercicio.id, db)
     return entrega
 
@@ -547,13 +549,16 @@ def _exercicio_resumo(e: ExercicioGerado) -> dict:
     }
 
 
-def _e_revisao(e: ExercicioGerado, db: Session) -> bool:
-    student = db.get(Student, e.student_id)
-    erro = next((x for x in _erros(student, db) if x.categoria == e.error_category), None)
-    return bool(erro and not erro.ativo)
+def _e_revisao(e: ExercicioGerado, erros: list[Erro]) -> bool:
+    """Revisão é o exercício criado depois de o erro ser superado. O que superou
+    o erro não é revisão, mesmo que a categoria já esteja superada agora."""
+    erro = next((x for x in erros if x.categoria == e.error_category), None)
+    return bool(erro and not erro.ativo and erro.superado_em < e.created_at)
 
 
-def _exercicio_detalhe(e: ExercicioGerado, db: Session, reaproveitado: bool = False) -> dict:
+def _exercicio_detalhe(
+    e: ExercicioGerado, db: Session, reaproveitado: bool = False, revisao: bool = False
+) -> dict:
     tentativas = sorted(e.tentativas, key=lambda t: t.attempt_number, reverse=True)
     return {
         **_exercicio_resumo(e),
@@ -561,7 +566,7 @@ def _exercicio_detalhe(e: ExercicioGerado, db: Session, reaproveitado: bool = Fa
         "required_structures": e.required_structures or [],
         "total_testes": len(e.casos_teste or []),
         "reaproveitado": reaproveitado,
-        "revisao": _e_revisao(e, db),
+        "revisao": revisao,
         "tentativas_lista": [_tentativa_dict(t) for t in tentativas],
     }
 
