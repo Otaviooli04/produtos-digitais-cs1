@@ -378,7 +378,7 @@ def _truncated(expected: str, actual: str) -> bool:
     if len(exp_toks) != len(act_toks):
         return False
     differs = False
-    for e, a in zip(exp_toks, act_toks):
+    for e, a in zip(exp_toks, act_toks, strict=True):
         if e == a:
             continue
         try:
