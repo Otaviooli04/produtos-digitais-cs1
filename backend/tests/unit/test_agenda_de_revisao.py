@@ -123,3 +123,10 @@ def test_sem_a_tentativa_reportada_a_revisao_some():
 
 def test_erro_ativo_nao_tem_agenda():
     assert _agenda([_erro_na_lista(_dia(1))], date(2026, 11, 3)) is None
+
+
+def test_acerto_de_exercicio_de_outro_erro_nao_conta():
+    outro = Envio(origem=TRILHA, item_id=11, momento=_dia(3), categoria="Correto",
+                  resultado=ACERTO, alvo="Tudo no Main", titulo="Soma")
+    envios = [_erro_na_lista(_dia(1)), _acerto_na_trilha(10, _dia(2)), outro]
+    assert _agenda(envios, date(2026, 11, 3)).feitas == 0
