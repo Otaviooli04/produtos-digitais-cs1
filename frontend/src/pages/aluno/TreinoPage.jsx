@@ -10,11 +10,6 @@ import Tag from '../../components/ui/Tag'
 import { dataCurta } from '../../utils/datas'
 import { shortError } from '../../utils/errorLabels'
 
-/**
- * A trilha de treino. O painel de progresso já dizia ao aluno o que ele repete;
- * aqui ele treina exatamente isso, com exercício gerado sob medida e tentativas
- * ilimitadas. Nada daqui vale nota.
- */
 function situacaoDaRevisao(revisao) {
   if (!revisao) return ''
   if (revisao.consolidado) return 'Consolidado'
@@ -24,6 +19,11 @@ function situacaoDaRevisao(revisao) {
     : `Próxima revisão em ${revisao.dias_ate} dias`
 }
 
+/**
+ * A trilha de treino. O painel de progresso já dizia ao aluno o que ele repete;
+ * aqui ele treina exatamente isso, com exercício gerado sob medida e tentativas
+ * ilimitadas. Nada daqui vale nota.
+ */
 export default function TreinoPage() {
   const [trilha, setTrilha] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -56,6 +56,7 @@ export default function TreinoPage() {
 
   const categorias = trilha?.categorias ?? []
   const superados = trilha?.superados ?? []
+  const temRevisaoVencida = superados.some(s => s.revisao?.vencida)
   const exercicios = trilha?.exercicios ?? []
   const pendentes = exercicios.filter(e => !e.resolvido)
   const resolvidos = exercicios.filter(e => e.resolvido)
@@ -134,10 +135,16 @@ export default function TreinoPage() {
           ) : (
             <Card className="border-dashed border-noite/30! text-center p-8! items-center">
               <p className="text-sm text-cinza-texto">Você superou todos os erros que repetia.</p>
-              <p className="text-xs text-cinza-texto">Resolva uma questão da sua turma e volte aqui.</p>
-              <Botao to="/aluno/turmas" className="mt-1">
-                Ver minhas turmas
-              </Botao>
+              <p className="text-xs text-cinza-texto">
+                {temRevisaoVencida
+                  ? 'Tem revisão esperando por você logo abaixo.'
+                  : 'Resolva uma questão da sua turma e volte aqui.'}
+              </p>
+              {!temRevisaoVencida && (
+                <Botao to="/aluno/turmas" className="mt-1">
+                  Ver minhas turmas
+                </Botao>
+              )}
             </Card>
           )}
 
