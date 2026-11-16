@@ -12,7 +12,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.models.orm import ExercicioGerado, Student, Submission, TentativaDeTreino
-from app.services.calendario import semana_iso
+from app.services.calendario import dia_local, semana_iso
 
 CATEGORIA_CORRETA = "Correto"
 # O que as heurísticas devolvem quando a execução falha por fora do código do
@@ -147,6 +147,60 @@ def superados(erros: list[Erro]) -> list[dict]:
          "superado_em": e.superado_em.isoformat()}
         for e in erros if not e.ativo
     ]
+
+
+# Os três primeiros intervalos do SM-2 com facilidade 2,5. Três sessões espaçadas
+# dão quase todo o ganho da reaprendizagem sucessiva, e cada uma custa uma geração.
+INTERVALOS_DA_REVISAO = (1, 6, 15)
+
+
+@dataclass(frozen=True)
+class Revisao:
+    """A agenda de um erro superado. `dias_ate` é zero ou negativo quando venceu."""
+    feitas: int
+    proxima_em: date | None
+    dias_ate: int | None
+
+    @property
+    def consolidado(self) -> bool:
+        return self.proxima_em is None
+
+    @property
+    def vencida(self) -> bool:
+        return self.dias_ate is not None and self.dias_ate <= 0
+
+
+def agenda_de_revisao(erro: Erro, envios: list[Envio], hoje: date) -> Revisao | None:
+    """Quantas revisões do erro superado já foram feitas e quando vence a próxima.
+
+    Revisão é o primeiro acerto de um exercício da trilha feito para o erro, sem
+    repeti-lo, numa data a partir do vencimento da vez. Refazer um exercício já
+    resolvido não conta, senão o aluno consolidaria o erro refazendo o mesmo
+    exercício nas datas certas. Erro ativo não tem agenda."""
+    if erro.ativo:
+        return None
+    primeiros: dict[tuple[str, int], Envio] = {}
+    for e in envios:
+        if e.origem == TRILHA and e.resultado == ACERTO and e.item not in primeiros:
+            primeiros[e.item] = e
+
+    marco = dia_local(erro.superado_em)
+    feitas = 0
+    for e in primeiros.values():
+        if feitas == len(INTERVALOS_DA_REVISAO):
+            break
+        if (e.alvo != erro.categoria or e.categoria == erro.categoria
+                or e.momento <= erro.superado_em):
+            continue
+        dia = dia_local(e.momento)
+        if dia >= marco + timedelta(days=INTERVALOS_DA_REVISAO[feitas]):
+            feitas += 1
+            marco = dia
+
+    if feitas == len(INTERVALOS_DA_REVISAO):
+        return Revisao(feitas, None, None)
+    proxima = marco + timedelta(days=INTERVALOS_DA_REVISAO[feitas])
+    return Revisao(feitas, proxima, (proxima - hoje).days)
 
 
 def rotulos(erro: Erro, rotulo_da_questao: dict[int, str]) -> list[str]:
