@@ -769,10 +769,20 @@ class ErroRecorrente(BaseModel):
     no_treino: int = 0
 
 
+class RevisaoDoErro(BaseModel):
+    feitas: int
+    proxima_em: Optional[str] = None  # ISO, data de Brasília
+    dias_ate: Optional[int] = None    # zero ou negativo quando venceu
+    vencida: bool = False
+    consolidado: bool = False
+
+
 class ErroSuperado(BaseModel):
     error_category: str
     total: int
     superado_em: str  # ISO, como ultima_ocorrencia
+    # Só a trilha preenche. Os erros recorrentes não mostram a agenda.
+    revisao: Optional[RevisaoDoErro] = None
 
 
 class ErrosRecorrentesResponse(BaseModel):
@@ -843,6 +853,8 @@ class ExercicioDetalhe(ExercicioResumo):
     # True quando a trilha devolveu um exercício que já existia em vez de gastar
     # uma geração nova, o que a tela avisa ao aluno.
     reaproveitado: bool = False
+    # True quando a categoria do exercício já foi superada: é uma revisão.
+    revisao: bool = False
     tentativas_lista: List[TentativaDeTreinoResponse] = []
 
 

@@ -10,6 +10,15 @@ import Tag from '../../components/ui/Tag'
 import { dataCurta } from '../../utils/datas'
 import { shortError } from '../../utils/errorLabels'
 
+function situacaoDaRevisao(revisao) {
+  if (!revisao) return ''
+  if (revisao.consolidado) return 'Consolidado'
+  if (revisao.vencida) return 'Hora de revisar'
+  return revisao.dias_ate === 1
+    ? 'Próxima revisão amanhã'
+    : `Próxima revisão em ${revisao.dias_ate} dias`
+}
+
 /**
  * A trilha de treino. O painel de progresso já dizia ao aluno o que ele repete;
  * aqui ele treina exatamente isso, com exercício gerado sob medida e tentativas
@@ -47,6 +56,7 @@ export default function TreinoPage() {
 
   const categorias = trilha?.categorias ?? []
   const superados = trilha?.superados ?? []
+  const temRevisaoVencida = superados.some(s => s.revisao?.vencida)
   const exercicios = trilha?.exercicios ?? []
   const pendentes = exercicios.filter(e => !e.resolvido)
   const resolvidos = exercicios.filter(e => e.resolvido)
@@ -125,10 +135,16 @@ export default function TreinoPage() {
           ) : (
             <Card className="border-dashed border-noite/30! text-center p-8! items-center">
               <p className="text-sm text-cinza-texto">Você superou todos os erros que repetia.</p>
-              <p className="text-xs text-cinza-texto">Resolva uma questão da sua turma e volte aqui.</p>
-              <Botao to="/aluno/turmas" className="mt-1">
-                Ver minhas turmas
-              </Botao>
+              <p className="text-xs text-cinza-texto">
+                {temRevisaoVencida
+                  ? 'Tem revisão esperando por você logo abaixo.'
+                  : 'Resolva uma questão da sua turma e volte aqui.'}
+              </p>
+              {!temRevisaoVencida && (
+                <Botao to="/aluno/turmas" className="mt-1">
+                  Ver minhas turmas
+                </Botao>
+              )}
             </Card>
           )}
 
@@ -138,20 +154,32 @@ export default function TreinoPage() {
                 Erros que você superou
               </RotuloSecao>
               <div className="space-y-2">
-                {superados.map(s => (
-                  <Card key={s.error_category} className="gap-2!">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Tag variante="sucesso">{shortError(s.error_category)}</Tag>
-                      <span className="text-xs text-cinza-texto">superado em {dataCurta(s.superado_em)}</span>
-                    </div>
-                    <div>
-                      <Botao variante="secundario" onClick={() => gerar(s.error_category)} disabled={gerando != null}>
-                        {gerando === s.error_category && <Spinner className="w-3.5 h-3.5" />}
-                        Treinar de novo
-                      </Botao>
-                    </div>
-                  </Card>
-                ))}
+                {superados.map(s => {
+                  const vencida = s.revisao?.vencida
+                  return (
+                    <Card key={s.error_category} className="gap-2!">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Tag variante="sucesso">{shortError(s.error_category)}</Tag>
+                        <span className="text-xs text-cinza-texto">superado em {dataCurta(s.superado_em)}</span>
+                      </div>
+                      {s.revisao && (
+                        <p className={`text-xs ${vencida ? 'font-bold text-violeta' : 'text-cinza-texto'}`}>
+                          {situacaoDaRevisao(s.revisao)}
+                        </p>
+                      )}
+                      <div>
+                        <Botao
+                          variante={vencida ? 'primario' : 'secundario'}
+                          onClick={() => gerar(s.error_category)}
+                          disabled={gerando != null}
+                        >
+                          {gerando === s.error_category && <Spinner className="w-3.5 h-3.5" />}
+                          {vencida ? 'Revisar agora' : 'Treinar de novo'}
+                        </Botao>
+                      </div>
+                    </Card>
+                  )
+                })}
               </div>
             </div>
           )}

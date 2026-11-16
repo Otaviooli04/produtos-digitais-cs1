@@ -25,8 +25,10 @@ from app.engine.evaluators.code_evaluator import evaluate_code
 from app.llm.cliente import TEMPO_PADRAO_S
 from app.llm.exercise_generator import GERACOES_POR_DIA, ExercicioInvalido, gerar_exercicio
 from app.models.orm import ExercicioGerado, Student, TentativaDeTreino
+from app.services.calendario import dia_local
 from app.services.historico_do_aluno import (
-    ACERTO, FALHA, Erro, erros_do_aluno, ler_historico, resultado_da_trilha, superados,
+    ACERTO, FALHA, Envio, Erro, Revisao, agenda_de_revisao, erros_do_aluno, ler_historico,
+    resultado_da_trilha, superados,
 )
 from app.services.novidades_service import marcar_exercicio_visto, registrar_exercicio
 from app.services.ritmo_da_tentativa import JANELA_DO_RITMO, EnvioDoRitmo, ritmo
@@ -48,6 +50,44 @@ def _erros(student: Student, db: Session) -> list[Erro]:
     """Os erros do aluno, ativos e superados, do mesmo histórico do painel de
     erros recorrentes: listas e trilha juntas. Sem chamada de LLM."""
     return erros_do_aluno(ler_historico(student, db))
+
+
+def _historico_e_erros(student: Student, db: Session) -> tuple[list[Envio], list[Erro]]:
+    """O histórico e os erros lidos uma vez, porque a agenda precisa dos dois."""
+    envios = ler_historico(student, db)
+    return envios, erros_do_aluno(envios)
+
+
+def _revisoes(erros: list[Erro], envios: list[Envio]) -> dict[str, Revisao]:
+    hoje = dia_local(agora_utc())
+    return {e.categoria: agenda_de_revisao(e, envios, hoje) for e in erros if not e.ativo}
+
+
+def _revisoes_vencidas(revisoes: dict[str, Revisao]) -> list[str]:
+    """Da que venceu há mais tempo para a mais recente, e depois pelo nome."""
+    vencidas = sorted((r.dias_ate, categoria) for categoria, r in revisoes.items() if r.vencida)
+    return [categoria for _, categoria in vencidas]
+
+
+def _primeiro_sem_pendente(student_id: int, candidatos: list[str], db: Session) -> str | None:
+    return next((c for c in candidatos if not tem_pendente(student_id, c, db)), None)
+
+
+def _revisao_dict(r: Revisao) -> dict:
+    return {
+        "feitas": r.feitas,
+        "proxima_em": r.proxima_em.isoformat() if r.proxima_em else None,
+        "dias_ate": r.dias_ate,
+        "vencida": r.vencida,
+        "consolidado": r.consolidado,
+    }
+
+
+def _superados_com_agenda(erros: list[Erro], revisoes: dict[str, Revisao]) -> list[dict]:
+    """Os vencidos primeiro, sem dizer há quanto tempo: nada de pilha de atrasados."""
+    lista = [{**s, "revisao": _revisao_dict(revisoes[s["error_category"]])}
+             for s in superados(erros)]
+    return sorted(lista, key=lambda s: not s["revisao"]["vencida"])
 
 
 def categorias_para_treinar(student: Student, db: Session) -> list[dict]:
@@ -82,12 +122,19 @@ def _categorias(erros: list[Erro], student: Student, db: Session) -> list[dict]:
 
 
 def trilha(student: Student, db: Session) -> dict:
-    erros = _erros(student, db)
+    envios, erros = _historico_e_erros(student, db)
+    revisoes = _revisoes(erros, envios)
     categorias = _categorias([e for e in erros if e.ativo], student, db)
     # Aquece a categoria que ele mais erra, que é a que o botão grande oferece.
-    # Sem exercício pendente ali, o primeiro clique esperaria o Gemini.
-    if categorias and not categorias[0]["tem_pendente"]:
-        preparar_proximo(student.id, categorias[0]["error_category"])
+    # Sem exercício pendente ali, o primeiro clique esperaria o Gemini. Sem erro
+    # ativo, quem fica pronto é o "Revisar agora" da revisão vencida há mais tempo.
+    if categorias:
+        if not categorias[0]["tem_pendente"]:
+            preparar_proximo(student.id, categorias[0]["error_category"])
+    else:
+        vencida = _primeiro_sem_pendente(student.id, _revisoes_vencidas(revisoes), db)
+        if vencida:
+            preparar_proximo(student.id, vencida)
 
     exercicios = (
         db.query(ExercicioGerado)
@@ -98,7 +145,7 @@ def trilha(student: Student, db: Session) -> dict:
     )
     return {
         "categorias": categorias,
-        "superados": superados(erros),
+        "superados": _superados_com_agenda(erros, revisoes),
         "exercicios": [_exercicio_resumo(e) for e in exercicios],
         "geracoes_restantes_hoje": _restantes_hoje(student, db),
     }
@@ -123,7 +170,7 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
     Antes de gastar uma chamada de LLM, devolve o exercício pendente que já
     existe naquela categoria: treinar o que está aberto vale mais do que
     acumular exercício novo, e é de graça."""
-    erros = _erros(student, db)
+    envios, erros = _historico_e_erros(student, db)
     if not erros:
         raise TreinoIndisponivel(
             "Você ainda não tem erros suficientes para a trilha. "
@@ -136,18 +183,25 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
             raise TreinoIndisponivel("Você não tem erros nessa categoria.")
     else:
         ativos = [e for e in erros if e.ativo]
-        if not ativos:
-            raise TreinoIndisponivel(
-                "Você superou todos os erros que repetia. "
-                "Resolva uma questão da sua turma e volte aqui.")
-        # Sem categoria pedida, vale o que já está pronto: a lista vem ordenada
-        # pelo que ele mais erra, e entregar na hora um exercício da categoria
-        # certa vale mais do que fazer o aluno esperar uma geração de outra.
-        # A regra era a inversa antes de existir pré-geração, e nesse arranjo
-        # ela passava por cima do exercício que já estava esperando.
-        categorias = _categorias(ativos, student, db)
-        pronta = next((c for c in categorias if c["tem_pendente"]), categorias[0])
-        alvo = next(e for e in ativos if e.categoria == pronta["error_category"])
+        if ativos:
+            # Sem categoria pedida, vale o que já está pronto: a lista vem ordenada
+            # pelo que ele mais erra, e entregar na hora um exercício da categoria
+            # certa vale mais do que fazer o aluno esperar uma geração de outra.
+            # A regra era a inversa antes de existir pré-geração, e nesse arranjo
+            # ela passava por cima do exercício que já estava esperando.
+            categorias = _categorias(ativos, student, db)
+            pronta = next((c for c in categorias if c["tem_pendente"]), categorias[0])
+            alvo = next(e for e in ativos if e.categoria == pronta["error_category"])
+        else:
+            vencidas = _revisoes_vencidas(_revisoes(erros, envios))
+            if not vencidas:
+                raise TreinoIndisponivel(
+                    "Você superou todos os erros que repetia. "
+                    "Resolva uma questão da sua turma e volte aqui.")
+            # Como nos ativos, a vencida que já tem exercício pronto vem antes da
+            # que venceu há mais tempo: entregar na hora vale mais do que esperar.
+            pronta = next((c for c in vencidas if tem_pendente(student.id, c, db)), vencidas[0])
+            alvo = next(e for e in erros if e.categoria == pronta)
 
     pendente = _pendente(student.id, alvo.categoria, db)
     if not pendente and (student.id, alvo.categoria) in _em_voo:
@@ -158,7 +212,8 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
         _esperar_preparo((student.id, alvo.categoria))
         pendente = _pendente(student.id, alvo.categoria, db)
     if pendente:
-        entrega = _exercicio_detalhe(pendente, db, reaproveitado=True)
+        entrega = _exercicio_detalhe(
+            pendente, db, reaproveitado=True, revisao=_e_revisao(pendente, erros))
         marcar_exercicio_visto(student.id, pendente.id, db)
         return entrega
 
@@ -174,7 +229,7 @@ def gerar_para_categoria(student: Student, categoria: str | None, db: Session) -
             logger.exception("Falha ao gerar exercício de treino na hora")
         raise TreinoIndisponivel(
             "Não consegui montar um exercício bom agora. Tente de novo.") from e
-    return _exercicio_detalhe(exercicio, db)
+    return _exercicio_detalhe(exercicio, db, revisao=_e_revisao(exercicio, erros))
 
 
 def _pendente(student_id: int, categoria: str, db: Session) -> ExercicioGerado | None:
@@ -376,9 +431,27 @@ def _meu_exercicio(student: Student, exercicio_id: int, db: Session) -> Exercici
 
 def detalhe(student: Student, exercicio_id: int, db: Session) -> dict:
     exercicio = _meu_exercicio(student, exercicio_id, db)
-    entrega = _exercicio_detalhe(exercicio, db)
+    entrega = _exercicio_detalhe(
+        exercicio, db, revisao=_e_revisao(exercicio, _erros(student, db)))
     marcar_exercicio_visto(student.id, exercicio.id, db)
     return entrega
+
+
+def _proximo_depois_do_acerto(student: Student, exercicio: ExercicioGerado,
+                              momento: datetime, db: Session) -> str | None:
+    """A revisão vencida há mais tempo e o primeiro erro ativo se alternam: depois
+    de uma revisão vem o erro ativo, e depois de qualquer outro acerto vem a
+    revisão. Duas revisões seguidas só sem erro ativo.
+
+    Era revisão quando o erro do exercício já estava superado antes deste acerto.
+    O acerto que supera um erro ativo tem `superado_em` igual ao próprio momento."""
+    envios, erros = _historico_e_erros(student, db)
+    vencidas = _revisoes_vencidas(_revisoes(erros, envios))
+    ativo = [e.categoria for e in erros if e.ativo][:1]
+    erro = next((e for e in erros if e.categoria == exercicio.error_category), None)
+    era_revisao = bool(erro and not erro.ativo and erro.superado_em < momento)
+    candidatos = ativo + vencidas if era_revisao else vencidas + ativo
+    return _primeiro_sem_pendente(student.id, candidatos, db)
 
 
 def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict:
@@ -422,11 +495,10 @@ def treinar(student: Student, exercicio_id: int, code: str, db: Session) -> dict
     db.commit()
     db.refresh(tentativa)
 
-    # Acabou de resolver: o próximo a ficar pronto é o do primeiro erro que
-    # continua ativo, que em geral já não é o deste exercício. Assim, quando
-    # ele voltar à trilha, não há espera.
+    # Acabou de resolver: o próximo já fica pronto para não haver espera quando
+    # ele voltar à trilha. Revisão vencida e erro ativo se alternam.
     if acertou:
-        proximo = next((e.categoria for e in _erros(student, db) if e.ativo), None)
+        proximo = _proximo_depois_do_acerto(student, exercicio, tentativa.submitted_at, db)
         if proximo:
             preparar_proximo(student.id, proximo)
 
@@ -477,7 +549,16 @@ def _exercicio_resumo(e: ExercicioGerado) -> dict:
     }
 
 
-def _exercicio_detalhe(e: ExercicioGerado, db: Session, reaproveitado: bool = False) -> dict:
+def _e_revisao(e: ExercicioGerado, erros: list[Erro]) -> bool:
+    """Revisão é o exercício criado depois de o erro ser superado. O que superou
+    o erro não é revisão, mesmo que a categoria já esteja superada agora."""
+    erro = next((x for x in erros if x.categoria == e.error_category), None)
+    return bool(erro and not erro.ativo and erro.superado_em < e.created_at)
+
+
+def _exercicio_detalhe(
+    e: ExercicioGerado, db: Session, reaproveitado: bool = False, revisao: bool = False
+) -> dict:
     tentativas = sorted(e.tentativas, key=lambda t: t.attempt_number, reverse=True)
     return {
         **_exercicio_resumo(e),
@@ -485,6 +566,7 @@ def _exercicio_detalhe(e: ExercicioGerado, db: Session, reaproveitado: bool = Fa
         "required_structures": e.required_structures or [],
         "total_testes": len(e.casos_teste or []),
         "reaproveitado": reaproveitado,
+        "revisao": revisao,
         "tentativas_lista": [_tentativa_dict(t) for t in tentativas],
     }
 
