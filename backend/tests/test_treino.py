@@ -971,3 +971,99 @@ class TestProtecoesDoPreparo:
         assert tem_pendente(aluno.id, "Tudo no Main", db) is False
         _exercicio()
         assert tem_pendente(aluno.id, "Tudo no Main", db) is True
+
+
+def _superou(db, aluno, exam, categoria, dias_atras):
+    """Erro na lista e, uma hora depois, o acerto na trilha que o supera, tudo
+    `dias_atras` dias antes de agora. Devolve o exercício resolvido."""
+    quando = agora_utc() - timedelta(days=dias_atras)
+    db.add(Submission(
+        question_id=exam.questions[0].id, code="int main(){}", error_category=categoria,
+        all_tests_passed=False, student_id=aluno.id, submitted_at=quando - timedelta(hours=1)))
+    exercicio = ExercicioGerado(
+        student_id=aluno.id, error_category=categoria, titulo="Soma",
+        enunciado="Some os n primeiros inteiros.",
+        casos_teste=[{"input": "3", "expected_output": "6"}],
+        resolvido=True, created_at=quando - timedelta(minutes=30))
+    db.add(exercicio)
+    db.flush()
+    db.add(TentativaDeTreino(
+        exercicio_id=exercicio.id, student_id=aluno.id, code="int main(){}",
+        all_tests_passed=True, error_category="Correto", submitted_at=quando))
+    db.commit()
+    return exercicio
+
+
+def _errou(db, aluno, exam, categoria):
+    db.add(Submission(
+        question_id=exam.questions[0].id, code="int main(){}", error_category=categoria,
+        all_tests_passed=False, student_id=aluno.id, submitted_at=agora_utc()))
+    db.commit()
+
+
+def _pendente_de(db, aluno, categoria):
+    exercicio = ExercicioGerado(
+        student_id=aluno.id, error_category=categoria, titulo="Pendente",
+        enunciado="Some os n primeiros inteiros.",
+        casos_teste=[{"input": "3", "expected_output": "6"}], created_at=agora_utc())
+    db.add(exercicio)
+    db.commit()
+    return exercicio
+
+
+class TestRevisaoEspacada:
+    """Erro superado volta à trilha em 1, 6 e 15 dias, intercalado com os ativos."""
+
+    X = "Tudo no Main"
+    W = "Recursão Faltando"
+    Y = "Acesso Fora dos Limites: Off-by-One"
+    Z = "Saída Incorreta"
+
+    def test_trilha_devolve_a_agenda_com_os_vencidos_primeiro(
+        self, db, aluno, exam_factory, pre_geracoes
+    ):
+        from app.services.treino_service import trilha
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        _superou(db, aluno, exam, self.W, dias_atras=0)
+        _superou(db, aluno, exam, self.X, dias_atras=3)
+
+        superados = trilha(aluno, db)["superados"]
+        assert [s["error_category"] for s in superados] == [self.X, self.W]
+        assert superados[0]["revisao"] == {
+            "feitas": 0, "proxima_em": superados[0]["revisao"]["proxima_em"],
+            "dias_ate": -2, "vencida": True, "consolidado": False}
+        assert superados[1]["revisao"]["dias_ate"] == 1
+        assert superados[1]["revisao"]["vencida"] is False
+
+    def test_trilha_sem_erro_ativo_aquece_a_revisao_vencida(
+        self, db, aluno, exam_factory, pre_geracoes
+    ):
+        from app.services.treino_service import trilha
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        _superou(db, aluno, exam, self.X, dias_atras=3)
+        trilha(aluno, db)
+        assert pre_geracoes == [self.X]
+
+    def test_gerar_sem_categoria_e_sem_ativo_usa_a_revisao_vencida(
+        self, db, aluno, exam_factory, gemini_ok
+    ):
+        from app.services.treino_service import gerar_para_categoria
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        _superou(db, aluno, exam, self.X, dias_atras=3)
+        exercicio = gerar_para_categoria(aluno, None, db)
+        assert exercicio["error_category"] == self.X
+        assert exercicio["revisao"] is True
+
+    def test_detalhe_traz_revisao_so_para_categoria_superada(self, db, aluno, exam_factory):
+        from app.services.treino_service import detalhe
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        resolvido = _superou(db, aluno, exam, self.X, dias_atras=3)
+        _errou(db, aluno, exam, self.Z)
+        do_ativo = _pendente_de(db, aluno, self.Z)
+
+        assert detalhe(aluno, resolvido.id, db)["revisao"] is True
+        assert detalhe(aluno, do_ativo.id, db)["revisao"] is False
