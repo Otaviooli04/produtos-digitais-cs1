@@ -242,8 +242,9 @@ export default function ExamDashboard() {
       <div className="space-y-5">
         {exam.questions.map((q) => {
           const qr = resultsByQuestion[q.number]
-          const passRate = qr && qr.total_submissions > 0
-            ? Math.round((qr.passed_count / qr.total_submissions) * 100)
+          // Pelo último envio de cada aluno, como em Resultados.
+          const passRate = qr && qr.total_alunos > 0
+            ? Math.round((qr.passed_count / qr.total_alunos) * 100)
             : null
 
           return (
@@ -299,8 +300,8 @@ export default function ExamDashboard() {
                   </div>
                   {qr && (
                     <div className="text-right">
-                      <p className="text-xs text-cinza-texto">Submissões</p>
-                      <p className="text-sm font-bold text-noite">{qr.total_submissions}</p>
+                      <p className="text-xs text-cinza-texto">Alunos</p>
+                      <p className="text-sm font-bold text-noite">{qr.total_alunos}</p>
                     </div>
                   )}
                   {passRate !== null && (

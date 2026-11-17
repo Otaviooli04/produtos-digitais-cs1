@@ -12,13 +12,13 @@ const TENDENCIA = {
 /**
  * A dificuldade que atravessa a turma de uma prova para a outra.
  *
- * "Erros mais frequentes" soma tudo e responde qual é o erro mais comum da
+ * "Erros em aberto" soma tudo e responde qual é o erro mais comum da
  * turma. Esta tela responde outra coisa: se ele está caindo ou voltando ao
  * longo do semestre, que é o que decide se vale retomar o assunto em aula.
  *
- * A comparação é por proporção dos envios com erro de cada prova. Prova com
- * mais envios teria mais ocorrências de tudo, e a dificuldade pareceria crescer
- * sem ter crescido.
+ * A comparação é por proporção dos erros em aberto de cada prova, pelo último
+ * envio de cada aluno. Prova com mais alunos teria mais ocorrências de tudo, e
+ * a dificuldade pareceria crescer sem ter crescido.
  */
 export default function TrajetoriaDeErros({ trajetoria }) {
   if (!trajetoria?.length) return null
@@ -29,7 +29,7 @@ export default function TrajetoriaDeErros({ trajetoria }) {
         <h2 className="titulo-card">De uma atividade para a outra</h2>
         <p className="text-sm text-cinza-texto mt-1">
           Dificuldades que apareceram em mais de uma prova ou lista, pela fatia que ocupam
-          dos envios com erro de cada uma.
+          dos erros ainda em aberto de cada uma.
         </p>
       </div>
 
@@ -52,7 +52,7 @@ export default function TrajetoriaDeErros({ trajetoria }) {
 
               <div className="flex items-end gap-1.5">
                 {t.pontos.map((p) => (
-                  <div key={p.exam_id} className="flex-1 min-w-0" title={`${comTipo(p.modo, p.titulo)}: ${p.proporcao}% dos envios com erro`}>
+                  <div key={p.exam_id} className="flex-1 min-w-0" title={`${comTipo(p.modo, p.titulo)}: ${p.proporcao}% dos erros em aberto`}>
                     <div className="h-16 flex items-end bg-lavanda rounded-[5px] overflow-hidden">
                       <div
                         className="w-full rounded-t-[5px] bg-violeta"

@@ -99,8 +99,10 @@ export default function ResultsPage() {
 
       <div className="space-y-5">
         {data.questions.map((q) => {
-          const passRate = q.total_submissions > 0
-            ? Math.round((q.passed_count / q.total_submissions) * 100)
+          // As contagens são do último envio de cada aluno: quem errou e depois
+          // acertou conta como acerto. O total de envios fica como referência.
+          const passRate = q.total_alunos > 0
+            ? Math.round((q.passed_count / q.total_alunos) * 100)
             : 0
 
           const maxErr = Math.max(1, ...q.error_distribution.map(e => e.count))
@@ -120,23 +122,23 @@ export default function ResultsPage() {
                     <p className="text-sm text-cinza-texto line-clamp-2">{q.statement}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-2xl font-extrabold font-titulo text-noite">{q.total_submissions}</p>
-                    <p className="text-xs text-cinza-texto">submissões</p>
+                    <p className="text-2xl font-extrabold font-titulo text-noite">{q.total_alunos}</p>
+                    <p className="text-xs text-cinza-texto">aluno{q.total_alunos !== 1 ? 's' : ''} · {q.total_submissions} envio{q.total_submissions !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
 
                 {/* Aproveitamento */}
                 <div className="flex items-center gap-2 mb-1.5 text-xs text-cinza-texto">
-                  <span><span className="font-bold text-cinza-texto">{q.passed_count}</span> de {q.total_submissions} corretas</span>
+                  <span><span className="font-bold text-cinza-texto">{q.passed_count}</span> de {q.total_alunos} alunos corretos no último envio</span>
                   {q.partial_count > 0 && (
                     <span className="text-aviso">· {q.partial_count} quase lá</span>
                   )}
                 </div>
-                <Progresso valor={passRate} rotulo={`Questão ${q.question_number}: ${passRate}% corretas`} cor={corDaTaxa(passRate)} />
+                <Progresso valor={passRate} rotulo={`Questão ${q.question_number}: ${passRate}% dos alunos corretos`} cor={corDaTaxa(passRate)} />
 
                 {/* Distribuição de erros — expandir mostra QUAIS alunos */}
                 {q.error_distribution.length > 0 && (
-                  <Section title="Distribuição de erros" hint={`${q.total_submissions - q.passed_count} incorretas`}>
+                  <Section title="Erros em aberto" hint={`${q.total_alunos - q.passed_count} aluno${q.total_alunos - q.passed_count !== 1 ? 's' : ''} com erro no último envio`}>
                     <div className="space-y-3">
                       {q.error_distribution.map((e, i) => {
                         const key = `${q.question_number}:e:${i}`
@@ -234,7 +236,7 @@ export default function ResultsPage() {
                     onClick={() => toggle(q.question_number)}
                     className="w-full min-h-11 flex items-center justify-between px-5 py-3 text-xs font-bold text-cinza-texto hover:text-noite hover:bg-lavanda"
                   >
-                    <span>Ver submissões individuais ({q.submissions.length})</span>
+                    <span>Ver o último envio de cada aluno ({q.submissions.length})</span>
                     <ChevronDown className={`w-4 h-4 transition-transform ${expanded[q.question_number] ? 'rotate-180' : ''}`} aria-hidden="true" />
                   </button>
 
