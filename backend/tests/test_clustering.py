@@ -171,3 +171,21 @@ class TestListaDeAlunosDoGrupo:
         (grupo,) = data["clusters"]
         assert grupo["alunos"] == ["2026012", "2026013"]
         assert grupo["size"] == 3
+
+    def test_envio_em_lote_com_o_mesmo_rotulo_aparece_uma_vez(
+        self, client, exam_factory, submission_factory, db
+    ):
+        from app.ml.cluster import cluster_question
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        q = exam.questions[0]
+        for i, rotulo in enumerate(["Aluno 05", "Aluno 05", "Aluno 06"]):
+            sub = submission_factory(q.id, code=f"int main(){{return {i};}}",
+                                     error_category="Saída Incorreta")
+            sub.matricula = rotulo
+        db.commit()
+        cluster_question(q.id, db)
+
+        data = client.get(f"/exam/{exam.id}/questions/1/groups").json()
+        (grupo,) = data["clusters"]
+        assert grupo["alunos"] == ["Aluno 05", "Aluno 06"]
