@@ -147,9 +147,9 @@ export default function ExamDashboard() {
   return (
     <div className="space-y-6">
       {exam.turma_id ? (
-        <VoltarPara to={`/turma/${exam.turma_id}?secao=atividades`} className="-mb-2">{exam.turma_nome}</VoltarPara>
+        <VoltarPara to={`/turma/${exam.turma_id}?secao=atividades`} className="mb-0">{exam.turma_nome}</VoltarPara>
       ) : (
-        <VoltarPara to="/" className="-mb-2">Turmas</VoltarPara>
+        <VoltarPara to="/" className="mb-0">Turmas</VoltarPara>
       )}
 
       <PainelDestaque>

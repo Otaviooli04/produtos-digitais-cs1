@@ -191,7 +191,7 @@ export default function TurmaDetailPage() {
 
   return (
     <div className="space-y-8">
-      <VoltarPara to="/" className="-mb-4">Turmas</VoltarPara>
+      <VoltarPara to="/" className="mb-0">Turmas</VoltarPara>
 
       <PainelDestaque>
         <div className="space-y-5 pr-0 sm:pr-24">

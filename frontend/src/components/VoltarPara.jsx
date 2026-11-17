@@ -14,7 +14,10 @@ export default function VoltarPara({ to, children, className = '' }) {
         className="inline-flex items-center gap-1 min-h-11 text-sm font-bold text-cinza-texto hover:text-noite"
       >
         <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
-        <span className="break-words min-w-0">{children}</span>
+        <span className="break-words min-w-0">
+          <span className="sr-only">Voltar para </span>
+          {children}
+        </span>
       </Link>
     </div>
   )
