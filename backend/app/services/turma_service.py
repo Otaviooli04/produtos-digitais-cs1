@@ -7,6 +7,7 @@ APPROVAL_THRESHOLD = 0.60
 # Variação em pontos percentuais a partir da qual a dificuldade mudou de
 # verdade entre a primeira e a última prova. Abaixo disso é ruído da amostra.
 VARIACAO_RELEVANTE = 5.0
+from app.core.envio_atual import ultimos_por_aluno
 from app.core.tempo import agora_utc
 from sqlalchemy.orm import Session
 from app.models.orm import Exam, Question, Submission, TestCase, Turma
@@ -164,12 +165,16 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
         return None
 
     all_submissions: list[Submission] = []
+    # Os erros contam o último envio de cada aluno em cada questão: é o que
+    # ainda está em aberto, e quem já corrigiu não aparece como erro.
+    todos_atuais: list[Submission] = []
     provas = []
     pass_rates = []
     erros_por_prova: list[tuple] = []
 
     for exam in sorted(turma.exams, key=lambda e: e.created_at):
         exam_subs: list[Submission] = []
+        exam_atuais: list[Submission] = []
         # Nota da prova por aluno = soma ponderada das questões pelo VALOR de cada
         # uma (Question.points); dentro da questão, a fração de casos de teste que
         # passam (crédito parcial), tomando a MELHOR submissão do aluno por questão.
@@ -183,6 +188,7 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
             q_points[question.id] = pts
             total_points += pts
             exam_subs.extend(question.submissions)
+            exam_atuais.extend(ultimos_por_aluno(question.submissions))
             for s in question.submissions:
                 if not s.matricula:
                     continue
@@ -196,6 +202,7 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
                     best_q_score[key] = frac
 
         all_submissions.extend(exam_subs)
+        todos_atuais.extend(exam_atuais)
 
         grade = defaultdict(float)
         for (matricula, qid), frac in best_q_score.items():
@@ -211,7 +218,7 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
             pass_rates.append(pass_rate)
 
         erros_da_prova = Counter(
-            s.error_category for s in exam_subs
+            s.error_category for s in exam_atuais
             if s.error_category and s.error_category != "Correto"
         )
         provas.append({
@@ -228,14 +235,14 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
                 for cat, cnt in erros_da_prova.most_common(5)
             ],
         })
-        erros_por_prova.append((exam, exam_subs, erros_da_prova))
+        erros_por_prova.append((exam, exam_atuais, erros_da_prova))
 
     total_alunos = len({s.matricula for s in all_submissions if s.matricula})
     total_submissoes = len(all_submissions)
     aproveitamento_medio = round(sum(pass_rates) / len(pass_rates), 1) if pass_rates else None
 
     error_counter = Counter(
-        s.error_category for s in all_submissions
+        s.error_category for s in todos_atuais
         if s.error_category and s.error_category != "Correto"
     )
     top_erros = [

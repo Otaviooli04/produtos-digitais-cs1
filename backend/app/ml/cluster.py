@@ -11,6 +11,7 @@ from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
 from scipy.sparse import hstack, issparse
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.envio_atual import ultimos_por_aluno
 from app.core.tempo import agora_utc
 from app.models.orm import QuestionCluster, Submission
 
@@ -117,14 +118,21 @@ def cluster_question(question_id: int, db: Session) -> ClusteringResult | None:
     ficaram de lado, e as funções de vetorização mais abaixo neste arquivo
     existem por causa daquela comparação, não do produto.
     """
-    submissions: List[Submission] = (
+    todos: List[Submission] = (
         db.query(Submission)
         .options(joinedload(Submission.test_results))
         .filter(Submission.question_id == question_id)
         .all()
     )
+    # O grupo diz onde cada aluno está agora: só o último envio dele entra, e
+    # quem errou e depois acertou sai do grupo do erro.
+    submissions = ultimos_por_aluno(todos)
     if len(submissions) < MIN_SUBMISSIONS:
         return None
+    atuais = {s.id for s in submissions}
+    for s in todos:
+        if s.id not in atuais:
+            s.cluster_id = None
 
     labels, chaves = two_level_grupos(
         submissions, [s.error_category or "" for s in submissions])

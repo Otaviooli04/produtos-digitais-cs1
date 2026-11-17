@@ -142,50 +142,72 @@ class TestListaDeAlunosDoGrupo:
         # Matrículas primeiro, quem entrou sem ela depois.
         assert grupo["alunos"][-1] == "Lucas Moreira"
 
-    def test_aluno_com_dois_envios_no_grupo_aparece_uma_vez(
+    def test_aluno_que_corrigiu_sai_do_grupo_do_erro(
         self, client, exam_factory, submission_factory, db
     ):
         from app.auth.service import hash_password
         from app.ml.cluster import cluster_question
         from app.models.orm import Student
 
-        aluno = Student(email="repetiu@aluno.com", nome="Thiago Nunes",
+        aluno = Student(email="corrigiu@aluno.com", nome="Thiago Nunes",
                         senha_hash=hash_password("senha12345"))
         db.add(aluno)
         db.flush()
 
         exam = exam_factory(questions=[{"number": "1"}])
         q = exam.questions[0]
-        for i in range(2):
-            sub = submission_factory(q.id, code=f"int main(){{return {i};}}",
-                                     error_category="Saída Incorreta")
+        errou = submission_factory(q.id, code="int main(){return 1;}",
+                                   error_category="Saída Incorreta", all_tests_passed=False)
+        acertou = submission_factory(q.id, code="int main(){return 0;}")
+        for sub in (errou, acertou):
             sub.student_id = aluno.id
             sub.matricula = "2026012"
-        outro = submission_factory(q.id, code="int main(){return 7;}",
-                                   error_category="Saída Incorreta")
-        outro.matricula = "2026013"
+        for i, matricula in enumerate(["2026013", "2026014"]):
+            outro = submission_factory(q.id, code=f"int main(){{return {i + 5};}}",
+                                       error_category="Saída Incorreta", all_tests_passed=False)
+            outro.matricula = matricula
         db.commit()
         cluster_question(q.id, db)
 
         data = client.get(f"/exam/{exam.id}/questions/1/groups").json()
-        (grupo,) = data["clusters"]
-        assert grupo["alunos"] == ["2026012", "2026013"]
-        assert grupo["size"] == 3
+        grupos = {g["dominant_error"]: g for g in data["clusters"]}
+        assert grupos["Saída Incorreta"]["alunos"] == ["2026013", "2026014"]
+        assert grupos["Saída Incorreta"]["size"] == 2
+        assert grupos["Correto"]["alunos"] == ["2026012"]
+        db.refresh(errou)
+        assert errou.cluster_id is None
 
-    def test_envio_em_lote_com_o_mesmo_rotulo_aparece_uma_vez(
+    def test_envio_em_lote_vale_pelo_ultimo_do_rotulo(
         self, client, exam_factory, submission_factory, db
     ):
         from app.ml.cluster import cluster_question
 
         exam = exam_factory(questions=[{"number": "1"}])
         q = exam.questions[0]
-        for i, rotulo in enumerate(["Aluno 05", "Aluno 05", "Aluno 06"]):
+        envios = [("Aluno 05", "Saída Incorreta", False), ("Aluno 05", "Correto", True),
+                  ("Aluno 06", "Saída Incorreta", False), ("Aluno 07", "Saída Incorreta", False)]
+        for i, (rotulo, categoria, passou) in enumerate(envios):
             sub = submission_factory(q.id, code=f"int main(){{return {i};}}",
-                                     error_category="Saída Incorreta")
+                                     error_category=categoria, all_tests_passed=passou)
             sub.matricula = rotulo
         db.commit()
         cluster_question(q.id, db)
 
         data = client.get(f"/exam/{exam.id}/questions/1/groups").json()
-        (grupo,) = data["clusters"]
-        assert grupo["alunos"] == ["Aluno 05", "Aluno 06"]
+        grupos = {g["dominant_error"]: g for g in data["clusters"]}
+        assert grupos["Saída Incorreta"]["alunos"] == ["Aluno 06", "Aluno 07"]
+        assert grupos["Correto"]["alunos"] == ["Aluno 05"]
+
+    def test_menos_de_tres_alunos_nao_agrupa_mesmo_com_varios_envios(
+        self, client, exam_factory, submission_factory, db
+    ):
+        exam = exam_factory(questions=[{"number": "1"}])
+        q = exam.questions[0]
+        for i, rotulo in enumerate(["2026001", "2026001", "2026002", "2026002"]):
+            sub = submission_factory(q.id, code=f"int main(){{return {i};}}",
+                                     error_category="Saída Incorreta", all_tests_passed=False)
+            sub.matricula = rotulo
+        db.commit()
+
+        resp = client.post(f"/exam/{exam.id}/questions/1/cluster")
+        assert resp.status_code == 422

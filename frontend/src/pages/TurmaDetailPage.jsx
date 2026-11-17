@@ -280,7 +280,8 @@ export default function TurmaDetailPage() {
 
             {errosData.length > 0 && (
               <Card principal>
-                <h2 className="titulo-card">Erros mais frequentes</h2>
+                <h2 className="titulo-card">Erros em aberto</h2>
+                <p className="text-xs text-cinza-texto mb-3">Pelo último envio de cada aluno em cada questão.</p>
                 <BarList
                   color={COR_ERRO}
                   items={errosData.map(e => ({ label: e.name, title: e.full, value: e.count }))}

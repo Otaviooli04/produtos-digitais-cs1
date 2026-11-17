@@ -125,13 +125,16 @@ export default function QuestionPage() {
 
   const setTab = (key) => setSearchParams({ tab: key })
 
-  const passRate = submissions && submissions.length > 0
-    ? Math.round((submissions.filter(s => s.all_tests_passed).length / submissions.length) * 100)
+  // O resumo olha onde cada aluno está agora (o último envio dele). A lista
+  // abaixo continua com todos os envios, que é o histórico da questão.
+  const atuais = submissions ? submissions.filter(s => s.atual) : []
+  const passRate = atuais.length > 0
+    ? Math.round((atuais.filter(s => s.all_tests_passed).length / atuais.length) * 100)
     : 0
 
   const errorDist = submissions
     ? Object.entries(
-        submissions.reduce((acc, s) => {
+        atuais.filter(s => !s.all_tests_passed).reduce((acc, s) => {
           const cat = s.error_category || 'desconhecido'
           acc[cat] = (acc[cat] || 0) + 1
           return acc
@@ -312,17 +315,17 @@ export default function QuestionPage() {
           {submissions && submissions.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <Badge color="purple">{submissions.length} submissão{submissions.length !== 1 ? 'ões' : ''}</Badge>
+                <Badge color="purple">{atuais.length} aluno{atuais.length !== 1 ? 's' : ''} · {submissions.length} envio{submissions.length !== 1 ? 's' : ''}</Badge>
                 <Badge color={passRate >= 70 ? 'green' : passRate >= 40 ? 'yellow' : 'red'}>
                   {passRate}% corretos
                 </Badge>
               </div>
 
-              <Progresso valor={passRate} rotulo="Respostas corretas" cor={corDaTaxa(passRate)} />
+              <Progresso valor={passRate} rotulo="Alunos corretos no último envio" cor={corDaTaxa(passRate)} />
 
               {errorDist.length > 0 && (
                 <Card>
-                  <RotuloSecao as="h2">Distribuição de erros</RotuloSecao>
+                  <RotuloSecao as="h2">Erros em aberto</RotuloSecao>
                   <BarList items={errorDist} />
                 </Card>
               )}
@@ -436,7 +439,7 @@ export default function QuestionPage() {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <p className="text-sm text-cinza-texto">
-                    {rankedGroups.length} grupo{rankedGroups.length !== 1 ? 's' : ''} em {clusterResult.total_submissions} submissões
+                    {rankedGroups.length} grupo{rankedGroups.length !== 1 ? 's' : ''} com {clusterResult.total_submissions} aluno{clusterResult.total_submissions !== 1 ? 's' : ''}, pelo último envio de cada um
                   </p>
                   {clusterResult.atualizado_em && (
                     <p className="text-xs text-cinza-texto mt-0.5">
@@ -481,7 +484,7 @@ export default function QuestionPage() {
                         <span className="w-4 h-4 rounded-full shrink-0 border-2 border-noite" style={{ backgroundColor: clusterColor(c.cluster_id) }} aria-hidden="true" />
                         <Badge color={isCorrect(c.dominant_error) ? 'green' : 'red'}>{c.dominant_error}</Badge>
                         {c.failing_label && <span className="text-xs text-cinza-texto">· {c.failing_label}</span>}
-                        <span className="ml-auto text-xs text-cinza-texto">{alunos.length} aluno{alunos.length !== 1 ? 's' : ''} · {pct}% dos envios</span>
+                        <span className="ml-auto text-xs text-cinza-texto">{alunos.length} aluno{alunos.length !== 1 ? 's' : ''} · {pct}%</span>
                       </div>
 
                       {insight && (

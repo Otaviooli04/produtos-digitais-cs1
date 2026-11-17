@@ -418,7 +418,10 @@ class CompileErrorCount(BaseModel):
 class QuestionResults(BaseModel):
     question_number: str
     statement: str
+    # Todos os envios da questão. As contagens abaixo são do último envio de
+    # cada aluno, então dividem por total_alunos.
     total_submissions: int
+    total_alunos: int = 0
     passed_count: int
     partial_count: int = 0
     error_distribution: List[ErrorCount]
