@@ -256,19 +256,22 @@ export default function QuestionPage() {
   const alunosByCluster = (cluster_id) =>
     clusterResult?.clusters?.find(c => c.cluster_id === cluster_id)?.alunos ?? []
 
-  // Preenche a descrição dos cartões automaticamente: se há grupos mas nenhum
-  // insight salvo, gera uma vez ao abrir a aba (depois vem tudo do cache). Falha
-  // (ex.: 429) cai no estado atual — cartão sem texto — e não re-dispara.
+  // Preenche a descrição dos cartões automaticamente: se algum grupo está sem
+  // insight salvo, gera uma vez ao abrir a aba (o servidor só chama o Gemini para
+  // os que faltam). Os grupos mudam quando um aluno corrige, então um grupo novo
+  // pode aparecer ao lado dos antigos. Falha (ex.: 429) cai no estado atual,
+  // cartão sem texto, e não re-dispara.
+  const faltaInsight = rankedGroups.some(c => !insightFor(c.cluster_id))
   useEffect(() => {
     if (
       tab === 'cluster' && clusterResult && !groupsLoading &&
-      !hasInsights && !insightsRunning && !autoInsightTried && rankedGroups.length > 0
+      faltaInsight && !insightsRunning && !autoInsightTried
     ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- marca a tentativa automática uma vez só
       setAutoInsightTried(true)
       genInsights()
     }
-  }, [tab, clusterResult, groupsLoading, hasInsights, insightsRunning, autoInsightTried, rankedGroups.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, clusterResult, groupsLoading, faltaInsight, insightsRunning, autoInsightTried]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div>
