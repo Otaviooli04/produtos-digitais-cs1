@@ -113,10 +113,14 @@ function ProvaChegando({ prova }) {
 
 function Continuar({ item }) {
   const emAndamento = item.situacao === 'em_andamento'
+  // A próxima atividade pode já ter questão enviada ou resolvida, e aí é continuar.
+  const jaComecada = !emAndamento && item.comecada
   const detalhes = [
     item.turma_nome,
     emAndamento && `${item.tentativas} tentativa${item.tentativas === 1 ? '' : 's'}`,
     emAndamento && item.ultimo_erro && `último erro: ${shortError(item.ultimo_erro)}`,
+    jaComecada && item.total_questoes > 0
+      && `${item.questoes_resolvidas} de ${item.total_questoes} questões resolvidas`,
   ].filter(Boolean)
 
   return (
@@ -124,7 +128,7 @@ function Continuar({ item }) {
       <div className="flex flex-col sm:flex-row sm:items-center gap-5 pr-0 sm:pr-24">
         <div className="flex-1 min-w-0">
           <p className="font-titulo font-extrabold text-[13px] uppercase tracking-[0.1em] text-white/80">
-            {emAndamento ? 'Continuar de onde parou' : 'Próxima atividade'}
+            {emAndamento ? 'Continuar de onde parou' : jaComecada ? 'Continuar a atividade' : 'Próxima atividade'}
           </p>
           <h1 className="mt-1 titulo-pagina break-words">
             {item.origem === 'trilha' ? `Trilha · ${item.titulo}` : item.titulo}
@@ -134,7 +138,7 @@ function Continuar({ item }) {
           )}
         </div>
         <Botao to={linkDoContinuar(item)} variante="secundario" className="shrink-0">
-          {emAndamento ? 'Bora continuar!' : 'Bora começar!'}
+          {emAndamento || jaComecada ? 'Bora continuar!' : 'Bora começar!'}
         </Botao>
       </div>
     </PainelDestaque>

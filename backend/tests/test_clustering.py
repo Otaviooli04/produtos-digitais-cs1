@@ -141,3 +141,51 @@ class TestListaDeAlunosDoGrupo:
         assert "Lucas Moreira" in grupo["alunos"]
         # Matrículas primeiro, quem entrou sem ela depois.
         assert grupo["alunos"][-1] == "Lucas Moreira"
+
+    def test_aluno_com_dois_envios_no_grupo_aparece_uma_vez(
+        self, client, exam_factory, submission_factory, db
+    ):
+        from app.auth.service import hash_password
+        from app.ml.cluster import cluster_question
+        from app.models.orm import Student
+
+        aluno = Student(email="repetiu@aluno.com", nome="Thiago Nunes",
+                        senha_hash=hash_password("senha12345"))
+        db.add(aluno)
+        db.flush()
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        q = exam.questions[0]
+        for i in range(2):
+            sub = submission_factory(q.id, code=f"int main(){{return {i};}}",
+                                     error_category="Saída Incorreta")
+            sub.student_id = aluno.id
+            sub.matricula = "2026012"
+        outro = submission_factory(q.id, code="int main(){return 7;}",
+                                   error_category="Saída Incorreta")
+        outro.matricula = "2026013"
+        db.commit()
+        cluster_question(q.id, db)
+
+        data = client.get(f"/exam/{exam.id}/questions/1/groups").json()
+        (grupo,) = data["clusters"]
+        assert grupo["alunos"] == ["2026012", "2026013"]
+        assert grupo["size"] == 3
+
+    def test_envio_em_lote_com_o_mesmo_rotulo_aparece_uma_vez(
+        self, client, exam_factory, submission_factory, db
+    ):
+        from app.ml.cluster import cluster_question
+
+        exam = exam_factory(questions=[{"number": "1"}])
+        q = exam.questions[0]
+        for i, rotulo in enumerate(["Aluno 05", "Aluno 05", "Aluno 06"]):
+            sub = submission_factory(q.id, code=f"int main(){{return {i};}}",
+                                     error_category="Saída Incorreta")
+            sub.matricula = rotulo
+        db.commit()
+        cluster_question(q.id, db)
+
+        data = client.get(f"/exam/{exam.id}/questions/1/groups").json()
+        (grupo,) = data["clusters"]
+        assert grupo["alunos"] == ["Aluno 05", "Aluno 06"]

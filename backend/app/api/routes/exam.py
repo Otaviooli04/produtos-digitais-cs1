@@ -431,10 +431,14 @@ def get_groups(
     # A lista de quem caiu em cada grupo sai do `cluster_id` da submissão, que é
     # o que o agrupamento grava. Antes ela era derivada das coordenadas do
     # gráfico, e quem não tinha coordenada ficava no grupo certo e invisível.
+    # O grupo junta envios, e um aluno com dois envios no mesmo grupo aparece uma
+    # vez só. Envio em lote não tem conta, então ali quem identifica é o rótulo.
     agrupadas = [s for s in question.submissions if s.cluster_id is not None]
-    por_grupo: dict[int, list[str]] = {}
+    por_grupo: dict[int, dict[tuple, str]] = {}
     for s in agrupadas:
-        por_grupo.setdefault(s.cluster_id, []).append(_identificacao(s))
+        identificacao = _identificacao(s)
+        quem = ("conta", s.student_id) if s.student_id else ("rotulo", identificacao)
+        por_grupo.setdefault(s.cluster_id, {}).setdefault(quem, identificacao)
 
     # Rótulo do sintoma por grupo: quais (e quantos) casos de teste o grupo falha.
     failing = _failing_summary(question.submissions)
@@ -442,7 +446,7 @@ def get_groups(
         {"cluster_id": qc.cluster_label, "size": qc.size,
          "chave": qc.chave,
          "dominant_error": qc.dominant_error,
-         "alunos": sorted(por_grupo.get(qc.cluster_label, []), key=_ordem_natural),
+         "alunos": sorted(por_grupo.get(qc.cluster_label, {}).values(), key=_ordem_natural),
          "failing_label": failing.get(qc.cluster_label, (None, None))[0],
          "failing_count": failing.get(qc.cluster_label, (None, None))[1],
          "representative_submission_id": qc.representative_submission_id,

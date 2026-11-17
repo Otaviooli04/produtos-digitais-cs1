@@ -483,7 +483,7 @@ export default function QuestionPage() {
                         <span className="w-4 h-4 rounded-full shrink-0 border-2 border-noite" style={{ backgroundColor: clusterColor(c.cluster_id) }} aria-hidden="true" />
                         <Badge color={isCorrect(c.dominant_error) ? 'green' : 'red'}>{c.dominant_error}</Badge>
                         {c.failing_label && <span className="text-xs text-cinza-texto">· {c.failing_label}</span>}
-                        <span className="ml-auto text-xs text-cinza-texto">{c.size} aluno{c.size !== 1 ? 's' : ''} · {pct}%</span>
+                        <span className="ml-auto text-xs text-cinza-texto">{alunos.length} aluno{alunos.length !== 1 ? 's' : ''} · {pct}% dos envios</span>
                       </div>
 
                       {insight && (
@@ -502,9 +502,9 @@ export default function QuestionPage() {
 
                       {alunos.length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          {alunos.map(m => (
+                          {alunos.map((m, i) => (
                             <Link
-                              key={m}
+                              key={`${i}-${m}`}
                               to={`/exam/${id}/students/${m}`}
                               className="text-xs bg-lavanda text-cinza-texto px-2 py-0.5 rounded-tag font-mono hover:text-violeta transition-colors"
                             >
@@ -518,7 +518,7 @@ export default function QuestionPage() {
                         resposta={respostaFor(c.cluster_id)}
                         respostaEm={respostaEmFor(c.cluster_id)}
                         insight={insight}
-                        alunos={c.size}
+                        alunos={alunos.length}
                         onSave={(texto) => salvarResposta(c.cluster_id, texto)}
                       />
 
