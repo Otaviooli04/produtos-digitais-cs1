@@ -152,7 +152,8 @@ def _retorno_que_vale(novidade: Novidade, student_id: int, turma_ids: set[int],
         QuestionCluster.question_id == questao.id,
         QuestionCluster.chave == novidade.grupo_chave,
     ).first()
-    if not grupo or not grupo.resposta_professor:
+    # Grupo adormecido (todos corrigiram) não tem quem receber a resposta.
+    if not grupo or not grupo.resposta_professor or grupo.cluster_label is None:
         return None
     ultima = (
         db.query(Submission.cluster_id)

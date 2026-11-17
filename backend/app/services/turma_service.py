@@ -7,7 +7,7 @@ APPROVAL_THRESHOLD = 0.60
 # Variação em pontos percentuais a partir da qual a dificuldade mudou de
 # verdade entre a primeira e a última prova. Abaixo disso é ruído da amostra.
 VARIACAO_RELEVANTE = 5.0
-from app.core.envio_atual import ultimos_por_aluno
+from app.core.envio_atual import atuais_por_aluno
 from app.core.tempo import agora_utc
 from sqlalchemy.orm import Session
 from app.models.orm import Exam, Question, Submission, TestCase, Turma
@@ -188,7 +188,7 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
             q_points[question.id] = pts
             total_points += pts
             exam_subs.extend(question.submissions)
-            exam_atuais.extend(ultimos_por_aluno(question.submissions))
+            exam_atuais.extend(atuais_por_aluno(question.submissions))
             for s in question.submissions:
                 if not s.matricula:
                     continue
@@ -269,7 +269,8 @@ def _trajetoria_de_erros(erros_por_prova: list[tuple]) -> list[dict]:
     semestre. Só entram categorias presentes em duas ou mais provas, porque com
     uma só não existe trajetória.
 
-    A comparação é por proporção, não por contagem: prova com mais envios teria
+    Conta os erros em aberto, pelo envio atual de cada aluno em cada questão. A
+    comparação é por proporção, não por contagem: prova com mais alunos teria
     mais ocorrências de tudo, e o número cresceria sem a dificuldade ter crescido."""
     series: dict[str, list[dict]] = defaultdict(list)
 

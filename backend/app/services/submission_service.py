@@ -1,6 +1,22 @@
+import logging
+
 from sqlalchemy.orm import Session
 from app.engine.evaluators.code_evaluator import evaluate_code
-from app.models.orm import Question, Submission, SubmissionTestResult
+from app.ml.cluster import cluster_question
+from app.models.orm import Question, QuestionCluster, Submission, SubmissionTestResult
+
+logger = logging.getLogger(__name__)
+
+
+def _reagrupar(question_id: int, db: Session) -> None:
+    """Os grupos olham o envio atual de cada aluno, então incluir, excluir ou
+    reavaliar um envio pode mudar quem está em cada grupo. Falha aqui não
+    desfaz a operação do professor, que já foi gravada."""
+    try:
+        cluster_question(question_id, db)
+    except Exception:  # noqa: BLE001 — o agrupamento é derivado e se refaz no próximo envio
+        db.rollback()
+        logger.exception("Falha ao refazer os grupos da questão %s", question_id)
 
 
 def evaluate_submission(exam_id: int, question_number: str, code: str, db: Session, matricula=None, dry_run=False) -> dict:
@@ -29,6 +45,7 @@ def evaluate_submission(exam_id: int, question_number: str, code: str, db: Sessi
         return {"question_number": question_number, **result}
 
     persist_submission(question, code, result, db, matricula=matricula)
+    _reagrupar(question.id, db)
     return {"question_number": question_number, **result}
 
 
@@ -70,8 +87,14 @@ def persist_submission(question: Question, code: str, result: dict, db: Session,
 
 
 def delete_submission(submission: Submission, db: Session) -> None:
+    question_id = submission.question_id
+    # O envio pode ser o exemplo mostrado num grupo: o grupo larga ele antes.
+    db.query(QuestionCluster).filter(
+        QuestionCluster.representative_submission_id == submission.id).update(
+        {QuestionCluster.representative_submission_id: None}, synchronize_session=False)
     db.delete(submission)  # test_results saem por cascade (all, delete-orphan)
     db.commit()
+    _reagrupar(question_id, db)
 
 
 def reevaluate_submission(submission: Submission, db: Session) -> dict:
@@ -110,4 +133,5 @@ def reevaluate_submission(submission: Submission, db: Session) -> dict:
             passed=tr["passed"],
         ))
     db.commit()
+    _reagrupar(question.id, db)
     return {"question_number": question.number, **result}

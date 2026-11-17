@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_professor
 from app.auth.ownership import get_exam_or_404, get_question_or_404
-from app.core.envio_atual import chave_do_aluno, ultimos_por_aluno
+from app.core.envio_atual import chave_do_aluno, atuais_por_aluno
 from app.core.limite import ENVIO_EM_LOTE, INSIGHTS, UPLOAD_DE_PROVA, por_professor
 from app.engine.error_locator import parse_compile_error_lines
 from app.llm.feedback_generator import generate_cluster_insights
@@ -375,10 +375,10 @@ def run_clustering(
     question = get_question_or_404(exam_id, question_number, db, professor_id=professor.id)
     result = cluster_question(question.id, db)
     if result is None:
-        raise HTTPException(status_code=422, detail="Submissões insuficientes para clustering (mínimo 3).")
+        raise HTTPException(status_code=422, detail="É preciso de pelo menos 3 alunos com envio para agrupar.")
 
     db.refresh(question)
-    clusters_db = db.query(QuestionCluster).filter(QuestionCluster.question_id == question.id).all()
+    clusters_db = _grupos_ativos(question.id, db)
     clusters_map = {qc.cluster_label: qc for qc in clusters_db}
     failing = _failing_summary(question.submissions)
     clusters_out = [
@@ -404,6 +404,14 @@ def run_clustering(
     )
 
 
+def _grupos_ativos(question_id: int, db: Session) -> list[QuestionCluster]:
+    """Os grupos com alguém dentro. O grupo adormecido só guarda a resposta do
+    professor para quando o mesmo erro voltar, e não aparece na tela."""
+    return db.query(QuestionCluster).filter(
+        QuestionCluster.question_id == question_id,
+        QuestionCluster.cluster_label.isnot(None)).all()
+
+
 def _identificacao(submission) -> str:
     """Matrícula quando existe, nome da conta quando não, e o id da submissão
     como último recurso, para nunca devolver rótulo vazio."""
@@ -424,8 +432,7 @@ def get_groups(
     """Grupos de dificuldade já salvos, sem re-rodar. O agrupamento acontece a
     cada envio de aluno, então o que está aqui já é o estado atual."""
     question = get_question_or_404(exam_id, question_number, db, professor_id=professor.id)
-    clusters_db = db.query(QuestionCluster).filter(
-        QuestionCluster.question_id == question.id).all()
+    clusters_db = _grupos_ativos(question.id, db)
     if not clusters_db:
         return {"has_groups": False, "question_number": question_number}
 
@@ -540,7 +547,7 @@ def run_insights(
     professor: Professor = Depends(get_current_professor),
 ):
     question = get_question_or_404(exam_id, question_number, db, professor_id=professor.id)
-    clusters_db = db.query(QuestionCluster).filter(QuestionCluster.question_id == question.id).all()
+    clusters_db = _grupos_ativos(question.id, db)
     if not clusters_db:
         raise HTTPException(status_code=422, detail="Nenhum cluster encontrado. Execute o clustering antes de gerar insights.")
 
@@ -594,7 +601,7 @@ def get_question_submissions(
     professor: Professor = Depends(get_current_professor),
 ):
     question = get_question_or_404(exam_id, question_number, db, professor_id=professor.id)
-    atuais = {s.id for s in ultimos_por_aluno(question.submissions)}
+    atuais = {s.id for s in atuais_por_aluno(question.submissions)}
     return {
         "question_number": question_number,
         "statement": question.statement,

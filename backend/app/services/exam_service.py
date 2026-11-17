@@ -1,7 +1,7 @@
 import re
 from collections import Counter
 from sqlalchemy.orm import Session
-from app.core.envio_atual import ultimos_por_aluno
+from app.core.envio_atual import CORRETO, atuais_por_aluno
 from app.engine.document_parser import parse_document
 from app.engine.semantic_extractor import extract_exam_structure
 from app.models.orm import (
@@ -231,7 +231,7 @@ def get_exam_results(exam: Exam) -> dict:
     for q in sorted_questions(exam):
         # Onde cada aluno está agora: o último envio dele. Quem errou e depois
         # acertou conta como acerto, e o histórico fica na aba Respostas.
-        subs = ultimos_por_aluno(q.submissions)
+        subs = atuais_por_aluno(q.submissions)
 
         # Distribuição por categoria de erro + quais alunos em cada uma.
         cat_counter: Counter = Counter()
@@ -287,7 +287,9 @@ def get_exam_results(exam: Exam) -> dict:
             for msg, count in ce_counter.most_common(5)
         ]
 
-        passed_count = sum(1 for s in subs if s.all_tests_passed)
+        # Correto pelo mesmo critério do aluno: a categoria, que também barra o
+        # código que passa nos testes mas fere uma estrutura exigida.
+        passed_count = sum(1 for s in subs if s.error_category == CORRETO)
         # Passou em algum caso mas não em todos.
         partial_count = sum(
             1 for s in subs

@@ -11,7 +11,7 @@ from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
 from scipy.sparse import hstack, issparse
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.envio_atual import ultimos_por_aluno
+from app.core.envio_atual import atuais_por_aluno
 from app.core.tempo import agora_utc
 from app.models.orm import QuestionCluster, Submission
 
@@ -126,8 +126,15 @@ def cluster_question(question_id: int, db: Session) -> ClusteringResult | None:
     )
     # O grupo diz onde cada aluno está agora: só o último envio dele entra, e
     # quem errou e depois acertou sai do grupo do erro.
-    submissions = ultimos_por_aluno(todos)
+    submissions = atuais_por_aluno(todos)
     if len(submissions) < MIN_SUBMISSIONS:
+        # Abaixo do mínimo não há grupo. Os que existiam (de antes de um envio
+        # ser excluído, por exemplo) não podem ficar congelados com quem já saiu.
+        for s in todos:
+            s.cluster_id = None
+        for qc in db.query(QuestionCluster).filter(QuestionCluster.question_id == question_id):
+            _encerrar_grupo(qc, db)
+        db.commit()
         return None
     atuais = {s.id for s in submissions}
     for s in todos:
@@ -312,7 +319,7 @@ def _persist_results(
     insight a cada re-agrupamento. Como agora isso roda a cada envio de aluno,
     apagar seria perder o texto do professor o tempo todo. A linha é encontrada
     pela `chave`, que sobrevive à renumeração dos rótulos, e só o que mudou é
-    atualizado. Grupo que deixou de existir é removido, e só ele."""
+    atualizado. Grupo que deixou de existir é encerrado (`_encerrar_grupo`)."""
     chaves = chaves or {}
     agora = agora_utc()
 
@@ -344,12 +351,27 @@ def _persist_results(
 
     for chave, qc in existentes.items():
         if chave not in vivas:
-            db.delete(qc)
+            _encerrar_grupo(qc, db)
     # Linhas anteriores à chave estável não têm como ser reconciliadas.
     for qc in sem_chave:
         db.delete(qc)
 
     db.commit()
+
+
+def _encerrar_grupo(qc: QuestionCluster, db: Session) -> None:
+    """Grupo que ficou vazio, quase sempre porque todos corrigiram.
+
+    Se o professor escreveu uma resposta, a linha fica adormecida (sem rótulo e
+    com tamanho zero) em vez de apagada: quando outro aluno cair no mesmo erro,
+    a mesma chave reaparece e a resposta volta a chegar, sem o professor
+    escrever de novo. Sem resposta, a linha sai."""
+    if not qc.resposta_professor:
+        db.delete(qc)
+        return
+    qc.cluster_label = None
+    qc.size = 0
+    qc.representative_submission_id = None
 
 
 def _escolher_representante(

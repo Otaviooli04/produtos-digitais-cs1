@@ -129,12 +129,12 @@ export default function QuestionPage() {
   // abaixo continua com todos os envios, que é o histórico da questão.
   const atuais = submissions ? submissions.filter(s => s.atual) : []
   const passRate = atuais.length > 0
-    ? Math.round((atuais.filter(s => s.all_tests_passed).length / atuais.length) * 100)
+    ? Math.round((atuais.filter(s => s.error_category === 'Correto').length / atuais.length) * 100)
     : 0
 
   const errorDist = submissions
     ? Object.entries(
-        atuais.filter(s => !s.all_tests_passed).reduce((acc, s) => {
+        atuais.filter(s => s.error_category !== 'Correto').reduce((acc, s) => {
           const cat = s.error_category || 'desconhecido'
           acc[cat] = (acc[cat] || 0) + 1
           return acc
@@ -185,7 +185,6 @@ export default function QuestionPage() {
     }
   }
 
-  const hasInsights = insights?.some(x => x.insight)
   const isCorrect = (err) => /correto/i.test(err || '')
   const insightFor = (cid) => insights?.find(x => x.cluster_id === cid)?.insight || ''
   const respostaFor = (cid) => insights?.find(x => x.cluster_id === cid)?.resposta_professor || ''
@@ -451,7 +450,7 @@ export default function QuestionPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {!hasInsights && (
+                  {faltaInsight && (
                     <Botao
                       onClick={genInsights}
                       disabled={insightsRunning}
