@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import LinkDaAtividade from '../components/LinkDaAtividade'
-import { Check, ChevronRight, X } from 'lucide-react'
+import { useParams } from 'react-router-dom'
+import { VoltarParaAtividade } from '../components/VoltarPara'
+import { Check, X } from 'lucide-react'
 import { getExam, submitCode } from '../api/exam'
 import Spinner from '../components/Spinner'
 import Badge from '../components/Badge'
@@ -52,11 +52,7 @@ export default function SubmitPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <LinkDaAtividade id={id} />
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        <span>Testar submissão</span>
-      </div>
+      <VoltarParaAtividade id={id} className="mb-4" />
 
       <h1 className="titulo-pagina mb-6">Testar submissão</h1>
 

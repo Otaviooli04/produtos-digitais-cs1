@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { uploadExam, getTurma } from '../api/exam'
-import { ChevronRight, FileText, Upload } from 'lucide-react'
+import { FileText, Upload } from 'lucide-react'
 import Spinner from '../components/Spinner'
 import Card from '../components/ui/Card'
+import VoltarPara from '../components/VoltarPara'
 
 export default function ExamUploadPage() {
   const { turmaId } = useParams()
@@ -46,11 +47,9 @@ export default function ExamUploadPage() {
 
   return (
     <div className="max-w-xl mx-auto mt-8">
-      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-8 lg:hidden">
-        <Link to="/" className="hover:text-noite">Turmas</Link>
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        <Link to={`/turma/${turmaId}?secao=atividades`} className="hover:text-noite">{turma?.nome ?? `Turma #${turmaId}`}</Link>
-      </div>
+      <VoltarPara to={`/turma/${turmaId}?secao=atividades`} className="mb-6">
+        {turma?.nome ?? 'Turma'}
+      </VoltarPara>
 
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-12 h-12 bg-lavanda rounded-botao mb-4">

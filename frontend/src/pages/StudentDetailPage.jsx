@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import LinkDaAtividade from '../components/LinkDaAtividade'
-import { Check, ChevronRight, X } from 'lucide-react'
+import VoltarPara from '../components/VoltarPara'
+import { Check, X } from 'lucide-react'
 import { getStudentDetail } from '../api/exam'
 import Spinner from '../components/Spinner'
 import Badge from '../components/Badge'
@@ -52,13 +52,7 @@ export default function StudentDetailPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <LinkDaAtividade id={id} />
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        <Link to={`/exam/${id}/students`} className="hover:text-noite">Alunos</Link>
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        <span>{decoded}</span>
-      </div>
+      <VoltarPara to={`/exam/${id}/students`} className="mb-4">Alunos</VoltarPara>
 
       {/* Header */}
       <Card principal className="mb-5">

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import LinkDaAtividade from '../components/LinkDaAtividade'
-import { ChevronRight, Upload } from 'lucide-react'
+import { useParams } from 'react-router-dom'
+import { VoltarParaAtividade } from '../components/VoltarPara'
+import { Upload } from 'lucide-react'
 import { bulkSubmit, getJob } from '../api/exam'
 import Spinner from '../components/Spinner'
 import Botao from '../components/ui/Botao'
@@ -99,11 +99,7 @@ export default function BulkSubmitPage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <LinkDaAtividade id={id} />
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        <span>Submissões em lote</span>
-      </div>
+      <VoltarParaAtividade id={id} className="mb-4" />
 
       <h1 className="titulo-pagina mb-1">Submissões em lote</h1>
       <p className="text-sm text-cinza-texto mb-6">
