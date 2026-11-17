@@ -15,10 +15,12 @@ alunoApi.interceptors.request.use((config) => {
   return config
 })
 
+// O 401 do próprio login é e-mail ou senha errados: fica na tela, sem
+// recarregar a página e apagar o que foi digitado.
 alunoApi.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    if (err.response?.status === 401 && err.config?.url !== '/aluno/login') {
       localStorage.removeItem(ALUNO_TOKEN_KEY)
       localStorage.removeItem(ALUNO_KEY)
       window.location.href = '/aluno/login'
