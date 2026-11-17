@@ -57,6 +57,9 @@ class AtividadeDoPainel:
     fecha_em: datetime | None
     criada_em: datetime | None
     com_o_que_fazer: bool
+    comecada: bool = False
+    questoes_resolvidas: int = 0
+    total_questoes: int = 0
 
 
 def escolher_continuar(envios: list[Envio], disponiveis: dict[tuple[str, int], ItemDisponivel],
@@ -105,6 +108,9 @@ def proxima_atividade(atividades: list[AtividadeDoPainel]) -> dict | None:
         "exam_id": atividade.exam_id,
         "question_number": None,
         "exercicio_id": None,
+        "comecada": atividade.comecada,
+        "questoes_resolvidas": atividade.questoes_resolvidas,
+        "total_questoes": atividade.total_questoes,
     }
 
 
@@ -200,6 +206,9 @@ def _atividades_e_questoes(student: Student, turma_ids: list[int], envios: list[
             modo=exam.modo or Exam.MODO_PROVA, situacao=situacao,
             abre_em=exam.abre_em, fecha_em=exam.fecha_em, criada_em=exam.created_at,
             com_o_que_fazer=bool(pendentes),
+            comecada=any(usadas.get(q.id, 0) for q in exam.questions),
+            questoes_resolvidas=sum(1 for q in exam.questions if q.id in resolvidas),
+            total_questoes=len(exam.questions),
         ))
         if situacao == "aberta":
             for q in pendentes:

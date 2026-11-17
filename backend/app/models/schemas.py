@@ -907,6 +907,10 @@ class ContinuarItem(BaseModel):
     exam_id: Optional[int] = None
     question_number: Optional[str] = None
     exercicio_id: Optional[int] = None
+    # Só na próxima atividade: se o aluno já enviou algo nela e quanto já resolveu.
+    comecada: bool = False
+    questoes_resolvidas: int = 0
+    total_questoes: int = 0
 
 
 class PrazoItem(BaseModel):

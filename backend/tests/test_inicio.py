@@ -153,6 +153,7 @@ class TestProximaAtividade:
             "origem": "lista", "situacao": "proxima", "titulo": "Lista 2",
             "turma_nome": "Turma A", "tentativas": 0, "ultimo_erro": "", "exam_id": 2,
             "question_number": None, "exercicio_id": None,
+            "comecada": False, "questoes_resolvidas": 0, "total_questoes": 0,
         }
         assert proxima_atividade([a3, a4])["exam_id"] == 4
 
@@ -243,6 +244,26 @@ class TestPainel:
         resultado = painel(aluno, db, agora=AGORA)
         assert resultado["continuar"] is None
         assert resultado["prazos"] == []
+
+    def test_proxima_atividade_ja_comecada_diz_quanto_foi_resolvido(self, db, aluno, prova):
+        questao = next(q for q in prova.questions if q.number == "1")
+        db.add(Submission(
+            question_id=questao.id, code="int main(){}", error_category="Correto",
+            all_tests_passed=True, student_id=aluno.id, attempt_number=1,
+            submitted_at=AGORA - timedelta(hours=1),
+        ))
+        db.commit()
+        continuar = painel(aluno, db, agora=AGORA)["continuar"]
+        assert continuar["situacao"] == "proxima"
+        assert continuar["exam_id"] == prova.id
+        assert (continuar["comecada"], continuar["questoes_resolvidas"],
+                continuar["total_questoes"]) == (True, 1, 2)
+
+    def test_proxima_atividade_sem_envio_nao_esta_comecada(self, db, aluno, prova):
+        continuar = painel(aluno, db, agora=AGORA)["continuar"]
+        assert continuar["situacao"] == "proxima"
+        assert (continuar["comecada"], continuar["questoes_resolvidas"],
+                continuar["total_questoes"]) == (False, 0, 2)
 
     def test_atividade_encerrada_nao_entra(self, db, aluno, prova):
         prova.fecha_em = AGORA - timedelta(hours=1)
