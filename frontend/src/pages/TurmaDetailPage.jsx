@@ -18,6 +18,7 @@ import Tag from '../components/ui/Tag'
 import { COR_ERRO, corDaTaxa } from '../utils/coresGraficos'
 import { comTipo, modoLabel } from '../utils/atividade'
 import { shortError } from '../utils/errorLabels'
+import VoltarPara from '../components/VoltarPara'
 
 const GRUPOS_DE_ATIVIDADE = [
   { modo: 'prova', titulo: 'Provas', vazio: 'Nenhuma prova nesta turma.' },
@@ -190,9 +191,7 @@ export default function TurmaDetailPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-1 text-sm text-cinza-texto lg:hidden">
-        <Link to="/" className="hover:text-noite">Turmas</Link>
-      </div>
+      <VoltarPara to="/" className="mb-0">Turmas</VoltarPara>
 
       <PainelDestaque>
         <div className="space-y-5 pr-0 sm:pr-24">

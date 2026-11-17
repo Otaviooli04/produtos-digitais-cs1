@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChevronRight, ClipboardList, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { ClipboardList, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import {
   getExam, getResults, getActiveJobs,
   deleteExam, updateExam, createQuestion, updateQuestion, deleteQuestion,
@@ -19,6 +19,7 @@ import Progresso from '../components/ui/Progresso'
 import Tag from '../components/ui/Tag'
 import { modoLabel } from '../utils/atividade'
 import { avisarContextoMudou } from '../hooks/useContextoProfessor'
+import VoltarPara from '../components/VoltarPara'
 
 export default function ExamDashboard() {
   const { id } = useParams()
@@ -146,12 +147,10 @@ export default function ExamDashboard() {
   return (
     <div className="space-y-6">
       {exam.turma_id ? (
-        <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto lg:hidden">
-          <Link to="/" className="hover:text-noite">Turmas</Link>
-          <ChevronRight className="w-4 h-4" aria-hidden="true" />
-          <Link to={`/turma/${exam.turma_id}?secao=atividades`} className="hover:text-noite">{exam.turma_nome}</Link>
-        </div>
-      ) : null}
+        <VoltarPara to={`/turma/${exam.turma_id}?secao=atividades`} className="mb-0">{exam.turma_nome}</VoltarPara>
+      ) : (
+        <VoltarPara to="/" className="mb-0">Turmas</VoltarPara>
+      )}
 
       <PainelDestaque>
         <div className="space-y-2">

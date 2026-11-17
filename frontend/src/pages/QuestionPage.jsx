@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import LinkDaAtividade from '../components/LinkDaAtividade'
+import { VoltarParaAtividade } from '../components/VoltarPara'
 import TextoComCodigo from '../components/TextoComCodigo'
 import { ChevronDown, Plus } from 'lucide-react'
 import {
@@ -269,9 +269,7 @@ export default function QuestionPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <LinkDaAtividade id={id} />
-      </div>
+      <VoltarParaAtividade id={id} className="mb-4" />
 
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-3 mb-1">

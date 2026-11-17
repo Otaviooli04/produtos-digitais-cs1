@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import LinkDaAtividade from '../components/LinkDaAtividade'
-import { Check, ChevronRight, FileCode, User, X } from 'lucide-react'
+import { useParams } from 'react-router-dom'
+import VoltarPara from '../components/VoltarPara'
+import { Check, FileCode, User, X } from 'lucide-react'
 import { getQuestionSubmissions } from '../api/exam'
 import Spinner from '../components/Spinner'
 import CodeBlock from '../components/CodeBlock'
@@ -48,13 +48,7 @@ export default function SubmissionsPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <LinkDaAtividade id={id} />
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        <span>Questão {num}</span>
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        <span>Respostas</span>
-      </div>
+      <VoltarPara to={`/exam/${id}/questions/${num}`} className="mb-4">Questão {num}</VoltarPara>
 
       <div className="flex items-center gap-3 mb-6">
         <h1 className="titulo-pagina">Respostas</h1>

@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
 import { updateProfile, changePassword } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import Spinner from '../components/Spinner'
 import Botao from '../components/ui/Botao'
 import Card from '../components/ui/Card'
+import VoltarPara from '../components/VoltarPara'
 
 export default function ProfilePage() {
   const { professor, updateProfessor } = useAuth()
@@ -51,11 +50,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto lg:hidden">
-        <Link to="/" className="hover:text-noite">Turmas</Link>
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        <span>Meu perfil</span>
-      </div>
+      <VoltarPara to="/" className="mb-0">Turmas</VoltarPara>
 
       <h1 className="titulo-pagina">Meu perfil</h1>
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import LinkDaAtividade from '../components/LinkDaAtividade'
-import { Check, ChevronRight, CircleAlert, Minus, Users, X } from 'lucide-react'
+import { VoltarParaAtividade } from '../components/VoltarPara'
+import { Check, CircleAlert, Minus, Users, X } from 'lucide-react'
 import { getExamStudents } from '../api/exam'
 import Spinner from '../components/Spinner'
 import Card from '../components/ui/Card'
@@ -65,11 +65,7 @@ export default function StudentsPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1 text-sm text-cinza-texto mb-6 lg:hidden">
-        <LinkDaAtividade id={id} />
-        <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        <span>Alunos</span>
-      </div>
+      <VoltarParaAtividade id={id} className="mb-4" />
 
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="titulo-pagina">Alunos</h1>
